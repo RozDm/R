@@ -6,13 +6,19 @@
     <meta name="author" content="Dmytro Rozsoshnykh">
     <meta name="description" content="Personal website of Dmytro Rozsoshnykh featuring information about education, projects, and ways to connect.">
     <title>Dmytro Rozsoshnykh - Personal Website</title>
+    <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
+    <!-- Прелоадер -->
+    <div id="preloader" class="flex-center">
+        <div class="circle"></div>
+    </div>
+
     <!-- Main Header -->
-    <header>
+    <header class="flex-column">
         <h1>Dmytro Rozsoshnykh</h1>
         <nav>
-            <ul>
+            <ul class="flex-row">
                 <li><a href="#about-me">About Me</a></li>
                 <li><a href="#education">My Education</a></li>
                 <li><a href="#projects">My Projects</a></li>
@@ -24,60 +30,63 @@
     <!-- Main Content -->
     <main>
         <!-- About Me Section -->
-        <section id="about-me">
+        <section id="about-me" class="flex-column">
             <header>
                 <h2>About Me</h2>
-                <a href="https://photos.app.goo.gl/mVdJ9ZDm3F4Ke9VH7"></a>
             </header>
             <p>Hello! My name is Dmytro Rozsoshnykh. I am a passionate professional specializing in system administration. I thrive on tackling challenging problems and creating impactful solutions.</p>
         </section>
 
         <!-- Education Section -->
-        <section id="education">
+        <section id="education" class="flex-column">
             <header>
                 <h2>My Education</h2>
             </header>
-            <article>
-                <header>
-                    <h3>Abbreviated Master's Degree</h3>
-                </header>
-                <p><strong>Institution:</strong> Donetsk National University</p>
-                <p><strong>Year of Graduation:</strong> 2012 - 2013</p>
-                <p><strong>Description:</strong> Ecological and economic data monitoring, specialist engineer in data systems</p>
-            </article>
-            <article>
-                <header>
-                    <h3>Bachelor's degree</h3>
-                </header>
-                <p><strong>Institution:</strong> Donetsk National University</p>
-                <p><strong>Year of Graduation:</strong> 2008 - 2012</p>
-                <p><strong>Description:</strong> Data science</p>
-            </article>
+            <div class="flex-row">
+                <article>
+                    <header>
+                        <h3>Abbreviated Master's Degree</h3>
+                    </header>
+                    <p><strong>Institution:</strong> Donetsk National University</p>
+                    <p><strong>Year of Graduation:</strong> 2012 - 2013</p>
+                    <p><strong>Description:</strong> Ecological and economic data monitoring, specialist engineer in data systems</p>
+                </article>
+                <article>
+                    <header>
+                        <h3>Bachelor's degree</h3>
+                    </header>
+                    <p><strong>Institution:</strong> Donetsk National University</p>
+                    <p><strong>Year of Graduation:</strong> 2008 - 2012</p>
+                    <p><strong>Description:</strong> Data science</p>
+                </article>
+            </div>
         </section>
 
         <!-- Projects Section -->
-        <section id="projects">
+        <section id="projects" class="flex-column">
             <header>
                 <h2>My Projects</h2>
             </header>
-            <article>
-                <header>
-                    <h3>Project Title 1</h3>
-                </header>
-                <p><strong>Description:</strong> Project Title 1</p>
-                <p><strong>Technologies Used:</strong> Project Title 1</p>
-            </article>
-            <article>
-                <header>
-                    <h3>Project Title 2</h3>
-                </header>
-                <p><strong>Description:</strong> Project Title 2</p>
-                <p><strong>Technologies Used:</strong> Project Title 2</p>
-            </article>
+            <div class="flex-row">
+                <article>
+                    <header>
+                        <h3>Project Title 1</h3>
+                    </header>
+                    <p><strong>Description:</strong> Project Title 1</p>
+                    <p><strong>Technologies Used:</strong> Project Title 1</p>
+                </article>
+                <article>
+                    <header>
+                        <h3>Project Title 2</h3>
+                    </header>
+                    <p><strong>Description:</strong> Project Title 2</p>
+                    <p><strong>Technologies Used:</strong> Project Title 2</p>
+                </article>
+            </div>
         </section>
 
         <!-- Contact Me Section -->
-        <section id="contact">
+        <section id="contact" class="flex-column">
             <header>
                 <h2>Contact Me</h2>
             </header>
@@ -91,8 +100,10 @@
     </main>
 
     <!-- Footer -->
-    <footer>
+    <footer class="flex-center">
         <p>&copy; <time datetime="2024">2024</time> Dmytro Rozsoshnykh. All rights reserved.</p>
     </footer>
+
+    <script src="js/main.js"></script>
 </body>
 </html>
