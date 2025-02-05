@@ -1,9 +1,50 @@
 /* Общий стиль */
 body {
     margin: 0;
+    overflow: hidden; /* Отключаем прокрутку, пока виден прелоадер */
+    font-family: Arial, sans-serif;
+    background-color: #fff;
 }
 
-/* Основные стили для Flexbox */
+/* Прелоадер */
+#preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #fff; /* Белый фон */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.3s ease; /* Плавное исчезновение */
+}
+
+/* Основной контент изначально скрыт */
+#content {
+    opacity: 0; /* Изначально скрываем контент */
+    visibility: hidden; /* Убираем из потока */
+    transition: opacity 0.5s ease, visibility 0.5s ease; /* Плавное появление */
+}
+
+.profile-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+/* Стиль изображения профиля */
+.profile-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #2F4550;
+}
+
+/* Flexbox стили */
 .flex-row {
     display: flex;
     flex-wrap: wrap;
@@ -15,7 +56,7 @@ body {
 .flex-column {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 10px; /* Расстояние между элементами */
     align-items: center;
 }
 
@@ -26,81 +67,84 @@ body {
     height: 100%;
 }
 
-/* Дополнительные стили */
-header h1 {
-    text-align: center;
-}
-
-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-nav ul li {
-    margin: 0 10px;
-}
-
-nav ul li a {
-    text-decoration: none;
-}
-
-section {
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-article {
-    border: 1px solid #ccc;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-footer {
-    padding: 10px;
-    background-color: #f1f1f1;
-    text-align: center;
-}
-
-
-/* Прелоадер */
-#preloader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-/* Основной контент изначально скрыт */
-#content {
-    opacity: 0; /* Скрываем контент */
-    transition: opacity 0.3s; /* Плавное появление */
-}
-
 /* Анимация круга */
 .circle {
     width: 50px;
     height: 50px;
-    background-color: #2F4550; /* Новый цвет */
-    border-radius: 50%;
-    animation: expand 3s ease-out forwards; /* Увеличиваем длительность до 5 секунд */
+    background-color: #000; /* Черный круг */
+    border-radius: 50%; /* Форма круга */
+    animation: expand 1.5s ease-out forwards; /* Увеличение и исчезновение */
 }
 
 /* Ключевые кадры для анимации */
 @keyframes expand {
     0% {
-        transform: scale(1);
-        opacity: 1;
+        transform: scale(1); /* Маленькая точка */
+        opacity: 1; /* Полная видимость */
+    }
+    50% {
+        transform: scale(50); /* Расширение до экрана */
+        opacity: 1; /* Полная видимость */
     }
     100% {
-        transform: scale(100);
-        opacity: 0;
+        transform: scale(100); /* Уход за экран */
+        opacity: 0; /* Полное исчезновение */
     }
+}
+
+/* Header */
+header {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+/* Навигация */
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+nav ul li {
+    margin: 0;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: #2F4550;
+    font-weight: bold;
+}
+
+/* Секции */
+section {
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin: 20px;
+    background-color: #f9f9f9;
+}
+
+/* Секция образования и проектов */
+article {
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #fff;
+    max-width: 300px;
+}
+
+/* Footer */
+footer {
+    padding: 10px;
+    background-color: #f1f1f1;
+    text-align: center;
 }
