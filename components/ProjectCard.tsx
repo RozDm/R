@@ -46,7 +46,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 underline"
             >
-              Демо
+              Demo
             </a>
           )}
           {project.github && (
