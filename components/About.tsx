@@ -3,7 +3,7 @@ export default function About() {
     <section id="about" className="py-16 px-4 md:px-16 bg-gray-50 dark:bg-gray-900 rounded-lg">
       <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Dmytro Rozsoshnykh</h2>
       <p className="text-gray-700 dark:text-gray-300 mb-4">
-        IT-spesialist med erfaring i utvikling av moderne webapplikasjoner og infrastrukturforvaltning. Min tekniske stack inkluderer React, Next.js, TypeScript og Node.js, samt praktisk ekspertise innen serverutvikling, DevOps-prosesser og systemintegrasjon.
+        Fullstack-utvikler med fokus på React, Next.js og TypeScript. Har også solid erfaring innen serverutvikling, DevOps og infrastruktur.
       </p>
       <div className="flex gap-4">
         <a href="#projects" className="px-6 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-lg hover:opacity-90 transition">
