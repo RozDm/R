@@ -25,7 +25,7 @@ export default function Skills() {
 
   return (
     <section id="skills" className="py-16 px-4 md:px-16 bg-gray-100 dark:bg-gray-800 rounded-lg">
-      <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Навыки</h2>
+      <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Kompetanse</h2>
 
       <div className="flex gap-4 mb-6">
         {categories.map(category => (
