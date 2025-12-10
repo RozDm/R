@@ -6,8 +6,8 @@ import { ThemeProvider } from '@/context/ThemeContext'
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
 export const metadata: Metadata = {
-  title: 'Portfolio – Ваше Имя',
-  description: 'Портфолио веб-разработчика',
+  title: 'Portefølje – Dmytro Rozsoshnykh',
+  description: 'Portefølje og CV innen DevOps og webutvikling',
 }
 
 export default function RootLayout({
