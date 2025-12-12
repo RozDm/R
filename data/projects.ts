@@ -31,4 +31,14 @@ export const projects: IProject[] = [
     github: 'https://github.com/username/portfolio',
     year: 2024,
   },
+  {
+    id: 3,
+    title: 'Portfolio Website',
+    description: 'Современный сайт-портфолио со статическим экспортом, темной темой и полностью адаптивным дизайном.',
+    techStack: ['Next.js', 'TypeScript', 'Tailwind CSS'],
+    image: '/projects/portfolio.jpg',
+    link: 'https://example.com',
+    github: 'https://github.com/username/portfolio',
+    year: 2024,
+  },
 ]
