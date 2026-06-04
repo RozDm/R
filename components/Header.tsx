@@ -4,7 +4,6 @@ import MobileMenu from './MobileMenu'
 const navLinks = [
   { href: '#about', label: 'Om meg' },
   { href: '#skills', label: 'Ferdigheter' },
-  { href: '#projects', label: 'Prosjekter' },
   { href: '#footer', label: 'Kontakt' },
 ]
 
