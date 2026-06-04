@@ -3,7 +3,7 @@ import { SkillGroup } from '@/types'
 export const skillGroups: SkillGroup[] = [
   {
     title: 'Infrastruktur',
-    items: ['Linux (Ubuntu/Debian)', 'Windows Server 2019', 'Active Directory', 'Proxmox', 'Hyper-V', 'DHCP'],
+    items: ['Linux (Ubuntu/Debian)', 'Windows Server', 'Proxmox', 'Hyper-V', 'VMware (vSphere/ESXi)', 'Active Directory', 'DNS', 'DHCP'],
   },
   {
     title: 'Sky & Automatisering',
