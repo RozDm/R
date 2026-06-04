@@ -38,9 +38,8 @@ portfolio/
 │   └── ThemeContext.tsx  # Theme provider
 ├── data/                 # Static data
 │   └── projects.ts       # Project data
-├── types/                # TypeScript types
-│   └── index.ts          # Type definitions
-└── public/               # Static assets
+└── types/                # TypeScript types
+    └── index.ts          # Type definitions
 ```
 
 ## Getting Started
@@ -76,7 +75,7 @@ portfolio/
 |---------|-------------|
 | `npm run dev` | Start development server |
 | `npm run build` | Build for production |
-| `npm run lint` | Run ESLint |
+| `npm run start` | Start production server |
 
 ## Customization
 
@@ -91,7 +90,6 @@ export const projects: IProject[] = [
     title: 'Your Project',
     description: 'Project description',
     techStack: ['React', 'TypeScript'],
-    image: '/projects/your-project.jpg',
     link: 'https://your-project.com',
     github: 'https://github.com/username/project',
     year: 2024,

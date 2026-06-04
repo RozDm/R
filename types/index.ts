@@ -3,7 +3,6 @@ export interface IProject {
   title: string
   description: string
   techStack: string[]
-  image?: string
   link?: string
   github?: string
   year?: number

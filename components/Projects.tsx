@@ -1,5 +1,3 @@
-'use client'
-
 import { projects } from '@/data/projects'
 import ProjectCard from './ProjectCard'
 
