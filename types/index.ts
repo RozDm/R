@@ -1,16 +1,9 @@
-export interface Project {
-  id: number
+export interface SkillGroup {
   title: string
-  description: string
-  techStack: string[]
-  link?: string
-  github?: string
-  year?: number
+  items: string[]
 }
 
-export interface Skill {
-  id: number
-  name: string
-  level: 1 | 2 | 3 | 4 | 5
-  category: 'Frontend' | 'Backend' | 'Verktøy'
+export interface Certification {
+  title: string
+  issuer: string
 }

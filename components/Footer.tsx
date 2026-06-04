@@ -16,30 +16,29 @@ export default function Footer() {
         <p className="text-gray-500 dark:text-gray-400 max-w-md">
           Interessert i samarbeid eller har et spørsmål? Ta gjerne kontakt.
         </p>
+
+        {/* TODO: erstatt med ekte kontaktinfo */}
+        <div className="flex flex-col items-center gap-1 font-mono text-sm text-gray-500 dark:text-gray-400 pt-2">
+          <span>E-post: din@epost.no</span>
+          <span>Telefon: +47 000 00 000</span>
+          <span>Adresse: Vestland, Norge</span>
+        </div>
+
         <div className="flex gap-8 text-sm font-medium pt-2">
           <a
-            href="mailto:d.rossoshnyh@gmail.com"
-            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-          >
-            E-post
-          </a>
-          <a
-            href="https://github.com/RozDm"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#"
             className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
             GitHub
           </a>
           <a
-            href="https://linkedin.com/in/dmytro-rozsoshnykh"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#"
             className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
             LinkedIn
           </a>
         </div>
+
         <p className="text-xs text-gray-400 dark:text-gray-600 pt-8 font-mono">
           &copy; {currentYear} Dmytro Rozsoshnykh
         </p>
