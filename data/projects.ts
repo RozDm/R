@@ -1,6 +1,6 @@
-import { IProject } from '@/types'
+import { Project } from '@/types'
 
-export const projects: IProject[] = [
+export const projects: Project[] = [
   {
     id: 1,
     title: 'E-commerce-plattform',
