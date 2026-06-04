@@ -7,7 +7,7 @@ export const skillGroups: SkillGroup[] = [
   },
   {
     title: 'Sky & Automatisering',
-    items: ['Azure', 'AWS', 'Ansible', 'Puppet', 'PowerShell', 'Bash', 'Docker', 'Kubernetes', 'CI/CD'],
+    items: ['Azure', 'AWS', 'Ansible', 'PowerShell', 'Bash', 'Docker', 'Kubernetes', 'CI/CD'],
   },
   {
     title: 'Sikkerhet & SOC',
@@ -24,5 +24,32 @@ export const skillGroups: SkillGroup[] = [
   {
     title: 'Utvikling',
     items: ['Node.js', 'React', 'TypeScript', 'Git'],
+  },
+  {
+    title: 'Lærer for tiden',
+    learning: true,
+    items: [
+      'Terraform',
+      'Helm',
+      'ArgoCD / FluxCD',
+      'GitHub Actions / GitLab CI',
+      'HashiCorp Vault',
+      'GitHub/GitLab Secrets',
+      'Trivy',
+      'mTLS',
+      'OAuth2',
+      'OpenTelemetry',
+      'Tempo',
+      'Alertmanager',
+      'HAProxy',
+      'NGINX',
+      'Traefik',
+      'WireGuard',
+      'Istio',
+      'nftables/iptables',
+      'Cloudflare',
+      'Python',
+      'Go',
+    ],
   },
 ]
