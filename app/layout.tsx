@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Intel_One_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/context/ThemeContext'
+import { SITE_URL, AUTHOR } from '@/lib/site'
 
 const intelOneMono = Intel_One_Mono({
   subsets: ['latin', 'latin-ext'],
@@ -20,11 +21,14 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Portefølje – Dmytro Rozsoshnykh',
-  description: 'Systemadministrator, DevOps og IT-driftstekniker med fokus på infrastruktur, automatisering og sikkerhet.',
+  metadataBase: new URL(SITE_URL),
+  title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps',
+  description: 'Systemadministrator, DevOps og IT-driftstekniker med fokus på infrastruktur, automatisering og sikkerhet. Basert i Askøy, Vestland.',
+  alternates: { canonical: '/' },
   openGraph: {
-    title: 'Portefølje – Dmytro Rozsoshnykh',
-    description: 'Systemadministrator · DevOps · IT-driftstekniker.',
+    title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps',
+    description: 'Systemadministrator · DevOps · IT-driftstekniker. Infrastruktur, automatisering og sikkerhet.',
+    url: `${SITE_URL}/`,
     locale: 'nb_NO',
     type: 'website',
   },
@@ -39,6 +43,21 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const personJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: AUTHOR.name,
+    jobTitle: AUTHOR.jobTitle,
+    url: SITE_URL,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Askøy',
+      addressRegion: 'Vestland',
+      addressCountry: 'NO',
+    },
+    sameAs: AUTHOR.sameAs,
+  }
+
   return (
     <html lang="nb" className={intelOneMono.variable} suppressHydrationWarning>
       <head>
@@ -46,6 +65,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
           }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
         />
       </head>
       <body>
