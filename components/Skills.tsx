@@ -22,10 +22,10 @@ export default function Skills() {
             role="tab"
             aria-selected={activeCategory === cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
               activeCategory === cat
-                ? 'bg-primary-light dark:bg-primary-dark text-white'
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+                ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             {cat}
@@ -35,14 +35,14 @@ export default function Skills() {
 
       <div className="grid gap-3 sm:grid-cols-2" role="tabpanel">
         {filtered.map(skill => (
-          <div key={skill.id} className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-            <div className="flex justify-between mb-2 text-gray-900 dark:text-white font-medium text-sm">
-              <span>{skill.name}</span>
-              <span className="text-gray-500 dark:text-gray-400">{skill.level}/5</span>
+          <div key={skill.id} className="p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800">
+            <div className="flex justify-between mb-2 text-sm">
+              <span className="text-gray-900 dark:text-white font-medium">{skill.name}</span>
+              <span className="text-gray-400 dark:text-gray-500 font-mono text-xs">{skill.level}/5</span>
             </div>
-            <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary-light dark:bg-primary-dark rounded-full transition-all duration-500"
+                className="h-full bg-red-500 dark:bg-red-400 rounded-full transition-all duration-700"
                 style={{ width: `${(skill.level / 5) * 100}%` }}
                 role="progressbar"
                 aria-valuenow={skill.level}

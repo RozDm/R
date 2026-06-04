@@ -3,13 +3,13 @@
 @theme {
   --color-primary-light: #3b82f6;
   --color-primary-dark: #60a5fa;
-  --animate-fade-in: fade-in 0.6s ease-out;
+  --animate-fade-in: fade-in 0.8s ease-out both;
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -17,35 +17,45 @@
   }
 }
 
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-  color: #0f172a;
-  background: #ffffff;
+  color: #1e293b;
+  background: #fafafa;
 }
 
 .dark body {
   color: #e2e8f0;
-  background: #0f172a;
+  background: #030712;
 }
 
 html {
   scroll-behavior: smooth;
 }
 
+::selection {
+  background: #ef4444;
+  color: white;
+}
+
 .dark ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: transparent;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 5px;
+  background: #1e293b;
+  border-radius: 4px;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #334155;
 }
