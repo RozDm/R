@@ -1,14 +1,55 @@
-import { Skill } from '@/types'
+import { SkillGroup } from '@/types'
 
-export const skills: Skill[] = [
-  { id: 1, name: 'React', level: 5, category: 'Frontend' },
-  { id: 2, name: 'Next.js', level: 5, category: 'Frontend' },
-  { id: 3, name: 'TypeScript', level: 4, category: 'Frontend' },
-  { id: 4, name: 'Tailwind CSS', level: 5, category: 'Frontend' },
-  { id: 5, name: 'Node.js', level: 4, category: 'Backend' },
-  { id: 6, name: 'PostgreSQL', level: 3, category: 'Backend' },
-  { id: 7, name: 'MongoDB', level: 4, category: 'Backend' },
-  { id: 8, name: 'Git', level: 5, category: 'Verktøy' },
-  { id: 9, name: 'Docker', level: 3, category: 'Verktøy' },
-  { id: 10, name: 'Figma', level: 4, category: 'Verktøy' },
+export const skillGroups: SkillGroup[] = [
+  {
+    title: 'Infrastruktur',
+    items: ['Linux (Ubuntu/Debian)', 'Windows Server', 'Proxmox', 'Hyper-V', 'VMware (vSphere/ESXi)', 'Active Directory', 'DNS', 'DHCP'],
+  },
+  {
+    title: 'Sky & Automatisering',
+    items: ['Azure', 'AWS', 'Ansible', 'PowerShell', 'Bash', 'Docker', 'Kubernetes', 'CI/CD'],
+  },
+  {
+    title: 'Sikkerhet & SOC',
+    items: ['Wazuh', 'Nessus', 'ESET Protect', 'VPN', 'Nettverkssegmentering'],
+  },
+  {
+    title: 'Overvåking',
+    items: ['Zabbix', 'Prometheus', 'Grafana', 'Loki', 'OpenSearch', 'CloudWatch', 'Azure Monitor'],
+  },
+  {
+    title: 'Nettverk',
+    items: ['CCNA', 'TCP/IP', 'Routing & Switching'],
+  },
+  {
+    title: 'Utvikling',
+    items: ['Node.js', 'React', 'TypeScript', 'Git'],
+  },
+  {
+    title: 'Lærer for tiden',
+    learning: true,
+    items: [
+      'Terraform',
+      'Helm',
+      'ArgoCD / FluxCD',
+      'GitHub Actions / GitLab CI',
+      'HashiCorp Vault',
+      'GitHub/GitLab Secrets',
+      'Trivy',
+      'mTLS',
+      'OAuth2',
+      'OpenTelemetry',
+      'Tempo',
+      'Alertmanager',
+      'HAProxy',
+      'NGINX',
+      'Traefik',
+      'WireGuard',
+      'Istio',
+      'nftables/iptables',
+      'Cloudflare',
+      'Python',
+      'Go',
+    ],
+  },
 ]
