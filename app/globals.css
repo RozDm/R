@@ -4,6 +4,8 @@
   --color-primary-light: #3b82f6;
   --color-primary-dark: #60a5fa;
   --animate-fade-in: fade-in 0.8s ease-out both;
+  --font-sans: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @keyframes fade-in {
