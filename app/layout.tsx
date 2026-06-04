@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Intel_One_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/context/ThemeContext'
 
-const inter = Inter({ subsets: ['latin', 'cyrillic'] })
+const intelOneMono = Intel_One_Mono({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-intel-mono',
+  display: 'swap',
+})
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -16,10 +21,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Portefølje – Dmytro Rozsoshnykh',
-  description: 'Fullstack-utvikler med fokus på React, Next.js og TypeScript. Portefølje og CV innen webutvikling og DevOps.',
+  description: 'Systemadministrator, DevOps og IT-driftstekniker med fokus på infrastruktur, automatisering og sikkerhet.',
   openGraph: {
     title: 'Portefølje – Dmytro Rozsoshnykh',
-    description: 'Fullstack-utvikler med fokus på React, Next.js og TypeScript.',
+    description: 'Systemadministrator · DevOps · IT-driftstekniker.',
     locale: 'nb_NO',
     type: 'website',
   },
@@ -35,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="nb" suppressHydrationWarning>
+    <html lang="nb" className={intelOneMono.variable} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -43,7 +48,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body>
         <ThemeProvider>
           {children}
         </ThemeProvider>
