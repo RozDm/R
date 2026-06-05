@@ -10,12 +10,38 @@ interface Star {
   duration: number
 }
 
+const SEEN_KEY = 'intro-seen'
+
+function markSeen() {
+  try {
+    sessionStorage.setItem(SEEN_KEY, '1')
+  } catch {}
+}
+
+function clearPrePaintOverlay() {
+  document.documentElement.classList.remove('intro-active')
+}
+
 export default function Intro() {
+  // Starts inactive so the server-rendered HTML (and any client-side
+  // navigation back to the home page) shows nothing. The animation is only
+  // triggered, once per session, by the effect below.
+  const [active, setActive] = useState(false)
   const [phase, setPhase] = useState(0)
-  const [dismissed, setDismissed] = useState(false)
   const [stars, setStars] = useState<Star[]>([])
 
+  // Decide on mount whether this is the first visit this session.
   useEffect(() => {
+    let seen = false
+    try {
+      seen = !!sessionStorage.getItem(SEEN_KEY)
+    } catch {}
+
+    if (seen) {
+      clearPrePaintOverlay()
+      return
+    }
+
     setStars(
       Array.from({ length: 200 }, () => ({
         x: Math.random() * 100,
@@ -23,29 +49,42 @@ export default function Intro() {
         size: Math.random() * 2 + 0.5,
         delay: Math.random() * 2,
         duration: Math.random() * 3 + 2,
-      }))
+      })),
     )
+    setActive(true)
   }, [])
 
+  // Run the phase sequence once the overlay is active.
   useEffect(() => {
-    if (dismissed) return
+    if (!active) return
+
+    // The React overlay (z-100) is now painted over the CSS pre-overlay,
+    // so the pre-paint cover can go.
+    clearPrePaintOverlay()
+
+    const finish = () => {
+      markSeen()
+      setActive(false)
+    }
+
     const timers = [
       setTimeout(() => setPhase(1), 300),
       setTimeout(() => setPhase(2), 1500),
       setTimeout(() => setPhase(3), 2800),
       setTimeout(() => setPhase(4), 4200),
       setTimeout(() => setPhase(5), 5200),
-      setTimeout(() => setDismissed(true), 6000),
+      setTimeout(finish, 6000),
     ]
     return () => timers.forEach(clearTimeout)
-  }, [dismissed])
+  }, [active])
 
   const skip = useCallback(() => {
+    markSeen()
     setPhase(5)
-    setTimeout(() => setDismissed(true), 600)
+    setTimeout(() => setActive(false), 600)
   }, [])
 
-  if (dismissed) return null
+  if (!active) return null
 
   return (
     <div
