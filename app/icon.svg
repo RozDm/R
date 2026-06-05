@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <radialGradient id="halBody" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff2020"/>
+      <stop offset="25%" stop-color="#cc0000"/>
+      <stop offset="45%" stop-color="#800000"/>
+      <stop offset="65%" stop-color="#3d0000"/>
+      <stop offset="100%" stop-color="#1a0a0a"/>
+    </radialGradient>
+    <radialGradient id="halCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffc864" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ff3200" stop-opacity="0.55"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" fill="#000"/>
+  <circle cx="16" cy="16" r="13" fill="url(#halBody)"/>
+  <circle cx="16" cy="16" r="3.6" fill="url(#halCore)"/>
+</svg>
