@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import BlogList from '@/components/BlogList'
 import { getAllPosts, formatDate } from '@/lib/blog'
 import { SITE_URL } from '@/lib/site'
 
@@ -19,12 +20,22 @@ export const metadata: Metadata = {
 }
 
 export default function BloggIndex() {
-  const posts = getAllPosts()
+  const posts = getAllPosts().map((post) => ({
+    ...post,
+    dateFormatted: formatDate(post.date),
+  }))
 
   return (
     <>
       <Header />
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20 min-h-[70vh]">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors mb-8"
+        >
+          &larr; Tilbake til forsiden
+        </Link>
+
         <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
           Blogg
         </p>
@@ -32,43 +43,7 @@ export default function BloggIndex() {
           Artikler
         </h1>
 
-        {posts.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400">Ingen artikler ennå.</p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {posts.map((post) => (
-              <Link
-                key={post.slug}
-                href={`/blogg/${post.slug}`}
-                className="group block p-5 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500"
-              >
-                <div className="flex items-baseline justify-between gap-4">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                    {post.title}
-                  </h2>
-                  <time dateTime={post.date} className="shrink-0 text-xs text-gray-400 dark:text-gray-600">
-                    {formatDate(post.date)}
-                  </time>
-                </div>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                  {post.description}
-                </p>
-                {post.tags.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {post.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[11px] px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </Link>
-            ))}
-          </div>
-        )}
+        <BlogList posts={posts} />
       </main>
       <Footer />
     </>
