@@ -41,6 +41,21 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Pre-paint cover for the first-visit intro, toggled by an inline script
+   in <head> before React mounts. Prevents a flash of page content before
+   the animated Intro overlay (z-100) takes over. Removed by Intro once it
+   mounts, and by an 8s safety timeout if JS never reaches React. */
+html.intro-active {
+  overflow: hidden;
+}
+html.intro-active::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 90;
+}
+
 ::selection {
   background: #ef4444;
   color: white;
