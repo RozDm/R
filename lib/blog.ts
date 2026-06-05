@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import matter from 'gray-matter'
+import { normalizeTags } from './tags'
 
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
 
@@ -33,7 +34,7 @@ export function getPostBySlug(slug: string): Post {
     title: data.title ?? slug,
     description: data.description ?? '',
     date: data.date ?? '',
-    tags: Array.isArray(data.tags) ? data.tags : [],
+    tags: normalizeTags(data.tags),
     content,
   }
 }
