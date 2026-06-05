@@ -34,8 +34,11 @@ export const metadata: Metadata = {
     locale: 'nb_NO',
     type: 'website',
   },
+  // Mykt-lansering: holdt utenfor søkeindeksering inntil eget .no-domene,
+  // ekte innhold og ekte kontaktinfo er på plass. Sett index: true ved
+  // lansering, og send inn sitemap i Search Console da.
   robots: {
-    index: true,
+    index: false,
     follow: true,
   },
 }
