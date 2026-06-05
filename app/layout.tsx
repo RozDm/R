@@ -9,6 +9,7 @@ const intelOneMono = Intel_One_Mono({
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-intel-mono',
   display: 'swap',
+  adjustFontFallback: false,
 })
 
 export const viewport: Viewport = {
