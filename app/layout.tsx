@@ -30,11 +30,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps',
+  title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps i Vestland',
   description: 'Systemadministrator, DevOps og IT-driftstekniker med fokus på infrastruktur, automatisering og sikkerhet. Basert i Askøy, Vestland.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps',
+    title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps i Vestland',
     description: 'Systemadministrator · DevOps · IT-driftstekniker. Infrastruktur, automatisering og sikkerhet.',
     url: `${SITE_URL}/`,
     locale: 'nb_NO',
