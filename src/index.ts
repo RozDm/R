@@ -1,22 +1,24 @@
 // Cloudflare Worker for the portfolio site.
 //
-// Runs on every request (assets.run_worker_first = true). Redirects HTTP to
-// HTTPS, then serves the Next.js static export from the ASSETS binding with a
-// strict set of security headers.
+// Runs on every request (assets.run_worker_first = true):
+//   1. Redirects HTTP -> HTTPS.
+//   2. Serves the Next.js static export from the ASSETS binding.
+//   3. Adds security headers. The ENFORCED CSP keeps 'unsafe-inline' (so the
+//      site always works). A strict nonce-based CSP is shipped in
+//      Content-Security-Policy-Report-Only so we can verify, with zero risk,
+//      that every <script> receives a nonce before switching it to enforced.
 //
-// Future phases will add /api/* endpoints (view counter, contact form,
-// GitHub stats) on top of the same structure.
+// To inject nonces the HTML must be uncompressed for HTMLRewriter, so we ask
+// the asset subrequest for identity encoding and only transform when the body
+// is plain or gzip/deflate (never brotli, which we can't safely decode here).
 
 interface Env {
-  ASSETS: {
-    fetch: (request: Request) => Promise<Response>
-  }
+  ASSETS: { fetch: (request: Request) => Promise<Response> }
 }
 
-const CSP = [
+// Enforced — current working policy.
+const ENFORCED_CSP = [
   "default-src 'self'",
-  // 'unsafe-inline' is needed for Next's runtime inline scripts and our
-  // theme/intro init snippets. Tightenable later via hashes or nonces.
   "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
@@ -29,17 +31,29 @@ const CSP = [
   'upgrade-insecure-requests',
 ].join('; ')
 
-// Safe to send over both HTTP and HTTPS.
+// Report-only — strict policy under test (no 'unsafe-inline' for scripts).
+function reportOnlyCsp(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join('; ')
+}
+
 const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-  'Content-Security-Policy': CSP,
 }
 
-// HSTS must only ever be returned over HTTPS (RFC 6797), so it is applied
-// separately — never on the HTTP redirect.
 const HSTS = 'max-age=63072000; includeSubDomains; preload'
 
 function applyBaseHeaders(headers: Headers): void {
@@ -48,38 +62,81 @@ function applyBaseHeaders(headers: Headers): void {
   }
 }
 
+function generateNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary)
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
-    // Force HTTPS — *.workers.dev is reachable over plain HTTP without an
-    // automatic redirect. Loop-safe: only fires when the request URL is
-    // actually http. The 301 carries an HTML body + the base security headers,
-    // but NOT HSTS (which is invalid over HTTP).
+    // 1. Force HTTPS (no HSTS over HTTP, per RFC 6797).
     if (url.protocol === 'http:') {
       url.protocol = 'https:'
       const target = url.toString()
       const safeTarget = target.replace(/[<>"]/g, '')
       const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Redirecting</title><meta http-equiv="refresh" content="0; url=${safeTarget}"></head><body>Redirecting to <a href="${safeTarget}">${safeTarget}</a></body></html>`
-      const response = new Response(body, {
+      const redirect = new Response(body, {
         status: 301,
-        headers: {
-          Location: target,
-          'Content-Type': 'text/html; charset=utf-8',
-        },
+        headers: { Location: target, 'Content-Type': 'text/html; charset=utf-8' },
       })
+      applyBaseHeaders(redirect.headers)
+      redirect.headers.set('Content-Security-Policy', ENFORCED_CSP)
+      return redirect
+    }
+
+    // 2. Fetch the asset, preferring identity encoding so HTMLRewriter can read it.
+    const assetHeaders = new Headers(request.headers)
+    assetHeaders.set('Accept-Encoding', 'identity')
+    const asset = await env.ASSETS.fetch(
+      new Request(url.toString(), { method: request.method, headers: assetHeaders }),
+    )
+
+    const contentType = asset.headers.get('content-type') || ''
+    const encoding = asset.headers.get('content-encoding')
+    const canTransform =
+      contentType.includes('text/html') &&
+      (!encoding || encoding === 'gzip' || encoding === 'deflate')
+
+    if (canTransform) {
+      const nonce = generateNonce()
+
+      // Decompress gzip/deflate so the rewriter parses real markup.
+      let source: Response = asset
+      if (encoding === 'gzip' || encoding === 'deflate') {
+        const headers = new Headers(asset.headers)
+        headers.delete('content-encoding')
+        headers.delete('content-length')
+        source = new Response(
+          asset.body ? asset.body.pipeThrough(new DecompressionStream(encoding)) : asset.body,
+          { status: asset.status, statusText: asset.statusText, headers },
+        )
+      }
+
+      const transformed = new HTMLRewriter()
+        .on('script', {
+          element(element) {
+            element.setAttribute('nonce', nonce)
+          },
+        })
+        .transform(source)
+
+      const response = new Response(transformed.body, transformed)
       applyBaseHeaders(response.headers)
+      response.headers.set('Strict-Transport-Security', HSTS)
+      response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+      response.headers.set('Content-Security-Policy-Report-Only', reportOnlyCsp(nonce))
       return response
     }
 
-    // Future API routes will be dispatched here before falling through to
-    // the static assets:
-    //   if (url.pathname.startsWith('/api/')) { ... }
-
-    const asset = await env.ASSETS.fetch(request)
+    // 3. Everything else (assets, or HTML we won't risk transforming): headers only.
     const response = new Response(asset.body, asset)
     applyBaseHeaders(response.headers)
-    response.headers.set('Strict-Transport-Security', HSTS) // HTTPS only
+    response.headers.set('Strict-Transport-Security', HSTS)
+    response.headers.set('Content-Security-Policy', ENFORCED_CSP)
     return response
   },
 }
