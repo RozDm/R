@@ -49,12 +49,26 @@ function withSecurityHeaders(response: Response): Response {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     // Force HTTPS — *.workers.dev is reachable over plain HTTP without an
-    // automatic redirect. Loop-safe: only redirects when the request URL is
+    // automatic redirect. Loop-safe: only fires when the request URL is
     // actually http (after the redirect it is https, so it won't match again).
+    //
+    // The 301 response must itself carry the full security header set and a
+    // real HTML body — otherwise scanners that test the http URL see a bare
+    // redirect with no headers / non-HTML content and flag everything missing.
     const url = new URL(request.url)
     if (url.protocol === 'http:') {
       url.protocol = 'https:'
-      return Response.redirect(url.toString(), 301)
+      const target = url.toString()
+      const safeTarget = target.replace(/[<>"]/g, '')
+      const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Redirecting</title><meta http-equiv="refresh" content="0; url=${safeTarget}"></head><body>Redirecting to <a href="${safeTarget}">${safeTarget}</a></body></html>`
+      const response = new Response(body, {
+        status: 301,
+        headers: {
+          Location: target,
+          'Content-Type': 'text/html; charset=utf-8',
+        },
+      })
+      return withSecurityHeaders(response)
     }
 
     // Future API routes will be dispatched here before falling through to
