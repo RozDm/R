@@ -6,11 +6,17 @@ import { ThemeProvider } from '@/context/ThemeContext'
 import { SITE_URL, AUTHOR } from '@/lib/site'
 
 const intelOneMono = Intel_One_Mono({
-  subsets: ['latin', 'latin-ext'],
+  subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-intel-mono',
   display: 'swap',
   adjustFontFallback: false,
+  // The font is applied via a CSS variable (Tailwind --font-sans/--font-mono)
+  // rather than the generated className, so Next's automatic <link rel=preload>
+  // points at files the browser can't tie to usage in time and logs
+  // "preloaded but not used" warnings. display: swap already avoids FOIT, so
+  // skip preloading and let the font load on demand.
+  preload: false,
 })
 
 export const viewport: Viewport = {
