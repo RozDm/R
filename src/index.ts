@@ -48,9 +48,17 @@ function withSecurityHeaders(response: Response): Response {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // Force HTTPS — *.workers.dev is reachable over plain HTTP without an
+    // automatic redirect. Loop-safe: only redirects when the request URL is
+    // actually http (after the redirect it is https, so it won't match again).
+    const url = new URL(request.url)
+    if (url.protocol === 'http:') {
+      url.protocol = 'https:'
+      return Response.redirect(url.toString(), 301)
+    }
+
     // Future API routes will be dispatched here before falling through to
     // the static assets:
-    //   const url = new URL(request.url)
     //   if (url.pathname.startsWith('/api/')) { ... }
 
     const asset = await env.ASSETS.fetch(request)
