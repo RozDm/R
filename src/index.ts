@@ -1,8 +1,8 @@
 // Cloudflare Worker for the portfolio site.
 //
-// Phase 1: hybrid setup. All requests go through this Worker, which falls
-// through to the assets binding (Next.js static export in ./out) and adds
-// strict security headers to every response.
+// Runs on every request (assets.run_worker_first = true). Redirects HTTP to
+// HTTPS, then serves the Next.js static export from the ASSETS binding with a
+// strict set of security headers.
 //
 // Future phases will add /api/* endpoints (view counter, contact form,
 // GitHub stats) on top of the same structure.
@@ -29,8 +29,8 @@ const CSP = [
   'upgrade-insecure-requests',
 ].join('; ')
 
-const SECURITY_HEADERS: Record<string, string> = {
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+// Safe to send over both HTTP and HTTPS.
+const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -38,24 +38,24 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Content-Security-Policy': CSP,
 }
 
-function withSecurityHeaders(response: Response): Response {
-  const next = new Response(response.body, response)
-  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-    next.headers.set(key, value)
+// HSTS must only ever be returned over HTTPS (RFC 6797), so it is applied
+// separately — never on the HTTP redirect.
+const HSTS = 'max-age=63072000; includeSubDomains; preload'
+
+function applyBaseHeaders(headers: Headers): void {
+  for (const [key, value] of Object.entries(BASE_SECURITY_HEADERS)) {
+    headers.set(key, value)
   }
-  return next
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url)
+
     // Force HTTPS — *.workers.dev is reachable over plain HTTP without an
     // automatic redirect. Loop-safe: only fires when the request URL is
-    // actually http (after the redirect it is https, so it won't match again).
-    //
-    // The 301 response must itself carry the full security header set and a
-    // real HTML body — otherwise scanners that test the http URL see a bare
-    // redirect with no headers / non-HTML content and flag everything missing.
-    const url = new URL(request.url)
+    // actually http. The 301 carries an HTML body + the base security headers,
+    // but NOT HSTS (which is invalid over HTTP).
     if (url.protocol === 'http:') {
       url.protocol = 'https:'
       const target = url.toString()
@@ -68,7 +68,8 @@ export default {
           'Content-Type': 'text/html; charset=utf-8',
         },
       })
-      return withSecurityHeaders(response)
+      applyBaseHeaders(response.headers)
+      return response
     }
 
     // Future API routes will be dispatched here before falling through to
@@ -76,6 +77,9 @@ export default {
     //   if (url.pathname.startsWith('/api/')) { ... }
 
     const asset = await env.ASSETS.fetch(request)
-    return withSecurityHeaders(asset)
+    const response = new Response(asset.body, asset)
+    applyBaseHeaders(response.headers)
+    response.headers.set('Strict-Transport-Security', HSTS) // HTTPS only
+    return response
   },
 }
