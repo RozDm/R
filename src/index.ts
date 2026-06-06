@@ -2,18 +2,16 @@
 //
 // Runs on every request (assets.run_worker_first = true):
 //   1. Redirects HTTP -> HTTPS.
-//   2. Serves the Next.js static export from the ASSETS binding (body untouched).
+//   2. Serves the Next.js static export from the ASSETS binding.
 //   3. Adds security headers.
 //
 // The ENFORCED CSP keeps 'unsafe-inline' so the site always works. A strict
-// hash-based policy ships in Content-Security-Policy-Report-Only on HTML
-// responses to verify, at zero risk, that it covers every script before we
-// enforce it:
+// hash-based policy ships in Content-Security-Policy-Report-Only for HTML so we
+// can verify, at zero risk, that it covers every script before enforcing:
 //   script-src 'self' 'sha256-<inline script>'… <beacon-host>
-// 'self' covers the /_next/*.js chunks; the hashes (generated at build time by
-// scripts/gen-csp-hashes.mjs from out/**/*.html) cover the inline scripts.
-
-import CSP_HASHES from './csp-hashes.json'
+// 'self' covers the /_next/*.js chunks; the hashes are computed from the exact
+// HTML the Worker is about to serve, so they are always self-consistent — no
+// dependence on local-vs-CI build determinism.
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
@@ -33,18 +31,20 @@ const ENFORCED_CSP = [
   'upgrade-insecure-requests',
 ].join('; ')
 
-const STRICT_CSP = [
-  "default-src 'self'",
-  `script-src 'self' ${(CSP_HASHES as string[]).join(' ')} https://static.cloudflareinsights.com`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join('; ')
+function strictCsp(hashes: string[]): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join('; ')
+}
 
 const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
@@ -59,6 +59,29 @@ function applyBaseHeaders(headers: Headers): void {
   for (const [key, value] of Object.entries(BASE_SECURITY_HEADERS)) {
     headers.set(key, value)
   }
+}
+
+// Read HTML as text, decompressing gzip/deflate ourselves. null for brotli/etc.
+async function readHtml(asset: Response): Promise<string | null> {
+  const encoding = asset.headers.get('content-encoding')
+  if (!encoding) return await asset.text()
+  if ((encoding === 'gzip' || encoding === 'deflate') && asset.body) {
+    return await new Response(asset.body.pipeThrough(new DecompressionStream(encoding))).text()
+  }
+  return null
+}
+
+// sha256 (base64) source expressions for every inline <script> in the HTML.
+async function inlineScriptHashes(html: string): Promise<string[]> {
+  const matches = html.matchAll(/<script\b(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)
+  const hashes = new Set<string>()
+  for (const match of matches) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(match[1]))
+    let binary = ''
+    for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte)
+    hashes.add(`'sha256-${btoa(binary)}'`)
+  }
+  return [...hashes]
 }
 
 export default {
@@ -80,17 +103,38 @@ export default {
       return redirect
     }
 
-    // 2. Serve the asset untouched + security headers.
-    const asset = await env.ASSETS.fetch(request)
+    // 2. Fetch the asset with a clean request: no conditional headers (they make
+    //    the binding answer 304 with an empty body), identity encoding so we can
+    //    read the HTML.
+    const asset = await env.ASSETS.fetch(
+      new Request(url.toString(), { headers: { 'Accept-Encoding': 'identity' } }),
+    )
+
+    if ((asset.headers.get('content-type') || '').includes('text/html')) {
+      const html = await readHtml(asset)
+      if (html !== null) {
+        const hashes = await inlineScriptHashes(html)
+        const headers = new Headers(asset.headers)
+        headers.delete('content-encoding')
+        headers.delete('content-length')
+        const response = new Response(html, {
+          status: asset.status,
+          statusText: asset.statusText,
+          headers,
+        })
+        applyBaseHeaders(response.headers)
+        response.headers.set('Strict-Transport-Security', HSTS)
+        response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+        response.headers.set('Content-Security-Policy-Report-Only', strictCsp(hashes))
+        return response
+      }
+    }
+
+    // 3. Everything else: headers only, body untouched.
     const response = new Response(asset.body, asset)
     applyBaseHeaders(response.headers)
     response.headers.set('Strict-Transport-Security', HSTS)
     response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-
-    if ((asset.headers.get('content-type') || '').includes('text/html')) {
-      response.headers.set('Content-Security-Policy-Report-Only', STRICT_CSP)
-    }
-
     return response
   },
 }
