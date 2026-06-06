@@ -2,17 +2,18 @@
 //
 // Runs on every request (assets.run_worker_first = true):
 //   1. Redirects HTTP -> HTTPS.
-//   2. Serves the Next.js static export from the ASSETS binding.
+//   2. Serves the Next.js static export from the ASSETS binding (body untouched).
 //   3. Adds security headers.
 //
 // The ENFORCED CSP keeps 'unsafe-inline' so the site always works. A strict
-// hash-based policy is shipped in Content-Security-Policy-Report-Only to verify
-// (with zero risk) that it covers every script before we enforce it:
-//   script-src 'self' 'sha256-<each inline script>' <beacon-host>
-// 'self' covers the /_next/*.js chunks; the per-response hashes cover the inline
-// scripts (ours + Next's hydration data). Hashes are computed from the actual
-// HTML being served, so they never go stale between builds. The body is served
-// unchanged (no nonce injection), so it can't be mangled.
+// hash-based policy ships in Content-Security-Policy-Report-Only on HTML
+// responses to verify, at zero risk, that it covers every script before we
+// enforce it:
+//   script-src 'self' 'sha256-<inline script>'… <beacon-host>
+// 'self' covers the /_next/*.js chunks; the hashes (generated at build time by
+// scripts/gen-csp-hashes.mjs from out/**/*.html) cover the inline scripts.
+
+import CSP_HASHES from './csp-hashes.json'
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
@@ -32,20 +33,18 @@ const ENFORCED_CSP = [
   'upgrade-insecure-requests',
 ].join('; ')
 
-function strictCsp(hashes: string[]): string {
-  return [
-    "default-src 'self'",
-    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
-    "font-src 'self' data:",
-    "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "object-src 'none'",
-  ].join('; ')
-}
+const STRICT_CSP = [
+  "default-src 'self'",
+  `script-src 'self' ${(CSP_HASHES as string[]).join(' ')} https://static.cloudflareinsights.com`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ')
 
 const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
@@ -60,32 +59,6 @@ function applyBaseHeaders(headers: Headers): void {
   for (const [key, value] of Object.entries(BASE_SECURITY_HEADERS)) {
     headers.set(key, value)
   }
-}
-
-// Read HTML as text, decompressing gzip/deflate ourselves. Returns null for
-// brotli/unknown encodings we can't safely decode here.
-async function readHtml(asset: Response): Promise<string | null> {
-  const encoding = asset.headers.get('content-encoding')
-  if (!encoding) return await asset.text()
-  if ((encoding === 'gzip' || encoding === 'deflate') && asset.body) {
-    return await new Response(asset.body.pipeThrough(new DecompressionStream(encoding))).text()
-  }
-  return null
-}
-
-// sha256 (base64) source expressions for every inline <script> in the HTML.
-async function inlineScriptHashes(html: string): Promise<string[]> {
-  const re = /<script\b(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi
-  const hashes = new Set<string>()
-  let match: RegExpExecArray | null
-  while ((match = re.exec(html)) !== null) {
-    const content = match[1]
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content))
-    let binary = ''
-    for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte)
-    hashes.add(`'sha256-${btoa(binary)}'`)
-  }
-  return [...hashes]
 }
 
 export default {
@@ -107,40 +80,17 @@ export default {
       return redirect
     }
 
-    // 2. Fetch the asset, preferring identity encoding so we can read the HTML.
-    const assetHeaders = new Headers(request.headers)
-    assetHeaders.set('Accept-Encoding', 'identity')
-    const asset = await env.ASSETS.fetch(
-      new Request(url.toString(), { method: request.method, headers: assetHeaders }),
-    )
-
-    const contentType = asset.headers.get('content-type') || ''
-
-    if (contentType.includes('text/html')) {
-      const html = await readHtml(asset)
-      if (html !== null) {
-        const hashes = await inlineScriptHashes(html)
-        const headers = new Headers(asset.headers)
-        headers.delete('content-encoding')
-        headers.delete('content-length')
-        const response = new Response(html, {
-          status: asset.status,
-          statusText: asset.statusText,
-          headers,
-        })
-        applyBaseHeaders(response.headers)
-        response.headers.set('Strict-Transport-Security', HSTS)
-        response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-        response.headers.set('Content-Security-Policy-Report-Only', strictCsp(hashes))
-        return response
-      }
-    }
-
-    // 3. Everything else: headers only, body untouched.
+    // 2. Serve the asset untouched + security headers.
+    const asset = await env.ASSETS.fetch(request)
     const response = new Response(asset.body, asset)
     applyBaseHeaders(response.headers)
     response.headers.set('Strict-Transport-Security', HSTS)
     response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+
+    if ((asset.headers.get('content-type') || '').includes('text/html')) {
+      response.headers.set('Content-Security-Policy-Report-Only', STRICT_CSP)
+    }
+
     return response
   },
 }
