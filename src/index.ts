@@ -3,20 +3,21 @@
 // Runs on every request (assets.run_worker_first = true):
 //   1. Redirects HTTP -> HTTPS.
 //   2. Serves the Next.js static export from the ASSETS binding.
-//   3. Adds security headers. The ENFORCED CSP keeps 'unsafe-inline' (so the
-//      site always works). A strict nonce-based CSP is shipped in
-//      Content-Security-Policy-Report-Only so we can verify, with zero risk,
-//      that every <script> receives a nonce before switching it to enforced.
+//   3. Adds security headers.
 //
-// To inject nonces the HTML must be uncompressed for HTMLRewriter, so we ask
-// the asset subrequest for identity encoding and only transform when the body
-// is plain or gzip/deflate (never brotli, which we can't safely decode here).
+// The ENFORCED CSP keeps 'unsafe-inline' so the site always works. A strict
+// hash-based policy is shipped in Content-Security-Policy-Report-Only to verify
+// (with zero risk) that it covers every script before we enforce it:
+//   script-src 'self' 'sha256-<each inline script>' <beacon-host>
+// 'self' covers the /_next/*.js chunks; the per-response hashes cover the inline
+// scripts (ours + Next's hydration data). Hashes are computed from the actual
+// HTML being served, so they never go stale between builds. The body is served
+// unchanged (no nonce injection), so it can't be mangled.
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
 }
 
-// Enforced — current working policy.
 const ENFORCED_CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
@@ -31,11 +32,10 @@ const ENFORCED_CSP = [
   'upgrade-insecure-requests',
 ].join('; ')
 
-// Report-only — strict policy under test (no 'unsafe-inline' for scripts).
-function reportOnlyCsp(nonce: string): string {
+function strictCsp(hashes: string[]): string {
   return [
     "default-src 'self'",
-    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self' data:",
@@ -62,11 +62,30 @@ function applyBaseHeaders(headers: Headers): void {
   }
 }
 
-function generateNonce(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16))
-  let binary = ''
-  for (const byte of bytes) binary += String.fromCharCode(byte)
-  return btoa(binary)
+// Read HTML as text, decompressing gzip/deflate ourselves. Returns null for
+// brotli/unknown encodings we can't safely decode here.
+async function readHtml(asset: Response): Promise<string | null> {
+  const encoding = asset.headers.get('content-encoding')
+  if (!encoding) return await asset.text()
+  if ((encoding === 'gzip' || encoding === 'deflate') && asset.body) {
+    return await new Response(asset.body.pipeThrough(new DecompressionStream(encoding))).text()
+  }
+  return null
+}
+
+// sha256 (base64) source expressions for every inline <script> in the HTML.
+async function inlineScriptHashes(html: string): Promise<string[]> {
+  const re = /<script\b(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi
+  const hashes = new Set<string>()
+  let match: RegExpExecArray | null
+  while ((match = re.exec(html)) !== null) {
+    const content = match[1]
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content))
+    let binary = ''
+    for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte)
+    hashes.add(`'sha256-${btoa(binary)}'`)
+  }
+  return [...hashes]
 }
 
 export default {
@@ -88,7 +107,7 @@ export default {
       return redirect
     }
 
-    // 2. Fetch the asset, preferring identity encoding so HTMLRewriter can read it.
+    // 2. Fetch the asset, preferring identity encoding so we can read the HTML.
     const assetHeaders = new Headers(request.headers)
     assetHeaders.set('Accept-Encoding', 'identity')
     const asset = await env.ASSETS.fetch(
@@ -96,43 +115,28 @@ export default {
     )
 
     const contentType = asset.headers.get('content-type') || ''
-    const encoding = asset.headers.get('content-encoding')
-    const canTransform =
-      contentType.includes('text/html') &&
-      (!encoding || encoding === 'gzip' || encoding === 'deflate')
 
-    if (canTransform) {
-      const nonce = generateNonce()
-
-      // Decompress gzip/deflate so the rewriter parses real markup.
-      let source: Response = asset
-      if (encoding === 'gzip' || encoding === 'deflate') {
+    if (contentType.includes('text/html')) {
+      const html = await readHtml(asset)
+      if (html !== null) {
+        const hashes = await inlineScriptHashes(html)
         const headers = new Headers(asset.headers)
         headers.delete('content-encoding')
         headers.delete('content-length')
-        source = new Response(
-          asset.body ? asset.body.pipeThrough(new DecompressionStream(encoding)) : asset.body,
-          { status: asset.status, statusText: asset.statusText, headers },
-        )
-      }
-
-      const transformed = new HTMLRewriter()
-        .on('script', {
-          element(element) {
-            element.setAttribute('nonce', nonce)
-          },
+        const response = new Response(html, {
+          status: asset.status,
+          statusText: asset.statusText,
+          headers,
         })
-        .transform(source)
-
-      const response = new Response(transformed.body, transformed)
-      applyBaseHeaders(response.headers)
-      response.headers.set('Strict-Transport-Security', HSTS)
-      response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-      response.headers.set('Content-Security-Policy-Report-Only', reportOnlyCsp(nonce))
-      return response
+        applyBaseHeaders(response.headers)
+        response.headers.set('Strict-Transport-Security', HSTS)
+        response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+        response.headers.set('Content-Security-Policy-Report-Only', strictCsp(hashes))
+        return response
+      }
     }
 
-    // 3. Everything else (assets, or HTML we won't risk transforming): headers only.
+    // 3. Everything else: headers only, body untouched.
     const response = new Response(asset.body, asset)
     applyBaseHeaders(response.headers)
     response.headers.set('Strict-Transport-Security', HSTS)
