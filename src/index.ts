@@ -5,13 +5,15 @@
 //   2. Serves the Next.js static export from the ASSETS binding.
 //   3. Adds security headers.
 //
-// The ENFORCED CSP keeps 'unsafe-inline' so the site always works. A strict
-// hash-based policy ships in Content-Security-Policy-Report-Only for HTML so we
-// can verify, at zero risk, that it covers every script before enforcing:
-//   script-src 'self' 'sha256-<inline script>'… <beacon-host>
-// 'self' covers the /_next/*.js chunks; the hashes are computed from the exact
-// HTML the Worker is about to serve, so they are always self-consistent — no
-// dependence on local-vs-CI build determinism.
+// For HTML the Worker can read, it ships a strict hash-based CSP:
+//   script-src 'self' 'sha256-<each inline script>'… <beacon-host>
+// 'self' covers the /_next/*.js chunks; the per-response hashes cover the
+// inline scripts. Hashes are computed from the exact HTML being served, so
+// they are always self-consistent and independent of build determinism.
+//
+// For anything else (assets, or HTML in an encoding we can't decode), the
+// Worker falls back to the previous policy that keeps 'unsafe-inline' as a
+// safety net so the site never breaks.
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
@@ -124,8 +126,10 @@ export default {
         })
         applyBaseHeaders(response.headers)
         response.headers.set('Strict-Transport-Security', HSTS)
-        response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-        response.headers.set('Content-Security-Policy-Report-Only', strictCsp(hashes))
+        // Strict CSP is now ENFORCED for HTML we can read; the asset fallback
+        // below still serves ENFORCED_CSP (with 'unsafe-inline') so brotli or
+        // any other path we can't hash stays working.
+        response.headers.set('Content-Security-Policy', strictCsp(hashes))
         return response
       }
     }
