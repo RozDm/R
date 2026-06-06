@@ -139,6 +139,11 @@ export default {
     applyBaseHeaders(response.headers)
     response.headers.set('Strict-Transport-Security', HSTS)
     response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+    // Next emits OG images as extension-less files (out/opengraph-image), so the
+    // static host can't infer the type; force image/png or crawlers ignore them.
+    if (url.pathname.includes('opengraph-image')) {
+      response.headers.set('Content-Type', 'image/png')
+    }
     return response
   },
 }
