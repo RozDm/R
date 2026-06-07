@@ -15,9 +15,23 @@
 // Worker falls back to the previous policy that keeps 'unsafe-inline' as a
 // safety net so the site never breaks.
 
+interface KVNamespace {
+  get(key: string): Promise<string | null>
+  put(key: string, value: string): Promise<void>
+}
+
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
+  STATUS: KVNamespace
 }
+
+// Endpoints the uptime cron checks. Add your own services here.
+const MONITORS: { name: string; url: string }[] = [
+  { name: 'Nettsted', url: 'https://d.rozsoshnykh.workers.dev/' },
+]
+
+const STATUS_KEY = 'status'
+const HISTORY_LIMIT = 96 // ~8h at one check / 5 min
 
 const ENFORCED_CSP = [
   "default-src 'self'",
@@ -86,7 +100,46 @@ async function inlineScriptHashes(html: string): Promise<string[]> {
   return [...hashes]
 }
 
+// Cron: ping each monitor, record latency/status, append to rolling history.
+async function runHealthChecks(env: Env): Promise<void> {
+  const results = await Promise.all(
+    MONITORS.map(async (monitor) => {
+      const start = Date.now()
+      let ok = false
+      let status = 0
+      try {
+        const res = await fetch(monitor.url, { method: 'GET', redirect: 'manual' })
+        status = res.status
+        ok = res.status >= 200 && res.status < 400
+      } catch {
+        ok = false
+      }
+      return { name: monitor.name, url: monitor.url, ok, status, ms: Date.now() - start }
+    }),
+  )
+
+  const updatedAt = new Date().toISOString()
+  let data: { updatedAt: string; results: typeof results; history: { at: string; up: boolean }[] }
+  try {
+    const raw = await env.STATUS.get(STATUS_KEY)
+    data = raw ? JSON.parse(raw) : { updatedAt, results, history: [] }
+  } catch {
+    data = { updatedAt, results, history: [] }
+  }
+  data.updatedAt = updatedAt
+  data.results = results
+  data.history = Array.isArray(data.history) ? data.history : []
+  data.history.push({ at: updatedAt, up: results.every((r) => r.ok) })
+  while (data.history.length > HISTORY_LIMIT) data.history.shift()
+
+  await env.STATUS.put(STATUS_KEY, JSON.stringify(data))
+}
+
 export default {
+  async scheduled(_event: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
+    ctx.waitUntil(runHealthChecks(env))
+  },
+
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
@@ -103,6 +156,21 @@ export default {
       applyBaseHeaders(redirect.headers)
       redirect.headers.set('Content-Security-Policy', ENFORCED_CSP)
       return redirect
+    }
+
+    // 1b. Uptime API: serve the latest health snapshot from KV.
+    if (url.pathname === '/api/status') {
+      let body = '{"results":[],"history":[]}'
+      try {
+        body = (await env.STATUS.get(STATUS_KEY)) || body
+      } catch {}
+      const response = new Response(body, {
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+      })
+      applyBaseHeaders(response.headers)
+      response.headers.set('Strict-Transport-Security', HSTS)
+      response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+      return response
     }
 
     // 2. Fetch the asset with a clean request: no conditional headers (they make

@@ -39,6 +39,14 @@ export default function Footer() {
           </a>
         </div>
 
+        <a
+          href="/status/"
+          className="inline-flex items-center gap-2 text-xs font-mono text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors pt-2"
+        >
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+          Driftsstatus
+        </a>
+
         <p className="text-xs text-gray-400 dark:text-gray-600 pt-8 font-mono">
           &copy; {currentYear} Dmytro Rozsoshnykh
         </p>
