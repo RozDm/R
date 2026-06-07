@@ -30,6 +30,7 @@ interface Env {
 // public URL — Cloudflare blocks the loop). External services use plain fetch.
 const MONITORS: { name: string; url: string; internal?: boolean }[] = [
   { name: 'Nettsted', url: 'https://d.rozsoshnykh.workers.dev/', internal: true },
+  { name: 'Cloudflare (hosting)', url: 'https://www.cloudflare.com/cdn-cgi/trace' },
 ]
 
 const STATUS_KEY = 'status'
