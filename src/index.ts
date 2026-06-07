@@ -29,8 +29,7 @@ interface Env {
 // `internal: true` checks via the ASSETS binding (a Worker can't fetch its own
 // public URL — Cloudflare blocks the loop). External services use plain fetch.
 const MONITORS: { name: string; url: string; internal?: boolean }[] = [
-  { name: 'Nettsted', url: 'https://d.rozsoshnykh.workers.dev/', internal: true },
-  { name: 'Cloudflare (hosting)', url: 'https://www.cloudflare.com/cdn-cgi/trace' },
+  { name: 'Grafana', url: 'https://grafana.com/' },
 ]
 
 const STATUS_KEY = 'status'
@@ -113,7 +112,13 @@ async function runHealthChecks(env: Env): Promise<void> {
       try {
         const res = monitor.internal
           ? await env.ASSETS.fetch(new Request(monitor.url))
-          : await fetch(monitor.url, { method: 'GET', redirect: 'manual' })
+          : await fetch(monitor.url, {
+              method: 'GET',
+              redirect: 'manual',
+              headers: {
+                'User-Agent': 'StatusMonitor/1.0 (+https://d.rozsoshnykh.workers.dev/status)',
+              },
+            })
         status = res.status
         ok = res.status >= 200 && res.status < 400
       } catch {
