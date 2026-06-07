@@ -8,5 +8,14 @@
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
     "run_worker_first": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "STATUS",
+      "id": "18a8d7fb285e4cf6a48fb17d9bc9207d"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/5 * * * *"]
   }
 }
