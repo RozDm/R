@@ -26,8 +26,10 @@ interface Env {
 }
 
 // Endpoints the uptime cron checks. Add your own services here.
-const MONITORS: { name: string; url: string }[] = [
-  { name: 'Nettsted', url: 'https://d.rozsoshnykh.workers.dev/' },
+// `internal: true` checks via the ASSETS binding (a Worker can't fetch its own
+// public URL — Cloudflare blocks the loop). External services use plain fetch.
+const MONITORS: { name: string; url: string; internal?: boolean }[] = [
+  { name: 'Nettsted', url: 'https://d.rozsoshnykh.workers.dev/', internal: true },
 ]
 
 const STATUS_KEY = 'status'
@@ -108,7 +110,9 @@ async function runHealthChecks(env: Env): Promise<void> {
       let ok = false
       let status = 0
       try {
-        const res = await fetch(monitor.url, { method: 'GET', redirect: 'manual' })
+        const res = monitor.internal
+          ? await env.ASSETS.fetch(new Request(monitor.url))
+          : await fetch(monitor.url, { method: 'GET', redirect: 'manual' })
         status = res.status
         ok = res.status >= 200 && res.status < 400
       } catch {
