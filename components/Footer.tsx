@@ -17,16 +17,19 @@ export default function Footer() {
           Interessert i samarbeid eller har et spørsmål? Ta gjerne kontakt.
         </p>
 
-        {/* TODO: erstatt med ekte kontaktinfo */}
-        <div className="flex flex-col items-center gap-1 font-mono text-sm text-gray-500 dark:text-gray-400 pt-2">
-          <span>E-post: din@epost.no</span>
-          <span>Telefon: +47 000 00 000</span>
-          <span>Adresse: Vestland, Norge</span>
-        </div>
+        <a
+          href="/kontakt/"
+          className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition text-sm font-medium tracking-wide"
+        >
+          Send melding
+        </a>
 
+        {/* TODO: erstatt # med ekte profil-URL-er */}
         <div className="flex gap-8 text-sm font-medium pt-2">
           <a
-            href="#"
+            href="https://github.com/RozDm"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
             GitHub
