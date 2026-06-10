@@ -2,7 +2,7 @@ import { certifications } from '@/data/certifications'
 
 export default function Certifications() {
   return (
-    <section id="certifications" className="flex flex-col gap-8 animate-fade-in">
+    <section id="certifications" className="flex flex-col gap-8 animate-fade-in [animation-delay:300ms]">
       <div>
         <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
           Sertifiseringer

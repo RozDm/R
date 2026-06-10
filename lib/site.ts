@@ -6,9 +6,8 @@ export const AUTHOR = {
   name: 'Dmytro Rozsoshnykh',
   jobTitle: 'Systemadministrator / DevOps-ingeniør',
   location: 'Askøy, Vestland, Norge',
-  // TODO: legg inn ekte profil-URL-er (viktig for Google Knowledge Graph)
   sameAs: [
     'https://github.com/RozDm',
-    // 'https://linkedin.com/in/...',
+    'https://www.linkedin.com/in/dmytro-rozsoshnykh/',
   ],
 }

@@ -108,7 +108,7 @@ export default function BlogList({ posts }: { posts: ListedPost[] }) {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
                   {post.title}
                 </h2>
-                <time dateTime={post.date} className="shrink-0 text-xs text-gray-400 dark:text-gray-600">
+                <time dateTime={post.date} className="shrink-0 text-xs text-gray-500 dark:text-gray-500">
                   {post.dateFormatted}
                 </time>
               </div>

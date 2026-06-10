@@ -9,7 +9,7 @@ export default function NotFound() {
         <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
       </div>
 
-      <p className="font-mono text-sm tracking-[0.3em] text-red-500 dark:text-red-400 uppercase mb-4">
+      <p className="font-mono text-sm tracking-widest text-red-500 dark:text-red-400 uppercase mb-4">
         Feil 404
       </p>
 

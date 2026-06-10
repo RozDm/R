@@ -1,8 +1,10 @@
+import Link from 'next/link'
+
 export default function Hero() {
   return (
     <section id="about" className="flex flex-col gap-6 pt-8 animate-fade-in">
       <div>
-        <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-[0.2em] uppercase mb-3">
+        <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-3">
           Systemadministrator · DevOps · Utvikler
         </p>
         <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight">
@@ -17,18 +19,18 @@ export default function Hero() {
         med solid forståelse for programmering og utvikling.
       </p>
       <div className="flex gap-4 pt-2">
-        <a
-          href="#skills"
+        <Link
+          href="/#skills"
           className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition text-sm font-medium tracking-wide"
         >
           Min kompetanse
-        </a>
-        <a
-          href="#footer"
+        </Link>
+        <Link
+          href="/#footer"
           className="px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:border-gray-500 dark:hover:border-gray-500 transition text-sm font-medium tracking-wide"
         >
           Kontakt
-        </a>
+        </Link>
       </div>
     </section>
   )
