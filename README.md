@@ -1,132 +1,59 @@
-# Portfolio Website
+## d.rozsoshnykh.workers.dev
 
-A modern, responsive portfolio website built with Next.js, TypeScript, and Tailwind CSS. Features a clean design with dark/light theme support.
+Personlig nettsted og blogg for **Dmytro Rozsoshnykh** — systemadministrator / DevOps i Vestland. Statisk Next.js-eksport servert fra en Cloudflare Worker som også kjører uptime-overvåking via cron.
 
-## Features
+### Stack
 
-- 🎨 **Modern Design** - Clean and professional UI with Tailwind CSS
-- 🌓 **Dark/Light Theme** - Toggle between themes with persistent preference
-- 📱 **Fully Responsive** - Optimized for all device sizes
-- ⚡ **Fast Performance** - Built with Next.js for optimal performance
-- 🔧 **TypeScript** - Full type safety for better development experience
-- 🧩 **Component-Based** - Modular architecture for easy maintenance
+- Next.js 15 (App Router, `output: 'export'`) + React 19, TypeScript, Tailwind v4
+- Innhold: markdown-poster i `content/blog/` (gray-matter + react-markdown + remark-gfm)
+- Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (binding `STATUS`), cron `*/5 * * * *`
+- Worker (`src/`) håndterer HTTPS-redirect, strict hash-CSP for HTML den kan dekode, alle security-headere og `/api/status`
 
-## Tech Stack
+### Scripts
 
-- **Framework**: [Next.js 14](https://nextjs.org/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **PostCSS**: [Autoprefixer](https://github.com/postcss/autoprefixer)
+| | |
+|--|--|
+| `npm run dev` | Next dev-server med Turbopack |
+| `npm run build` | Statisk eksport til `out/` |
+| `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
+| `npm run typecheck` | `tsc --noEmit` for app **og** worker (`tsconfig.worker.json`) |
+| `npm test` | Vitest — dekker `inlineScriptHashes`, `buildStatusData`, `normalizeTags` |
+| `npm run cf-typegen` | Regenererer `worker-configuration.d.ts` fra `wrangler.jsonc` |
+| `npm run deploy` | `predeploy` (lint + typecheck + test) → `next build` → `wrangler deploy` |
 
-## Project Structure
+### Struktur
 
 ```
-portfolio/
-├── app/                  # Next.js App Router
-│   ├── globals.css       # Global styles
-│   ├── layout.tsx        # Root layout
-│   └── page.tsx          # Home page
-├── components/           # React components
-│   ├── About.tsx         # About section
-│   ├── Footer.tsx        # Footer component
-│   ├── Header.tsx        # Navigation header
-│   ├── ProjectCard.tsx   # Project card component
-│   ├── Projects.tsx      # Projects section
-│   ├── Skills.tsx        # Skills section
-│   └── ThemeToggle.tsx   # Theme switcher
-├── context/              # React Context
-│   └── ThemeContext.tsx  # Theme provider
-├── data/                 # Static data
-│   └── projects.ts       # Project data
-└── types/                # TypeScript types
-    └── index.ts          # Type definitions
+app/                Next App Router: forside, /blogg, /status, sitemap, robots, OG-bilder
+components/         React-komponenter (Header, Hero, Skills, StatusDashboard, …)
+content/blog/       Markdown-poster (frontmatter: title, description, date, tags)
+context/            ThemeContext (light/dark uten FOUC)
+data/               Skills og certifications
+lib/                blog.ts, tags.ts (alias-normalisering), site.ts
+src/                Cloudflare Worker (entry: src/index.ts, csp.ts, status.ts)
+tests/              Vitest
+wrangler.jsonc      Worker-konfig (ASSETS, STATUS KV, cron)
 ```
 
-## Getting Started
+### Statusovervåking
 
-### Prerequisites
+Crontrigger pinger hver `MONITORS`-oppføring i `src/status.ts` hvert 5. minutt og skriver et JSON-snapshot til KV (nøkkel `status`). `/api/status` serverer snapshot; `/status` viser det. Historikken lagrer opp/ned **per tjeneste** (`Record<name, boolean>`), avkortet til `HISTORY_LIMIT` (96 ≈ 8 timer).
 
-- Node.js 18+ installed
-- npm or yarn package manager
+Legg til en tjeneste ved å utvide `MONITORS`. Bruk `internal: true` for ruter som peker på dette nettstedet selv (ASSETS-binding må brukes — Workers blokkerer self-fetch over offentlig URL).
 
-### Installation
+### Deploy
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd portfolio
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Available Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-
-## Customization
-
-### Adding Projects
-
-Edit `data/projects.ts` to add or modify your projects:
-
-```typescript
-export const projects: IProject[] = [
-  {
-    id: 1,
-    title: 'Your Project',
-    description: 'Project description',
-    techStack: ['React', 'TypeScript'],
-    link: 'https://your-project.com',
-    github: 'https://github.com/username/project',
-    year: 2024,
-  },
-];
-```
-
-### Styling
-
-Modify `tailwind.config.ts` to customize colors, fonts, and other design tokens.
-
-### Content
-
-Update the content in respective components under `components/` directory to personalize your portfolio.
-
-## Deployment
-
-The easiest way to deploy is using [Vercel](https://vercel.com/):
-
-1. Push your code to GitHub
-2. Import your repository to Vercel
-3. Deploy!
-
-Or build for production and deploy to any static hosting:
+Krever `wrangler login` og at KV-namespacet i `wrangler.jsonc` eksisterer (eller bytt id). Deretter:
 
 ```bash
-npm run build
+npm run deploy
 ```
 
-## License
+`predeploy` kjører lint/typecheck/test først — feiler én av dem, deployer ikke.
 
-This project is open source and available under the [MIT License](LICENSE).
+### Status (soft launch)
 
-## Author
-
-Your Name - [Your Website](https://yourwebsite.com)
-
----
-
-Built with ❤️ using Next.js and Tailwind CSS
+Nettstedet kjører på `*.workers.dev` med `robots: { index: false }` til eget `.no`-domene og endelig innhold er på plass. Når det skiftes:
+1. `SITE_URL` i `lib/site.ts`
+2. `robots.index` i `app/layout.tsx`
+3. Send sitemap til Search Console

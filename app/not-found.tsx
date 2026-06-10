@@ -18,7 +18,7 @@ export default function NotFound() {
       </h1>
 
       <p className="mt-6 font-mono text-xs text-gray-400 dark:text-gray-600">
-        // this page could not be found
+        {'// this page could not be found'}
       </p>
 
       <Link
