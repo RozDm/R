@@ -23,7 +23,7 @@ export default function Skills() {
             }`}
           >
             <h3 className="font-mono text-sm text-red-500 dark:text-red-400 mb-4 flex items-center gap-2">
-              // {group.title}
+              {`// ${group.title}`}
               {group.learning && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded border border-red-500/30 text-red-500/70 dark:text-red-400/70 tracking-wide uppercase">
                   pågår
