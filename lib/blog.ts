@@ -2,20 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import matter from 'gray-matter'
 import { normalizeTags } from './tags'
+import type { Post, PostMeta } from '@/types'
 
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
-
-export interface PostMeta {
-  slug: string
-  title: string
-  description: string
-  date: string
-  tags: string[]
-}
-
-export interface Post extends PostMeta {
-  content: string
-}
 
 export function getPostSlugs(): string[] {
   if (!fs.existsSync(BLOG_DIR)) return []
