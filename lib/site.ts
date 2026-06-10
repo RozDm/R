@@ -1,6 +1,6 @@
 // Sentral konfigurasjon for nettstedet (brukt i metadata, sitemap og JSON-LD)
-// TODO: bytt SITE_URL til eget domene (f.eks. https://rozsoshnykh.no) når det er klart
-export const SITE_URL = 'https://d.rozsoshnykh.workers.dev'
+export const SITE_URL = 'https://rozsoshnykh.no'
+export const SITE_HOST = 'rozsoshnykh.no'
 
 export const AUTHOR = {
   name: 'Dmytro Rozsoshnykh',

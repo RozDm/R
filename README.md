@@ -53,7 +53,6 @@ npm run deploy
 
 ### Status (soft launch)
 
-Nettstedet kjører på `*.workers.dev` med `robots: { index: false }` til eget `.no`-domene og endelig innhold er på plass. Når det skiftes:
-1. `SITE_URL` i `lib/site.ts`
-2. `robots.index` i `app/layout.tsx`
-3. Send sitemap til Search Console
+Nettstedet kjører på `rozsoshnykh.no` (med 301 fra `www` og `d.rozsoshnykh.workers.dev`).
+`robots: { index: false }` står inntil de første postene er publisert. Når innholdet er
+klart: bytt `robots.index` til `true` i `app/layout.tsx` og send sitemap til Search Console.
