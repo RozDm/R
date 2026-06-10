@@ -23,13 +23,15 @@ async function runHealthChecks(env: Env): Promise<void> {
           ? await env.ASSETS.fetch(new Request(monitor.url))
           : await fetch(monitor.url, {
               method: 'GET',
-              redirect: 'manual',
+              // Follow redirects (NetBox sends / to /login/) and require a
+              // clean 200 on the final response — 3xx/4xx/5xx count as down.
+              redirect: 'follow',
               headers: {
                 'User-Agent': 'StatusMonitor/1.0 (+https://d.rozsoshnykh.workers.dev/status)',
               },
             })
         status = res.status
-        ok = res.status >= 200 && res.status < 400
+        ok = res.status === 200
       } catch {
         ok = false
       }
