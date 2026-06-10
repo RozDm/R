@@ -146,13 +146,19 @@ export default function ContactForm() {
 
       <div ref={turnstileRef} className="mt-2" />
 
+      {!token && (
+        <p className="text-xs font-mono text-gray-400 dark:text-gray-500">
+          Vent på robotsjekken før du sender…
+        </p>
+      )}
+
       {state === 'error' && errorMsg && (
         <p className="text-sm text-red-500 dark:text-red-400 font-mono">{errorMsg}</p>
       )}
 
       <button
         type="submit"
-        disabled={state === 'sending'}
+        disabled={state === 'sending' || !token}
         className="self-start px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition text-sm font-medium tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {state === 'sending' ? 'Sender…' : 'Send melding'}

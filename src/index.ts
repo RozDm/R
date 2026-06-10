@@ -169,9 +169,13 @@ async function verifyTurnstile(token: string, ip: string, secret: string): Promi
       method: 'POST',
       body: form,
     })
-    const data = (await res.json()) as { success?: boolean }
+    const data = (await res.json()) as { success?: boolean; 'error-codes'?: string[] }
+    if (!data.success) {
+      console.log('turnstile siteverify', { success: data.success, errorCodes: data['error-codes'] })
+    }
     return Boolean(data.success)
-  } catch {
+  } catch (err) {
+    console.log('turnstile siteverify exception', String(err))
     return false
   }
 }
@@ -233,7 +237,8 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   let body: Record<string, unknown>
   try {
     body = (await request.json()) as Record<string, unknown>
-  } catch {
+  } catch (err) {
+    console.log('contact reject: invalid_body', String(err))
     return new Response(JSON.stringify({ ok: false, error: 'invalid_body' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -242,6 +247,7 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
 
   const honeypot = String(body.website || '')
   if (honeypot) {
+    console.log('contact reject: honeypot')
     // Silent success: pretend it worked so the bot moves on.
     return new Response(JSON.stringify({ ok: true }), {
       headers: { 'Content-Type': 'application/json' },
@@ -254,13 +260,29 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   const message = String(body.message || '').trim().slice(0, 4000)
   const token = String(body.turnstileToken || '')
 
+  console.log('contact parsed', {
+    nameLen: name.length,
+    emailLen: email.length,
+    subjectLen: subject.length,
+    messageLen: message.length,
+    tokenLen: token.length,
+    bodyKeys: Object.keys(body),
+  })
+
   if (!name || !email || !message || !token) {
+    console.log('contact reject: missing_fields', {
+      name: !!name,
+      email: !!email,
+      message: !!message,
+      token: !!token,
+    })
     return new Response(JSON.stringify({ ok: false, error: 'missing_fields' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     })
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    console.log('contact reject: invalid_email')
     return new Response(JSON.stringify({ ok: false, error: 'invalid_email' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -269,6 +291,7 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
 
   const ok = await verifyTurnstile(token, ip, env.TURNSTILE_SECRET)
   if (!ok) {
+    console.log('contact reject: turnstile_failed')
     return new Response(JSON.stringify({ ok: false, error: 'turnstile_failed' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
