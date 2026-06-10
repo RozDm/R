@@ -7,7 +7,7 @@ import { getAllPosts, formatDate } from '@/lib/blog'
 import { SITE_URL } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Blogg – Dmytro Rozsoshnykh',
+  title: 'Blogg',
   description: 'Artikler om systemadministrasjon, DevOps, infrastruktur, automatisering og sikkerhet.',
   alternates: { canonical: `${SITE_URL}/blogg/` },
   openGraph: {

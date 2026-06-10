@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const url = `${SITE_URL}/blogg/${slug}/`
   return {
-    title: `${post.title} – ${AUTHOR.name}`,
+    title: post.title,
     description: post.description,
     alternates: { canonical: url },
     openGraph: {
@@ -56,6 +56,7 @@ export default async function BlogPost({ params }: Props) {
     '@type': 'BlogPosting',
     headline: post.title,
     description: post.description,
+    image: `${SITE_URL}/blogg/${slug}/opengraph-image`,
     datePublished: post.date,
     dateModified: post.date,
     inLanguage: 'nb-NO',
