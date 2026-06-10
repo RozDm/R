@@ -1,3 +1,5 @@
+import StatusDot from './StatusDot'
+
 export default function Footer() {
   const currentYear = new Date().getFullYear()
 
@@ -33,7 +35,9 @@ export default function Footer() {
             GitHub
           </a>
           <a
-            href="#"
+            href="https://www.linkedin.com/in/dmytro-rozsoshnykh/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
             LinkedIn
@@ -42,9 +46,9 @@ export default function Footer() {
 
         <a
           href="/status/"
-          className="inline-flex items-center gap-2 text-xs font-mono text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors pt-2"
+          className="inline-flex items-center gap-2 text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors pt-2"
         >
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+          <StatusDot />
           Driftsstatus
         </a>
 
