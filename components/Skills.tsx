@@ -2,7 +2,7 @@ import { skillGroups } from '@/data/skills'
 
 export default function Skills() {
   return (
-    <section id="skills" className="flex flex-col gap-8 animate-fade-in">
+    <section id="skills" className="flex flex-col gap-8 animate-fade-in [animation-delay:150ms]">
       <div>
         <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
           Kompetanse

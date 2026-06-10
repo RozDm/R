@@ -67,13 +67,15 @@ export default function Intro() {
       setActive(false)
     }
 
+    // Total ~3.8s: branded interstitials past ~3s sharply raise bounce risk,
+    // and the "2001" nod lands within the first couple of seconds anyway.
     const timers = [
-      setTimeout(() => setPhase(1), 300),
-      setTimeout(() => setPhase(2), 1500),
-      setTimeout(() => setPhase(3), 2800),
-      setTimeout(() => setPhase(4), 4200),
-      setTimeout(() => setPhase(5), 5200),
-      setTimeout(finish, 6000),
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 900),
+      setTimeout(() => setPhase(3), 1700),
+      setTimeout(() => setPhase(4), 2500),
+      setTimeout(() => setPhase(5), 3200),
+      setTimeout(finish, 3800),
     ]
     return () => timers.forEach(clearTimeout)
   }, [active])
