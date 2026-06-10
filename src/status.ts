@@ -4,7 +4,7 @@
 // `internal: true` checks via the ASSETS binding (a Worker can't fetch its own
 // public URL — Cloudflare blocks the loop). External services use plain fetch.
 export const MONITORS: { name: string; url: string; internal?: boolean }[] = [
-  { name: 'Grafana', url: 'https://grafana.com/' },
+  { name: 'NetBox', url: 'https://guku7579.cloud.netboxapp.com/' },
 ]
 
 export const STATUS_KEY = 'status'
