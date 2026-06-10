@@ -23,10 +23,6 @@ interface KVNamespace {
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> }
   STATUS: KVNamespace
-  CONTACT: KVNamespace
-  TURNSTILE_SECRET: string
-  TELEGRAM_BOT_TOKEN: string
-  TELEGRAM_CHAT_ID: string
 }
 
 // Endpoints the uptime cron checks. Add your own services here.
@@ -39,17 +35,13 @@ const MONITORS: { name: string; url: string; internal?: boolean }[] = [
 const STATUS_KEY = 'status'
 const HISTORY_LIMIT = 96 // ~8h at one check / 5 min
 
-// Turnstile loads its script and frames its widget from challenges.cloudflare.com.
-const TURNSTILE_HOST = 'https://challenges.cloudflare.com'
-
 const ENFORCED_CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
   "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
-  `frame-src ${TURNSTILE_HOST}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -60,12 +52,11 @@ const ENFORCED_CSP = [
 function strictCsp(hashes: string[]): string {
   return [
     "default-src 'self'",
-    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
+    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self' data:",
     "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
-    `frame-src ${TURNSTILE_HOST}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -154,168 +145,6 @@ async function runHealthChecks(env: Env): Promise<void> {
   await env.STATUS.put(STATUS_KEY, JSON.stringify(data))
 }
 
-// --- Contact form -----------------------------------------------------------
-
-const CONTACT_RATE_LIMIT = 3 // per IP per hour
-const CONTACT_WINDOW_SECONDS = 60 * 60
-
-async function verifyTurnstile(token: string, ip: string, secret: string): Promise<boolean> {
-  try {
-    const form = new FormData()
-    form.append('secret', secret)
-    form.append('response', token)
-    if (ip) form.append('remoteip', ip)
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      body: form,
-    })
-    const data = (await res.json()) as { success?: boolean; 'error-codes'?: string[] }
-    if (!data.success) {
-      console.log('turnstile siteverify', { success: data.success, errorCodes: data['error-codes'] })
-    }
-    return Boolean(data.success)
-  } catch (err) {
-    console.log('turnstile siteverify exception', String(err))
-    return false
-  }
-}
-
-function escapeMd(s: string): string {
-  // Telegram MarkdownV2: escape reserved chars.
-  return s.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1')
-}
-
-async function sendToTelegram(env: Env, payload: { name: string; email: string; subject: string; message: string; ip: string }): Promise<void> {
-  const body = [
-    '*Ny henvendelse fra nettstedet*',
-    '',
-    `*Navn:* ${escapeMd(payload.name)}`,
-    `*E\\-post:* ${escapeMd(payload.email)}`,
-    payload.subject ? `*Emne:* ${escapeMd(payload.subject)}` : '',
-    '',
-    '*Melding:*',
-    escapeMd(payload.message),
-    '',
-    `_IP: ${escapeMd(payload.ip)}_`,
-  ]
-    .filter(Boolean)
-    .join('\n')
-
-  await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: env.TELEGRAM_CHAT_ID,
-      text: body,
-      parse_mode: 'MarkdownV2',
-      disable_web_page_preview: true,
-    }),
-  })
-}
-
-async function handleContact(request: Request, env: Env): Promise<Response> {
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ ok: false, error: 'method_not_allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const ip = request.headers.get('cf-connecting-ip') || 'unknown'
-
-  // Rate limit per IP.
-  const rateKey = `rl:${ip}`
-  const currentRaw = await env.CONTACT.get(rateKey)
-  const current = currentRaw ? parseInt(currentRaw, 10) || 0 : 0
-  if (current >= CONTACT_RATE_LIMIT) {
-    return new Response(JSON.stringify({ ok: false, error: 'rate_limited' }), {
-      status: 429,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch (err) {
-    console.log('contact reject: invalid_body', String(err))
-    return new Response(JSON.stringify({ ok: false, error: 'invalid_body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const honeypot = String(body.website || '')
-  if (honeypot) {
-    console.log('contact reject: honeypot')
-    // Silent success: pretend it worked so the bot moves on.
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const name = String(body.name || '').trim().slice(0, 120)
-  const email = String(body.email || '').trim().slice(0, 200)
-  const subject = String(body.subject || '').trim().slice(0, 200)
-  const message = String(body.message || '').trim().slice(0, 4000)
-  const token = String(body.turnstileToken || '')
-
-  console.log('contact parsed', {
-    nameLen: name.length,
-    emailLen: email.length,
-    subjectLen: subject.length,
-    messageLen: message.length,
-    tokenLen: token.length,
-    bodyKeys: Object.keys(body),
-  })
-
-  if (!name || !email || !message || !token) {
-    console.log('contact reject: missing_fields', {
-      name: !!name,
-      email: !!email,
-      message: !!message,
-      token: !!token,
-    })
-    return new Response(JSON.stringify({ ok: false, error: 'missing_fields' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    console.log('contact reject: invalid_email')
-    return new Response(JSON.stringify({ ok: false, error: 'invalid_email' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const ok = await verifyTurnstile(token, ip, env.TURNSTILE_SECRET)
-  if (!ok) {
-    console.log('contact reject: turnstile_failed')
-    return new Response(JSON.stringify({ ok: false, error: 'turnstile_failed' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const submission = { at: new Date().toISOString(), name, email, subject, message, ip }
-  await env.CONTACT.put(`msg:${submission.at}:${crypto.randomUUID()}`, JSON.stringify(submission))
-  await env.CONTACT.put(rateKey, String(current + 1), { expirationTtl: CONTACT_WINDOW_SECONDS })
-
-  try {
-    await sendToTelegram(env, submission)
-  } catch {
-    // The submission is safe in KV either way; surface the failure to the caller.
-    return new Response(JSON.stringify({ ok: true, warning: 'telegram_failed' }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
-}
-
 export default {
   async scheduled(_event: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
     ctx.waitUntil(runHealthChecks(env))
@@ -337,16 +166,6 @@ export default {
       applyBaseHeaders(redirect.headers)
       redirect.headers.set('Content-Security-Policy', ENFORCED_CSP)
       return redirect
-    }
-
-    // 1c. Contact form.
-    if (url.pathname === '/api/contact') {
-      const response = await handleContact(request, env)
-      applyBaseHeaders(response.headers)
-      response.headers.set('Strict-Transport-Security', HSTS)
-      response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-      response.headers.set('Cache-Control', 'no-store')
-      return response
     }
 
     // 1b. Uptime API: serve the latest health snapshot from KV.

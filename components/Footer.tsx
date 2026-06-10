@@ -17,15 +17,13 @@ export default function Footer() {
           Interessert i samarbeid eller har et spørsmål? Ta gjerne kontakt.
         </p>
 
-        <a
-          href="/kontakt/"
-          className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition text-sm font-medium tracking-wide"
-        >
-          Send melding
-        </a>
-
-        {/* TODO: erstatt # med ekte profil-URL-er */}
         <div className="flex gap-8 text-sm font-medium pt-2">
+          <a
+            href="mailto:d.rossoshnyh@gmail.com"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          >
+            E-post
+          </a>
           <a
             href="https://github.com/RozDm"
             target="_blank"
