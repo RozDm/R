@@ -95,7 +95,7 @@ export default function StatusDashboard() {
         <span className="font-medium text-gray-900 dark:text-white">
           {noData ? 'Ingen data ennå' : allUp ? 'Alle systemer operative' : 'Driftsforstyrrelser'}
         </span>
-        <span className="ml-auto text-xs font-mono text-gray-400 dark:text-gray-500">
+        <span className="ml-auto text-xs font-mono text-gray-500 dark:text-gray-400">
           Oppdatert: {formatTime(data.updatedAt)}
         </span>
       </div>
@@ -105,19 +105,19 @@ export default function StatusDashboard() {
         {results.map((r) => (
           <div
             key={r.name}
-            className="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50"
+            className="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500"
           >
             <div className="flex items-center gap-3">
               <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.ok ? 'bg-green-500' : 'bg-red-500'}`} />
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">{r.name}</span>
-                <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{r.url}</span>
+                <span className="text-xs font-mono text-gray-500 dark:text-gray-400">{r.url}</span>
               </div>
               <div className="ml-auto text-right">
                 <div className={`text-sm font-mono ${r.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {r.ok ? 'Operativ' : 'Nede'}
                 </div>
-                <div className="text-xs font-mono text-gray-400 dark:text-gray-500">
+                <div className="text-xs font-mono text-gray-500 dark:text-gray-400">
                   {r.status || '—'} · {r.ms} ms
                 </div>
               </div>
@@ -138,7 +138,7 @@ export default function StatusDashboard() {
                     )
                   })}
                 </div>
-                <span className="text-[11px] font-mono text-gray-400 dark:text-gray-500">
+                <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
                   Siste {history.length} sjekker
                 </span>
               </div>

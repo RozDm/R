@@ -71,10 +71,9 @@ export default async function BlogPost({ params }: Props) {
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-
         <Link
           href="/blogg"
           className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -99,7 +98,7 @@ export default async function BlogPost({ params }: Props) {
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight">
               {post.title}
             </h1>
-            <time dateTime={post.date} className="block mt-3 text-sm text-gray-400 dark:text-gray-600">
+            <time dateTime={post.date} className="block mt-3 text-sm text-gray-500 dark:text-gray-500">
               {formatDate(post.date)}
             </time>
           </header>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 
 interface MobileMenuProps {
   links: { href: string; label: string }[]
@@ -42,14 +43,14 @@ export default function MobileMenu({ links }: MobileMenuProps) {
           aria-label="Mobilnavigasjon"
         >
           {links.map(({ href, label }) => (
-            <a
+            <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
               className="block px-5 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
             >
               {label}
-            </a>
+            </Link>
           ))}
         </nav>
       )}
