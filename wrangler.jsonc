@@ -13,6 +13,10 @@
     {
       "binding": "STATUS",
       "id": "18a8d7fb285e4cf6a48fb17d9bc9207d"
+    },
+    {
+      "binding": "CONTACT",
+      "id": "589d21ef41d046b6a0714e5b04a3cfd4"
     }
   ],
   "triggers": {
