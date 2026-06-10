@@ -48,7 +48,7 @@ export default function Image() {
         </div>
 
         <div style={{ display: 'flex', color: '#475569', fontSize: 24 }}>
-          d.rozsoshnykh.workers.dev
+          rozsoshnykh.no
         </div>
       </div>
     ),

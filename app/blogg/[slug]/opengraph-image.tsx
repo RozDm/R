@@ -61,7 +61,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         </div>
 
         <div style={{ display: 'flex', color: '#475569', fontSize: 24 }}>
-          Dmytro Rozsoshnykh · d.rozsoshnykh.workers.dev
+          Dmytro Rozsoshnykh · rozsoshnykh.no
         </div>
       </div>
     ),
