@@ -27,7 +27,7 @@ async function runHealthChecks(env: Env): Promise<void> {
               // clean 200 on the final response — 3xx/4xx/5xx count as down.
               redirect: 'follow',
               headers: {
-                'User-Agent': 'StatusMonitor/1.0 (+https://d.rozsoshnykh.workers.dev/status)',
+                'User-Agent': 'StatusMonitor/1.0 (+https://rozsoshnykh.no/status)',
               },
             })
         status = res.status
@@ -63,6 +63,19 @@ export default {
         headers: { Location: target, 'Content-Type': 'text/html; charset=utf-8' },
       })
       applyBaseHeaders(redirect.headers)
+      redirect.headers.set('Content-Security-Policy', ENFORCED_CSP)
+      return redirect
+    }
+
+    // 1a. Canonical host: collapse www and the workers.dev preview onto the
+    //     apex domain. One canonical host avoids duplicate-content SEO hits
+    //     and keeps shareable links short.
+    if (url.hostname === 'www.rozsoshnykh.no' || url.hostname.endsWith('.workers.dev')) {
+      url.hostname = 'rozsoshnykh.no'
+      const target = url.toString()
+      const redirect = new Response(null, { status: 301, headers: { Location: target } })
+      applyBaseHeaders(redirect.headers)
+      redirect.headers.set('Strict-Transport-Security', HSTS)
       redirect.headers.set('Content-Security-Policy', ENFORCED_CSP)
       return redirect
     }
