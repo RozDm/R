@@ -146,7 +146,7 @@ export default function Intro() {
         }}
       >
         <p className="font-mono text-sm md:text-base tracking-[0.3em] text-gray-500">
-          HELLO %USERNAME%
+          HEI %USERNAME%
         </p>
       </div>
 
