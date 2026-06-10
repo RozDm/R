@@ -6,9 +6,11 @@ import StatusDashboard from '@/components/StatusDashboard'
 import { SITE_URL } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Status – Dmytro Rozsoshnykh',
+  title: 'Status',
   description: 'Sanntids driftsstatus og oppetid for tjenestene.',
   alternates: { canonical: `${SITE_URL}/status/` },
+  // Verktøyside — holdes utenfor indeksen også etter lansering.
+  robots: { index: false, follow: true },
 }
 
 export default function StatusPage() {

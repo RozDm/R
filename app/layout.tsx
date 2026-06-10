@@ -30,15 +30,25 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps i Vestland',
+  title: {
+    default: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps i Vestland',
+    template: '%s – Dmytro Rozsoshnykh',
+  },
   description: 'Systemadministrator, DevOps og IT-driftstekniker med fokus på infrastruktur, automatisering og sikkerhet. Basert i Askøy, Vestland.',
-  alternates: { canonical: '/' },
+  alternates: {
+    canonical: '/',
+    types: { 'application/rss+xml': '/feed.xml' },
+  },
   openGraph: {
     title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps i Vestland',
     description: 'Systemadministrator · DevOps · IT-driftstekniker. Infrastruktur, automatisering og sikkerhet.',
     url: `${SITE_URL}/`,
+    siteName: 'Dmytro Rozsoshnykh',
     locale: 'nb_NO',
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
   },
   // Mykt-lansering: domenet er på plass, men indeksering venter til de
   // første postene er publisert. Sett index: true når innholdet er klart,
