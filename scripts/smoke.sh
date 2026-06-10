@@ -70,6 +70,20 @@ check_header() { # name url header_pattern
   fi
 }
 
+# Warm-up: right after a deploy the custom-domain TLS bindings can take a few
+# minutes to propagate (curl exits with code 000 until then). Wait for the
+# edge to answer at all before judging individual checks.
+echo "== Warm-up =="
+for i in $(seq 1 30); do
+  code=$(fetch "$BASE/")
+  if [ -n "$code" ] && [ "$code" != "000" ]; then
+    echo "edge answering with HTTP $code after $i probe(s)"
+    break
+  fi
+  echo "  probe $i: no TLS/HTTP yet, waiting 10s"
+  sleep 10
+done
+
 echo "== Pages =="
 check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh"
 check "blogg"       "$BASE/blogg/"           200 "Artikler"
