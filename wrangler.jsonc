@@ -22,6 +22,9 @@
     { "pattern": "rozsoshnykh.no", "custom_domain": true },
     { "pattern": "www.rozsoshnykh.no", "custom_domain": true }
   ],
+  // Keep the workers.dev subdomain alive (wrangler disables it once routes
+  // exist) so old links hit the Worker and get 301'd to the apex domain.
+  "workers_dev": true,
   "observability": {
     "logs": {
       "enabled": true,
