@@ -10,11 +10,18 @@ interface ServiceResult {
   ms: number
 }
 
+interface HistoryEntry {
+  at: string
+  up: Record<string, boolean>
+}
+
 interface StatusData {
   updatedAt?: string
   results: ServiceResult[]
-  history?: { at: string; up: boolean }[]
+  history?: HistoryEntry[]
 }
+
+const REFRESH_MS = 60_000 // cron runs every 5 min; 1 min keeps the view fresh enough
 
 function formatTime(iso?: string): string {
   if (!iso) return '—'
@@ -26,13 +33,34 @@ export default function StatusDashboard() {
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
 
   useEffect(() => {
-    fetch('/api/status')
-      .then((r) => r.json())
-      .then((d: StatusData) => {
+    const controller = new AbortController()
+
+    const load = async () => {
+      try {
+        const res = await fetch('/api/status', { signal: controller.signal, cache: 'no-store' })
+        const d: StatusData = await res.json()
         setData(d)
         setState('ok')
-      })
-      .catch(() => setState('error'))
+      } catch {
+        // Keep showing the last snapshot if a background refresh fails.
+        if (!controller.signal.aborted) setState((prev) => (prev === 'ok' ? 'ok' : 'error'))
+      }
+    }
+
+    load()
+    const timer = setInterval(() => {
+      if (!document.hidden) load()
+    }, REFRESH_MS)
+    const onVisibilityChange = () => {
+      if (!document.hidden) load()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      controller.abort()
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [])
 
   if (state === 'loading') {
@@ -43,6 +71,7 @@ export default function StatusDashboard() {
   }
 
   const results = data.results || []
+  const history = data.history || []
   const allUp = results.length > 0 && results.every((r) => r.ok)
   const noData = results.length === 0
 
@@ -71,47 +100,52 @@ export default function StatusDashboard() {
         </span>
       </div>
 
-      {/* Per-service rows */}
+      {/* Per-service rows, each with its own uptime history bar */}
       <div className="flex flex-col gap-3">
         {results.map((r) => (
           <div
             key={r.name}
-            className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50"
+            className="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50"
           >
-            <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.ok ? 'bg-green-500' : 'bg-red-500'}`} />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{r.name}</span>
-              <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{r.url}</span>
-            </div>
-            <div className="ml-auto text-right">
-              <div className={`text-sm font-mono ${r.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {r.ok ? 'Operativ' : 'Nede'}
+            <div className="flex items-center gap-3">
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.ok ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-gray-900 dark:text-white">{r.name}</span>
+                <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{r.url}</span>
               </div>
-              <div className="text-xs font-mono text-gray-400 dark:text-gray-500">
-                {r.status || '—'} · {r.ms} ms
+              <div className="ml-auto text-right">
+                <div className={`text-sm font-mono ${r.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {r.ok ? 'Operativ' : 'Nede'}
+                </div>
+                <div className="text-xs font-mono text-gray-400 dark:text-gray-500">
+                  {r.status || '—'} · {r.ms} ms
+                </div>
               </div>
             </div>
+            {history.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex gap-[3px]">
+                  {history.map((h, i) => {
+                    const up = h.up?.[r.name]
+                    return (
+                      <span
+                        key={i}
+                        title={`${formatTime(h.at)} — ${up === undefined ? 'ingen data' : up ? 'oppe' : 'nede'}`}
+                        className={`h-6 flex-1 rounded-sm ${
+                          up === undefined ? 'bg-gray-300 dark:bg-gray-700' : up ? 'bg-green-500/70' : 'bg-red-500/70'
+                        }`}
+                      />
+                    )
+                  })}
+                </div>
+                <span className="text-[11px] font-mono text-gray-400 dark:text-gray-500">
+                  Siste {history.length} sjekker
+                </span>
+              </div>
+            )}
           </div>
         ))}
       </div>
-
-      {/* Uptime bar from history */}
-      {data.history && data.history.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
-            Historikk (siste {data.history.length} sjekker)
-          </span>
-          <div className="flex gap-[3px]">
-            {data.history.map((h, i) => (
-              <span
-                key={i}
-                title={`${formatTime(h.at)} — ${h.up ? 'oppe' : 'nede'}`}
-                className={`h-8 flex-1 rounded-sm ${h.up ? 'bg-green-500/70' : 'bg-red-500/70'}`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
