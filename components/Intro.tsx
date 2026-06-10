@@ -67,15 +67,15 @@ export default function Intro() {
       setActive(false)
     }
 
-    // Total ~3.8s: branded interstitials past ~3s sharply raise bounce risk,
-    // and the "2001" nod lands within the first couple of seconds anyway.
+    // Total ~3.9s. The build-up is compressed so the greeting — the actual
+    // payoff — holds the screen for ~1.7s before the fade.
     const timers = [
-      setTimeout(() => setPhase(1), 200),
-      setTimeout(() => setPhase(2), 900),
-      setTimeout(() => setPhase(3), 1700),
-      setTimeout(() => setPhase(4), 2500),
-      setTimeout(() => setPhase(5), 3200),
-      setTimeout(finish, 3800),
+      setTimeout(() => setPhase(1), 150),
+      setTimeout(() => setPhase(2), 600),
+      setTimeout(() => setPhase(3), 1100),
+      setTimeout(() => setPhase(4), 1600),
+      setTimeout(() => setPhase(5), 3300),
+      setTimeout(finish, 3900),
     ]
     return () => timers.forEach(clearTimeout)
   }, [active])
