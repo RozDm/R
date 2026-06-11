@@ -56,7 +56,7 @@ export default function GeoMap() {
 
   if (failed) return null
   if (!shapes) {
-    return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Laster kart…</p>
+    return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kalibrerer AE-35-enheten…</p>
   }
 
   const countries = data?.countries ?? {}

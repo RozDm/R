@@ -96,6 +96,11 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{console.log('%cHAL 9000','color:#fff;background:#c00;padding:2px 8px;border-radius:3px;font-family:monospace','God dag. Jeg er helt operasjonell, og alle kretsene mine fungerer perfekt.')}catch(e){}})()`,
+          }}
+        />
       </head>
       <body>
         <ThemeProvider>
