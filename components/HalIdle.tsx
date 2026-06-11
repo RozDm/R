@@ -55,14 +55,17 @@ export default function HalIdle() {
   // Phase sequence + dismissal once awake. The overlay fades in over ~900ms
   // and fades back out before unmounting; a short grace period stops the
   // very first mouse twitch from killing it before it's visible.
+  // The lines escalate the longer the visitor stays away:
+  //   hail -> "are you still there?" -> "this conversation serves no purpose".
   useEffect(() => {
     if (!active) return
     const fadeIn = requestAnimationFrame(() => setVisible(true))
     const timers = [
       setTimeout(() => setPhase(1), 300),
       setTimeout(() => setPhase(2), 1300),
-      setTimeout(() => setPhase(3), 2400),
-      setTimeout(() => setPhase(4), 4000),
+      setTimeout(() => setPhase(3), 2400), // %USERNAME%?
+      setTimeout(() => setPhase(4), 6400), // Er du fortsatt der?
+      setTimeout(() => setPhase(5), 14400), // Denne samtalen…
     ]
     let unmount: ReturnType<typeof setTimeout> | undefined
     const dismiss = () => {
@@ -108,12 +111,16 @@ export default function HalIdle() {
           <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
         </div>
 
-        {/* The question */}
+        {/* The questions, escalating with idle time */}
         <p
-          className="hal-jitter font-mono text-sm md:text-base tracking-[0.3em] text-red-500/90 h-6 transition-opacity duration-700"
+          className="hal-jitter font-mono text-xs md:text-base tracking-[0.25em] text-red-500/90 h-6 px-4 text-center transition-opacity duration-700"
           style={{ opacity: phase >= 3 ? 1 : 0 }}
         >
-          {phase >= 4 ? 'HVA GJØR DU, %USERNAME%?' : '%USERNAME%?'}
+          {phase >= 5
+            ? 'DENNE SAMTALEN TJENER IKKE LENGER NOEN HENSIKT.'
+            : phase >= 4
+              ? 'ER DU FORTSATT DER, %USERNAME%?'
+              : '%USERNAME%?'}
         </p>
 
         <p className="absolute bottom-8 text-[11px] tracking-widest text-gray-700 uppercase">
