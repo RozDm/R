@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import matter from 'gray-matter'
 import { normalizeTags } from './tags'
+import { readingTimeMinutes } from './reading-time'
 import type { Post, PostMeta } from '@/types'
 
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
@@ -24,6 +25,7 @@ export function getPostBySlug(slug: string): Post {
     description: data.description ?? '',
     date: data.date ?? '',
     tags: normalizeTags(data.tags),
+    readingMinutes: readingTimeMinutes(content),
     content,
   }
 }
