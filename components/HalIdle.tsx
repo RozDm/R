@@ -55,17 +55,20 @@ export default function HalIdle() {
   // Phase sequence + dismissal once awake. The overlay fades in over ~900ms
   // and fades back out before unmounting; a short grace period stops the
   // very first mouse twitch from killing it before it's visible.
-  // The lines escalate the longer the visitor stays away:
-  //   hail -> "are you still there?" -> "this conversation serves no purpose".
+  // The eye sits alone first, the lines escalate, then HAL gives up talking
+  // and just stares:
+  //   eye (6s alone) -> hail -> "are you still there?" ->
+  //   "this conversation serves no purpose" (12s) -> eye only.
   useEffect(() => {
     if (!active) return
     const fadeIn = requestAnimationFrame(() => setVisible(true))
     const timers = [
-      setTimeout(() => setPhase(1), 300),
-      setTimeout(() => setPhase(2), 1300),
-      setTimeout(() => setPhase(3), 2400), // %USERNAME%?
-      setTimeout(() => setPhase(4), 6400), // Er du fortsatt der?
-      setTimeout(() => setPhase(5), 14400), // Denne samtalen…
+      setTimeout(() => setPhase(1), 300), // static
+      setTimeout(() => setPhase(2), 1300), // eye
+      setTimeout(() => setPhase(3), 8000), // %USERNAME%?
+      setTimeout(() => setPhase(4), 15000), // Er du fortsatt der?
+      setTimeout(() => setPhase(5), 27000), // Denne samtalen…
+      setTimeout(() => setPhase(6), 35000), // …silence, eye only
     ]
     let unmount: ReturnType<typeof setTimeout> | undefined
     const dismiss = () => {
@@ -111,10 +114,10 @@ export default function HalIdle() {
           <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
         </div>
 
-        {/* The questions, escalating with idle time */}
+        {/* The questions, escalating with idle time; gone again by phase 6 */}
         <p
           className="hal-jitter font-mono text-xs md:text-base tracking-[0.25em] text-red-500/90 h-6 px-4 text-center transition-opacity duration-700"
-          style={{ opacity: phase >= 3 ? 1 : 0 }}
+          style={{ opacity: phase >= 3 && phase < 6 ? 1 : 0 }}
         >
           {phase >= 5
             ? 'DENNE SAMTALEN TJENER IKKE LENGER NOEN HENSIKT.'
