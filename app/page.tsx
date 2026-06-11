@@ -4,6 +4,7 @@ import Hero from '@/components/Hero'
 import Skills from '@/components/Skills'
 import Certifications from '@/components/Certifications'
 import Status from '@/components/Status'
+import Visitors from '@/components/Visitors'
 import Footer from '@/components/Footer'
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
         <Skills />
         <Certifications />
         <Status />
+        <Visitors />
       </main>
       <Footer />
     </>
