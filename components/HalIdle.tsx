@@ -18,6 +18,7 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
 
 export default function HalIdle() {
   const [active, setActive] = useState(false)
+  const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState(0)
 
   // Arm the idle timer; any activity re-arms it.
@@ -51,26 +52,34 @@ export default function HalIdle() {
     }
   }, [active])
 
-  // Phase sequence + dismissal once awake. A short grace period stops the
-  // very first mouse twitch from killing the overlay before it's visible.
+  // Phase sequence + dismissal once awake. The overlay fades in over ~900ms
+  // and fades back out before unmounting; a short grace period stops the
+  // very first mouse twitch from killing it before it's visible.
   useEffect(() => {
     if (!active) return
+    const fadeIn = requestAnimationFrame(() => setVisible(true))
     const timers = [
-      setTimeout(() => setPhase(1), 100),
-      setTimeout(() => setPhase(2), 1000),
-      setTimeout(() => setPhase(3), 2000),
-      setTimeout(() => setPhase(4), 3600),
+      setTimeout(() => setPhase(1), 300),
+      setTimeout(() => setPhase(2), 1300),
+      setTimeout(() => setPhase(3), 2400),
+      setTimeout(() => setPhase(4), 4000),
     ]
+    let unmount: ReturnType<typeof setTimeout> | undefined
     const dismiss = () => {
-      setActive(false)
-      setPhase(0)
+      setVisible(false)
+      unmount = setTimeout(() => {
+        setActive(false)
+        setPhase(0)
+      }, 950)
     }
     const grace = setTimeout(() => {
-      ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, dismiss, { passive: true }))
-    }, 800)
+      ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, dismiss, { passive: true, once: true }))
+    }, 1000)
     return () => {
+      cancelAnimationFrame(fadeIn)
       timers.forEach(clearTimeout)
       clearTimeout(grace)
+      clearTimeout(unmount)
       ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, dismiss))
     }
   }, [active])
@@ -79,7 +88,9 @@ export default function HalIdle() {
 
   return (
     <div
-      className="fixed inset-0 z-[95] bg-black overflow-hidden cursor-pointer select-none"
+      className={`fixed inset-0 z-[95] bg-black overflow-hidden cursor-pointer select-none transition-opacity duration-[900ms] ease-in-out ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
       role="presentation"
       aria-hidden
     >
@@ -102,7 +113,7 @@ export default function HalIdle() {
           className="hal-jitter font-mono text-sm md:text-base tracking-[0.3em] text-red-500/90 h-6 transition-opacity duration-700"
           style={{ opacity: phase >= 3 ? 1 : 0 }}
         >
-          {phase >= 4 ? 'HVA GJØR DU, DAVE?' : 'DAVE?'}
+          {phase >= 4 ? 'HVA GJØR DU, %USERNAME%?' : '%USERNAME%?'}
         </p>
 
         <p className="absolute bottom-8 text-[11px] tracking-widest text-gray-700 uppercase">
