@@ -1,4 +1,5 @@
 import Intro from '@/components/Intro'
+import HalIdle from '@/components/HalIdle'
 import Header from '@/components/Header'
 import Hero from '@/components/Hero'
 import Skills from '@/components/Skills'
@@ -11,6 +12,7 @@ export default function Home() {
   return (
     <>
       <Intro />
+      <HalIdle />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:text-black">
         Hopp til hovedinnhold
       </a>

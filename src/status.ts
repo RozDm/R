@@ -4,13 +4,14 @@
 // `internal: true` checks via the ASSETS binding (a Worker can't fetch its own
 // public URL — Cloudflare blocks the loop). External services use plain fetch.
 export const MONITORS: { name: string; url: string; internal?: boolean }[] = [
-  { name: 'rozsoshnykh.no', url: 'https://rozsoshnykh.no/', internal: true },
   { name: 'NetBox', url: 'https://guku7579.cloud.netboxapp.com/' },
   { name: 'Grafana', url: 'https://rozsoshnykh.grafana.net/' },
 ]
 
 export const STATUS_KEY = 'status'
-export const HISTORY_LIMIT = 96 // ~8h at one check / 5 min
+// 149 = the monolith's proportions, 1² : 2² : 3² (1:4:9). ~12.5h at one
+// check / 5 min.
+export const HISTORY_LIMIT = 149
 
 export interface MonitorResult {
   name: string
