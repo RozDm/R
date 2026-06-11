@@ -1,4 +1,5 @@
 import CopyLink from './CopyLink'
+import NativeShare from './NativeShare'
 
 // Plain share links — no third-party SDKs, no extra scripts, CSP untouched.
 export default function ShareRow({ url, title }: { url: string; title: string }) {
@@ -11,7 +12,7 @@ export default function ShareRow({ url, title }: { url: string; title: string })
     <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-mono">
       <span className="text-gray-400 dark:text-gray-500 uppercase tracking-widest">Del</span>
       <a
-        href={`https://twitter.com/intent/tweet?url=${u}&text=${t}`}
+        href={`https://x.com/intent/post?url=${u}&text=${t}`}
         target="_blank"
         rel="noopener noreferrer"
         className={linkClass}
@@ -32,7 +33,7 @@ export default function ShareRow({ url, title }: { url: string; title: string })
         </svg>
         LinkedIn
       </a>
-      <a href={`mailto:?subject=${t}&body=${u}`} className={linkClass}>
+      <a href={`mailto:?subject=${t}&body=${t}%0A%0A${u}`} className={linkClass}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <rect x="2" y="4" width="20" height="16" rx="2" />
           <path d="m22 7-10 6L2 7" />
@@ -40,6 +41,7 @@ export default function ShareRow({ url, title }: { url: string; title: string })
         E-post
       </a>
       <CopyLink url={url} />
+      <NativeShare url={url} title={title} />
     </div>
   )
 }
