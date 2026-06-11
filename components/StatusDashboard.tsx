@@ -63,11 +63,22 @@ export default function StatusDashboard() {
     }
   }, [])
 
+  // The placeholders reserve roughly the final height (banner + two service
+  // cards). Without this, content below — like the #footer anchor target —
+  // jumps once the data lands, which breaks hash navigation from other pages.
   if (state === 'loading') {
-    return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Åpner podbay-dørene…</p>
+    return (
+      <div className="min-h-[352px]">
+        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Åpner podbay-dørene…</p>
+      </div>
+    )
   }
   if (state === 'error' || !data) {
-    return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kunne ikke hente status.</p>
+    return (
+      <div className="min-h-[352px]">
+        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kunne ikke hente status.</p>
+      </div>
+    )
   }
 
   const results = data.results || []
@@ -77,7 +88,7 @@ export default function StatusDashboard() {
   const downCount = results.filter((r) => !r.ok).length
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 min-h-[352px]">
       {/* Overall banner */}
       <div
         className={`flex items-center gap-3 rounded-xl border p-5 ${
