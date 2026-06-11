@@ -55,8 +55,20 @@ export default function GeoMap() {
   }, [])
 
   if (failed) return null
+  // Reserve the final footprint while the 85 kB of map paths load: the SVG
+  // is 2000x1001, the legend line below is ~28px. Keeps the #footer anchor
+  // from shifting when the chunk arrives.
   if (!shapes) {
-    return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kalibrerer AE-35-enheten…</p>
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="w-full aspect-[2000/1001] flex items-center justify-center">
+          <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kalibrerer AE-35-enheten…</p>
+        </div>
+        <p className="text-xs font-mono text-transparent select-none" aria-hidden>
+          —
+        </p>
+      </div>
+    )
   }
 
   const countries = data?.countries ?? {}
