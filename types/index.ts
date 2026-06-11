@@ -15,6 +15,7 @@ export interface PostMeta {
   description: string
   date: string
   tags: string[]
+  readingMinutes: number
 }
 
 export interface Post extends PostMeta {

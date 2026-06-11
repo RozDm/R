@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import ShareRow from '@/components/ShareRow'
+import ViewCounter from '@/components/ViewCounter'
 import { getPostBySlug, getPostSlugs, formatDate } from '@/lib/blog'
 import { SITE_URL, AUTHOR } from '@/lib/site'
 
@@ -99,14 +101,19 @@ export default async function BlogPost({ params }: Props) {
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight">
               {post.title}
             </h1>
-            <time dateTime={post.date} className="block mt-3 text-sm text-gray-500 dark:text-gray-500">
-              {formatDate(post.date)}
-            </time>
+            <p className="mt-3 text-sm text-gray-500 dark:text-gray-500">
+              <time dateTime={post.date}>{formatDate(post.date)}</time>
+              {' · '}
+              {post.readingMinutes} min å lese
+              <ViewCounter slug={slug} />
+            </p>
           </header>
 
           <div className="prose dark:prose-invert max-w-none prose-a:text-red-500 dark:prose-a:text-red-400 prose-a:no-underline hover:prose-a:underline prose-headings:font-bold prose-pre:border prose-pre:border-gray-200 dark:prose-pre:border-gray-800">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
           </div>
+
+          <ShareRow url={`${SITE_URL}/blogg/${slug}/`} title={post.title} />
         </article>
       </main>
       <Footer />

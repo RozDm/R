@@ -10,6 +10,27 @@
 
 import { ENFORCED_CSP, HSTS, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, STATUS_KEY, buildStatusData } from './status'
+import { GEO_KEY, VIEWS_PREFIX, bumpGeo, isValidSlug, looksLikeBot, parseCount, parseGeo } from './metrics'
+
+function apiJson(body: string, status = 200): Response {
+  const response = new Response(body, {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+  })
+  applyBaseHeaders(response.headers)
+  response.headers.set('Strict-Transport-Security', HSTS)
+  response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+  return response
+}
+
+// Count one page view per country. Read-modify-write on a single KV key is
+// racy under concurrency; for this traffic an occasionally lost increment
+// is fine.
+async function recordGeo(env: Env, country: string | undefined): Promise<void> {
+  const raw = await env.STATUS.get(GEO_KEY).catch(() => null)
+  const updated = bumpGeo(raw, country)
+  if (updated) await env.STATUS.put(GEO_KEY, JSON.stringify(updated))
+}
 
 // Cron: ping each monitor, record latency/status, append to rolling history.
 async function runHealthChecks(env: Env): Promise<void> {
@@ -49,7 +70,7 @@ export default {
     ctx.waitUntil(runHealthChecks(env))
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
     // 1. Force HTTPS (no HSTS over HTTP, per RFC 6797).
@@ -96,13 +117,29 @@ export default {
       try {
         body = (await env.STATUS.get(STATUS_KEY)) || body
       } catch {}
-      const response = new Response(body, {
-        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
-      })
-      applyBaseHeaders(response.headers)
-      response.headers.set('Strict-Transport-Security', HSTS)
-      response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-      return response
+      return apiJson(body)
+    }
+
+    // 1d. Per-post view counter. GET reads, POST counts one view — the
+    //     increment only happens from the page's own script, so plain
+    //     crawlers don't inflate it.
+    const viewsMatch = url.pathname.match(/^\/api\/views\/([^/]+)$/)
+    if (viewsMatch) {
+      const slug = viewsMatch[1]
+      if (!isValidSlug(slug)) return apiJson('{"error":"bad slug"}', 400)
+      const key = `${VIEWS_PREFIX}${slug}`
+      let views = parseCount(await env.STATUS.get(key).catch(() => null))
+      if (request.method === 'POST' && !looksLikeBot(request.headers.get('user-agent'))) {
+        views += 1
+        ctx.waitUntil(env.STATUS.put(key, String(views)))
+      }
+      return apiJson(JSON.stringify({ views }))
+    }
+
+    // 1e. Visitor countries, aggregated by recordGeo() below.
+    if (url.pathname === '/api/geo') {
+      const raw = await env.STATUS.get(GEO_KEY).catch(() => null)
+      return apiJson(JSON.stringify(parseGeo(raw)))
     }
 
     // 2. Fetch the asset with a clean request: no conditional headers (they make
@@ -113,6 +150,10 @@ export default {
     )
 
     if ((asset.headers.get('content-type') || '').includes('text/html')) {
+      // Geo stats: only human-looking page views count.
+      if (asset.status === 200 && !looksLikeBot(request.headers.get('user-agent'))) {
+        ctx.waitUntil(recordGeo(env, request.cf?.country))
+      }
       const html = await readHtml(asset)
       if (html !== null) {
         const hashes = await inlineScriptHashes(html)
