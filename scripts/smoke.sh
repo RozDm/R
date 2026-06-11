@@ -85,10 +85,9 @@ for i in $(seq 1 30); do
 done
 
 echo "== Pages =="
-check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh"
+check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh" "Driftsstatus"
 check "blogg"       "$BASE/blogg/"           200 "Artikler"
 check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
-check "status"      "$BASE/status/"          200 "Driftsstatus"
 check "404"         "$BASE/finnes-ikke/"     404
 
 echo "== Machine endpoints =="
