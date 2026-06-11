@@ -74,6 +74,7 @@ export default function StatusDashboard() {
   const history = data.history || []
   const allUp = results.length > 0 && results.every((r) => r.ok)
   const noData = results.length === 0
+  const downCount = results.filter((r) => !r.ok).length
 
   return (
     <div className="flex flex-col gap-8">
@@ -84,16 +85,22 @@ export default function StatusDashboard() {
             ? 'border-gray-200 dark:border-gray-800'
             : allUp
               ? 'border-green-500/30 bg-green-500/5'
-              : 'border-red-500/30 bg-red-500/5'
+              : 'border-red-500/40 bg-red-500/10'
         }`}
+        role="status"
+        aria-live="polite"
       >
         <span
           className={`inline-block w-3 h-3 rounded-full ${
-            noData ? 'bg-gray-400' : allUp ? 'bg-green-500' : 'bg-red-500'
+            noData ? 'bg-gray-400' : allUp ? 'bg-green-500' : 'bg-red-500 animate-pulse'
           }`}
         />
         <span className="font-medium text-gray-900 dark:text-white">
-          {noData ? 'Ingen data ennå' : allUp ? 'Alle systemer operative' : 'Driftsforstyrrelser'}
+          {noData
+            ? 'Ingen data ennå'
+            : allUp
+              ? 'Alle systemer operative'
+              : `Driftsforstyrrelser — ${downCount} av ${results.length} tjenester nede`}
         </span>
         <span className="ml-auto text-xs font-mono text-gray-500 dark:text-gray-400">
           Oppdatert: {formatTime(data.updatedAt)}
@@ -105,10 +112,14 @@ export default function StatusDashboard() {
         {results.map((r) => (
           <div
             key={r.name}
-            className="flex flex-col gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500"
+            className={`flex flex-col gap-3 p-4 rounded-xl border bg-white dark:bg-gray-900/50 transition-all duration-500 ${
+              r.ok
+                ? 'border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20'
+                : 'border-red-500/40 bg-red-500/5'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.ok ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">{r.name}</span>
                 <span className="text-xs font-mono text-gray-500 dark:text-gray-400">{r.url}</span>
