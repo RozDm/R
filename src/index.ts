@@ -80,7 +80,17 @@ export default {
       return redirect
     }
 
-    // 1b. Uptime API: serve the latest health snapshot from KV.
+    // 1b. The standalone status page moved to a section on the front page;
+    //     keep old links alive.
+    if (url.pathname === '/status' || url.pathname === '/status/') {
+      const redirect = new Response(null, { status: 301, headers: { Location: '/#status' } })
+      applyBaseHeaders(redirect.headers)
+      redirect.headers.set('Strict-Transport-Security', HSTS)
+      redirect.headers.set('Content-Security-Policy', ENFORCED_CSP)
+      return redirect
+    }
+
+    // 1c. Uptime API: serve the latest health snapshot from KV.
     if (url.pathname === '/api/status') {
       let body = '{"results":[],"history":[]}'
       try {

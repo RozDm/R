@@ -3,6 +3,7 @@ import Header from '@/components/Header'
 import Hero from '@/components/Hero'
 import Skills from '@/components/Skills'
 import Certifications from '@/components/Certifications'
+import Status from '@/components/Status'
 import Footer from '@/components/Footer'
 
 export default function Home() {
@@ -17,6 +18,7 @@ export default function Home() {
         <Hero />
         <Skills />
         <Certifications />
+        <Status />
       </main>
       <Footer />
     </>
