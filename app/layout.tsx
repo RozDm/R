@@ -98,7 +98,7 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{console.log('%cHAL 9000','color:#fff;background:#c00;padding:2px 8px;border-radius:3px;font-family:monospace','God dag. Jeg er helt operasjonell, og alle kretsene mine fungerer perfekt.')}catch(e){}})()`,
+            __html: `(function(){try{console.log('%c● %cGod dag. Jeg er helt operasjonell, og alle kretsene mine fungerer perfekt.','color:#c00;font-size:14px','color:inherit;font-family:monospace')}catch(e){}})()`,
           }}
         />
       </head>
