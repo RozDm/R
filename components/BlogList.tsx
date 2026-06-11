@@ -10,6 +10,7 @@ interface ListedPost {
   date: string
   dateFormatted: string
   tags: string[]
+  readingMinutes: number
 }
 
 type SortOrder = 'newest' | 'oldest'
@@ -108,9 +109,11 @@ export default function BlogList({ posts }: { posts: ListedPost[] }) {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
                   {post.title}
                 </h2>
-                <time dateTime={post.date} className="shrink-0 text-xs text-gray-500 dark:text-gray-500">
-                  {post.dateFormatted}
-                </time>
+                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-500">
+                  <time dateTime={post.date}>{post.dateFormatted}</time>
+                  {' · '}
+                  {post.readingMinutes} min
+                </span>
               </div>
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
                 {post.description}

@@ -92,6 +92,8 @@ check "404"         "$BASE/finnes-ikke/"     404
 
 echo "== Machine endpoints =="
 check "api/status"  "$BASE/api/status"       200 '"results"'
+check "api/views"   "$BASE/api/views/velkommen" 200 '"views"'
+check "api/geo"     "$BASE/api/geo"          200 '"countries"'
 check "robots.txt"  "$BASE/robots.txt"       200 "Sitemap: $BASE/sitemap.xml"
 check "sitemap"     "$BASE/sitemap.xml"      200 "<loc>$BASE/blogg/"
 check "rss"         "$BASE/feed.xml"         200 "<rss"
