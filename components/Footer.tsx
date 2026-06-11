@@ -55,6 +55,7 @@ export default function Footer() {
 
         <p className="text-xs text-gray-400 dark:text-gray-600 pt-8 font-mono">
           &copy; {currentYear} Dmytro Rozsoshnykh
+          <span title="Ingen feil forutsagt de neste 72 timene"> · AE-35: OK</span>
         </p>
       </div>
     </footer>

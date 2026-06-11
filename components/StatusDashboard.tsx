@@ -64,7 +64,7 @@ export default function StatusDashboard() {
   }, [])
 
   if (state === 'loading') {
-    return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Laster status…</p>
+    return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Åpner podbay-dørene…</p>
   }
   if (state === 'error' || !data) {
     return <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kunne ikke hente status.</p>
@@ -151,6 +151,11 @@ export default function StatusDashboard() {
                 </div>
                 <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
                   Siste {history.length} sjekker
+                  {history.length === 149 && (
+                    <span title="Monolittens proporsjoner: 1² : 2² : 3²" className="text-gray-400 dark:text-gray-500">
+                      {' '}· 1:4:9
+                    </span>
+                  )}
                 </span>
               </div>
             )}
