@@ -23,8 +23,15 @@
     }
   ],
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    // Every 5 min: uptime checks. Mondays 03:00 UTC: metrics backup to R2.
+    "crons": ["*/5 * * * *", "0 3 * * 1"]
   },
+  "r2_buckets": [
+    {
+      "binding": "BACKUPS",
+      "bucket_name": "rozsoshnykh-backups"
+    }
+  ],
   "routes": [
     { "pattern": "rozsoshnykh.no", "custom_domain": true },
     { "pattern": "www.rozsoshnykh.no", "custom_domain": true }
