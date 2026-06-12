@@ -1,65 +1,93 @@
 ## rozsoshnykh.no
 
-Personlig nettsted og blogg for **Dmytro Rozsoshnykh** — systemadministrator / DevOps i Vestland. Statisk Next.js-eksport servert fra en Cloudflare Worker som også kjører uptime-overvåking, besøkstelling og visningstelling via KV.
+Personal site and blog for **Dmytro Rozsoshnykh** — sysadmin / DevOps in Vestland, Norway.
+Next.js static export served by a Cloudflare Worker that also runs uptime monitoring,
+visitor geo aggregation and per-post view counters from KV. Site copy is Norwegian
+(`nb-NO`); code and docs are English.
+
+Live: https://rozsoshnykh.no
 
 ### Stack
 
 - Next.js 15 (App Router, `output: 'export'`) + React 19, TypeScript, Tailwind v4
-- Innhold: markdown-poster i `content/blog/` (gray-matter + react-markdown + remark-gfm)
-- Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (binding `STATUS`), cron `*/5 * * * *`
-- Worker (`src/`) håndterer kanonisk vert (301 fra `www` og `*.workers.dev`), strict hash-CSP for HTML den kan dekode, alle security-headere og API-ene under `/api/`
+- Content: markdown posts in `content/blog/` (gray-matter + react-markdown + remark-gfm)
+- Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (binding `STATUS`),
+  cron `*/5 * * * *`
+- Worker (`src/`) handles canonical host (301 from `www` and `*.workers.dev`),
+  strict per-request hash CSP for HTML it can decode, security headers and the
+  `/api/*` endpoints
 
 ### Scripts
 
 | | |
 |--|--|
-| `npm run dev` | Next dev-server med Turbopack |
-| `npm run build` | Statisk eksport til `out/` |
+| `npm run dev` | Next dev server with Turbopack |
+| `npm run build` | Static export to `out/` |
 | `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
-| `npm run typecheck` | `tsc --noEmit` for app **og** worker (`tsconfig.worker.json`) |
-| `npm test` | Vitest — CSP-hashing, statushistorikk, tags, metrics, lesetid |
-| `npm run cf-typegen` | Regenererer `worker-configuration.d.ts` fra `wrangler.jsonc` |
-| `npm run deploy` | Manuell vei: `predeploy` (lint + typecheck + test) → build → `wrangler deploy` |
+| `npm run typecheck` | `tsc --noEmit` for app **and** worker (`tsconfig.worker.json`) |
+| `npm test` | Vitest — CSP hashing, status history, tags, metrics, reading time |
+| `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` from `wrangler.jsonc` |
+| `npm run deploy` | Manual path: `predeploy` (lint + typecheck + test) → build → `wrangler deploy` |
 
 ### CI/CD
 
-Push til `main` → `.github/workflows/deploy.yml`: lint → typecheck → test → build → `wrangler deploy` → **`scripts/smoke.sh`** mot produksjon (sider, API-er, redirects, sikkerhetsheadere). Feiler smoke-testen, feiler deployen synlig. `ci.yml` kjører samme sjekker på PR-er.
+Push to `main` triggers `.github/workflows/deploy.yml`: lint → typecheck → test →
+build → `wrangler deploy` → **`scripts/smoke.sh`** against production (pages, APIs,
+redirects, security headers). If the smoke test fails, the deploy fails loudly.
+`ci.yml` runs the same gate on pull requests.
 
-Hemmeligheter i repoet: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
 
-### Struktur
+### Layout
 
 ```
-app/                Next App Router: forside, /blogg, feed.xml, sitemap, robots, OG-bilder
-components/         React-komponenter (Hero, Skills, StatusDashboard, GeoMap, HalIdle, …)
-content/blog/       Markdown-poster (frontmatter: title, description, date, tags)
-context/            ThemeContext (light/dark uten FOUC)
-data/               Skills og certifications
-lib/                blog.ts, tags.ts (alias-normalisering), reading-time.ts, site.ts
-scripts/            smoke.sh (post-deploy-verifisering)
+app/                Next App Router: home, /blogg, feed.xml, sitemap, robots, OG images
+components/         React components (Hero, Skills, StatusDashboard, GeoMap, HalIdle, …)
+content/blog/       Markdown posts (frontmatter: title, description, date, tags)
+context/            ThemeContext (light/dark with no FOUC)
+data/               Skills and certifications
+lib/                blog.ts, tags.ts (alias normalisation), reading-time.ts, site.ts
+scripts/            smoke.sh (post-deploy verification)
 src/                Cloudflare Worker (index.ts, csp.ts, status.ts, metrics.ts)
 tests/              Vitest
-wrangler.jsonc      Worker-konfig (ASSETS, STATUS KV, cron, custom domains)
+wrangler.jsonc      Worker config (ASSETS, STATUS KV, cron, custom domains)
 ```
 
-### Statusovervåking
+### Uptime monitoring
 
-Crontrigger pinger hver `MONITORS`-oppføring i `src/status.ts` hvert 5. minutt og skriver et JSON-snapshot til KV (nøkkel `status`). `/api/status` serverer snapshot; forsiden (`/#status`) viser det med historikk per tjeneste, avkortet til `HISTORY_LIMIT` (149 ≈ 12,5 timer — monolittens 1:4:9).
+The cron pings every entry in `MONITORS` (`src/status.ts`) every 5 minutes and
+writes a JSON snapshot to KV (`status` key). `/api/status` serves the snapshot;
+the front page (`/#status`) renders it with per-service history, capped at
+`HISTORY_LIMIT` (149 ≈ 12.5h — the monolith's 1:4:9 proportions).
 
-Legg til en tjeneste ved å utvide `MONITORS`. Bruk `internal: true` for ruter som peker på dette nettstedet selv (ASSETS-binding må brukes — Workers blokkerer self-fetch over offentlig URL). En sjekk regnes som oppe kun ved endelig HTTP 200 (redirects følges).
+Add a service by extending `MONITORS`. Use `internal: true` for routes that
+point at this site itself (the ASSETS binding is required — Workers block
+self-fetches over the public URL). A check counts as up only on a final HTTP
+200 (redirects followed).
 
-### Metrikker
+### Metrics
 
-- **Visninger per post**: `GET/POST /api/views/<slug>` (KV `views:<slug>`); telles én gang per nettleserøkt fra postsiden, bot-UA-er ignoreres.
-- **Besøk per land**: Workeren leser `request.cf.country` på menneskelige HTML-treff og aggregerer i KV (`geo`). `GET /api/geo` mater verdenskartet på forsiden. Ingen informasjonskapsler, ingen sporing av enkeltpersoner.
-- **Lesetid** beregnes fra markdown (~200 ord/min, kodeblokker teller ikke).
+- **Per-post views**: `GET/POST /api/views/<slug>` (KV `views:<slug>`). Counted
+  once per browser session from the post page; bot UAs and cross-origin POSTs
+  are ignored.
+- **Visitors by country**: the Worker reads `request.cf.country` on human-looking
+  HTML navigations (`Sec-Fetch-Mode: navigate` + non-bot UA), batches the counts
+  in the isolate and flushes to KV at most once per minute (`geo` key). `GET
+  /api/geo` feeds the world map on the front page. No cookies, no per-visitor
+  tracking.
+- **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
 
-### Deploy manuelt
+The KV free tier allows 1000 puts/day total — the gating above keeps usage well
+below that even when CT-log scanners hit a fresh domain.
 
-Krever `wrangler login` og at KV-namespacet i `wrangler.jsonc` eksisterer (eller bytt id). Deretter `npm run deploy` — `predeploy` kjører lint/typecheck/test først.
+### Manual deploy
+
+Requires `wrangler login` and the KV namespace in `wrangler.jsonc` (or your own
+id). Then `npm run deploy` — `predeploy` runs lint/typecheck/test first.
 
 ### Status (soft launch)
 
-Nettstedet kjører på `rozsoshnykh.no` (med 301 fra `www` og `d.rozsoshnykh.workers.dev`).
-`robots: { index: false }` står inntil de første postene er publisert. Når innholdet er
-klart: bytt `robots.index` til `true` i `app/layout.tsx` og send sitemap til Search Console.
+The site is live at `rozsoshnykh.no` (with 301 from `www` and
+`d.rozsoshnykh.workers.dev`). `robots: { index: false }` stays until the first
+posts are published. When the content is ready: flip `robots.index` to `true`
+in `app/layout.tsx` and submit the sitemap in Google Search Console.
