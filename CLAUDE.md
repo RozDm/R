@@ -19,11 +19,13 @@ Norwegian (nb-NO); code and comments are English.
     the list of monitored services. `HISTORY_LIMIT = 149` (monolith 1:4:9 —
     intentional, don't "fix" it).
   - `metrics.ts` — pure logic for view/geo counters.
-- KV namespace `STATUS`, keys: `status` (uptime snapshot), `views:<slug>`,
-  `geo` (`{countries: {ISO2: count}}`).
+- KV namespace `STATUS` holds only the uptime snapshot (`status` key).
+- D1 database `rozsoshnykh-metrics` (binding `METRICS`, schema in
+  `schema/metrics.sql`): `views(slug, count)` and `geo(country, count)`;
+  increments are atomic `INSERT … ON CONFLICT … count = count + 1`.
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count),
-  `/api/geo`. Geo is recorded on the edge from `request.cf.country` for human
-  (non-bot UA) HTML 200s.
+  `/api/geo`. Geo is recorded on the edge from `request.cf.country` for
+  human-looking navigations (`Sec-Fetch-Mode: navigate` + non-bot UA).
 - TypeScript is split: app uses `tsconfig.json` (lib.dom), worker uses
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
   `wrangler.jsonc` change run `npm run cf-typegen` and commit the result.
@@ -67,10 +69,9 @@ Norwegian (nb-NO); code and comments are English.
 - A Worker cannot fetch its own public URL — monitors pointing at this site
   need `internal: true` (ASSETS binding). Don't monitor the site itself; the
   dashboard is served by it.
-- KV free tier: 1000 writes/day total (geo + views) — don't add per-request
+- KV free tier: 1000 writes/day total — that's why metrics moved to D1
+  (100k writes/day); only the 5-minute cron writes to KV. Don't add KV
   writes lightly.
-- KV read-modify-write has no atomicity; lost increments under concurrency
-  are accepted by design.
 - Session branches: work on a `claude/*` branch, PRs are squash-merged, so
   reset the branch onto `origin/main` before starting new work or the next
   PR will conflict with its own squashed history.
