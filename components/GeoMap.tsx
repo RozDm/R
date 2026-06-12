@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface CountryShape {
   id: string
@@ -28,6 +28,23 @@ export default function GeoMap() {
   const [shapes, setShapes] = useState<CountryShape[] | null>(null)
   const [data, setData] = useState<GeoData | null>(null)
   const [failed, setFailed] = useState(false)
+
+  // Full Norwegian country names from the ISO code, built into the browser —
+  // no dependency, falls back to the code itself if the API is missing.
+  const regionNames = useMemo(() => {
+    try {
+      return new Intl.DisplayNames(['nb'], { type: 'region' })
+    } catch {
+      return null
+    }
+  }, [])
+  const countryName = (code: string): string => {
+    try {
+      return regionNames?.of(code) ?? code
+    } catch {
+      return code
+    }
+  }
 
   // The map paths are ~85 kB — load them lazily after hydration so they
   // never weigh down the first paint of the front page.
@@ -73,8 +90,6 @@ export default function GeoMap() {
 
   const countries = data?.countries ?? {}
   const sorted = Object.entries(countries).sort((a, b) => b[1] - a[1])
-  const top = sorted.slice(0, 8)
-  const rest = sorted.length - top.length
   const total = sorted.reduce((sum, [, n]) => sum + n, 0)
 
   return (
@@ -92,7 +107,7 @@ export default function GeoMap() {
             className={`${fillFor(countries[c.id])} stroke-white dark:stroke-gray-950 transition-colors duration-500`}
             strokeWidth="1"
           >
-            <title>{`${c.id}${countries[c.id] ? ` · ${countries[c.id]} besøk` : ''}`}</title>
+            <title>{`${countryName(c.id)}${countries[c.id] ? ` · ${countries[c.id]} besøk` : ''}`}</title>
           </path>
         ))}
       </svg>
@@ -101,13 +116,12 @@ export default function GeoMap() {
         <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Ingen besøksdata ennå.</p>
       ) : (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-mono text-gray-500 dark:text-gray-400">
-          {top.map(([code, count]) => (
+          {sorted.map(([code, count]) => (
             <span key={code} className="inline-flex items-center gap-1.5">
               <span aria-hidden>{flag(code)}</span>
-              {code} <span className="text-gray-400 dark:text-gray-500">{count}</span>
+              {countryName(code)} <span className="text-gray-400 dark:text-gray-500">{count}</span>
             </span>
           ))}
-          {rest > 0 && <span className="text-gray-400 dark:text-gray-500">+{rest} land</span>}
           <span className="ml-auto text-gray-400 dark:text-gray-500">{total} sidevisninger</span>
         </div>
       )}
