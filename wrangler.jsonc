@@ -23,15 +23,8 @@
     }
   ],
   "triggers": {
-    // Every 5 min: uptime checks. Mondays 03:00 UTC: metrics backup to R2.
-    "crons": ["*/5 * * * *", "0 3 * * 1"]
+    "crons": ["*/5 * * * *"]
   },
-  "r2_buckets": [
-    {
-      "binding": "BACKUPS",
-      "bucket_name": "rozsoshnykh-backups"
-    }
-  ],
   "send_email": [
     {
       "name": "CONTACT_EMAIL",
