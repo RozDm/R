@@ -44,10 +44,33 @@ export function bumpGeo(raw: string | null, country: string | undefined): GeoDat
   return data
 }
 
+// Merge a batch of pending per-country counts into the stored snapshot.
+// Returns null when nothing in the batch was valid.
+export function mergeGeo(raw: string | null, batch: Record<string, number>): GeoData | null {
+  const data = parseGeo(raw)
+  let changed = false
+  for (const [country, count] of Object.entries(batch)) {
+    if (!/^[A-Z]{2}$/.test(country) || country === 'XX' || country === 'T1') continue
+    if (!Number.isFinite(count) || count <= 0) continue
+    data.countries[country] = (data.countries[country] ?? 0) + Math.floor(count)
+    changed = true
+  }
+  return changed ? data : null
+}
+
 // Crawlers, previews and our own tooling shouldn't count as visitors.
 const BOT_RE = /bot|crawl|spider|slurp|preview|facebookexternalhit|monitor|curl|wget|python|headless|lighthouse|smoke-test/i
 
 export function looksLikeBot(userAgent: string | null): boolean {
   if (!userAgent) return true
   return BOT_RE.test(userAgent)
+}
+
+// A real browser opening a page sends Sec-Fetch-Mode: navigate; scanners
+// that fake a Chrome User-Agent almost never bother. New domains get
+// hammered by CT-log scanners, and without this gate every hit cost a KV
+// write (the free tier allows 1000/day).
+export function isHumanNavigation(headers: Headers): boolean {
+  if (looksLikeBot(headers.get('user-agent'))) return false
+  return headers.get('sec-fetch-mode') === 'navigate'
 }

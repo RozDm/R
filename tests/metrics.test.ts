@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bumpGeo, isValidSlug, looksLikeBot, parseCount, parseGeo } from '@/src/metrics'
+import { bumpGeo, isHumanNavigation, isValidSlug, looksLikeBot, mergeGeo, parseCount, parseGeo } from '@/src/metrics'
 
 describe('isValidSlug', () => {
   it('accepts normal slugs', () => {
@@ -57,6 +57,41 @@ describe('bumpGeo', () => {
     expect(bumpGeo(null, 'XX')).toBeNull()
     expect(bumpGeo(null, 'T1')).toBeNull()
     expect(bumpGeo(null, 'no')).toBeNull()
+  })
+})
+
+describe('mergeGeo', () => {
+  it('merges a batch into existing data', () => {
+    const raw = JSON.stringify({ countries: { NO: 5 } })
+    expect(mergeGeo(raw, { NO: 2, SE: 1 })).toEqual({ countries: { NO: 7, SE: 1 } })
+  })
+
+  it('skips invalid codes and counts, returns null when nothing valid', () => {
+    expect(mergeGeo(null, { XX: 3, T1: 1, no: 2, DE: 0, FR: -2 })).toBeNull()
+    expect(mergeGeo(null, { XX: 3, NO: 1 })).toEqual({ countries: { NO: 1 } })
+  })
+
+  it('floors fractional counts', () => {
+    expect(mergeGeo(null, { NO: 2.9 })).toEqual({ countries: { NO: 2 } })
+  })
+})
+
+describe('isHumanNavigation', () => {
+  const chrome = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
+
+  it('accepts a browser page load', () => {
+    const h = new Headers({ 'user-agent': chrome, 'sec-fetch-mode': 'navigate' })
+    expect(isHumanNavigation(h)).toBe(true)
+  })
+
+  it('rejects scanners with browser UA but no sec-fetch headers', () => {
+    const h = new Headers({ 'user-agent': chrome })
+    expect(isHumanNavigation(h)).toBe(false)
+  })
+
+  it('rejects subresource/cors fetches and bot UAs', () => {
+    expect(isHumanNavigation(new Headers({ 'user-agent': chrome, 'sec-fetch-mode': 'cors' }))).toBe(false)
+    expect(isHumanNavigation(new Headers({ 'user-agent': 'Googlebot/2.1', 'sec-fetch-mode': 'navigate' }))).toBe(false)
   })
 })
 
