@@ -88,6 +88,7 @@ echo "== Pages =="
 check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh" "Driftsstatus"
 check "blogg"       "$BASE/blogg/"           200 "Artikler"
 check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
+check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"
 check "404"         "$BASE/finnes-ikke/"     404
 
 echo "== Machine endpoints =="

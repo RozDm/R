@@ -21,8 +21,14 @@ export default function Footer() {
         </p>
 
         <div className="flex gap-8 text-sm font-medium pt-2">
+          <Link
+            href="/kontakt/"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          >
+            Kontaktskjema
+          </Link>
           <a
-            href="mailto:d.rossoshnyh@gmail.com"
+            href="mailto:contact@rozsoshnykh.no"
             className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
             E-post
