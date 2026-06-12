@@ -11,6 +11,13 @@
 import { ENFORCED_CSP, HSTS, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, STATUS_KEY, buildStatusData } from './status'
 import { countriesFromRows, isCountableCountry, isHumanNavigation, isValidSlug, looksLikeBot } from './metrics'
+import { buildContactMime, validateContact } from './contact'
+import { EmailMessage } from 'cloudflare:email'
+
+const CONTACT_FROM = 'contact@rozsoshnykh.no'
+const CONTACT_TO = 'd.rossoshnyh@gmail.com'
+// Max submissions per IP per 10 minutes.
+const CONTACT_RATE_LIMIT = 3
 
 function apiJson(body: string, status = 200): Response {
   const response = new Response(body, {
@@ -179,7 +186,58 @@ export default {
       return apiJson(JSON.stringify({ views: row?.count ?? 0 }))
     }
 
-    // 1e. Visitor countries (D1), aggregated by recordGeo() below.
+    // 1e. Contact form: honeypot + same-origin + per-IP rate limit (D1),
+    //     stored in D1 as a backup copy, then mailed via Email Routing.
+    if (url.pathname === '/api/contact' && request.method === 'POST') {
+      if (
+        request.headers.get('sec-fetch-site') !== 'same-origin' ||
+        looksLikeBot(request.headers.get('user-agent'))
+      ) {
+        return apiJson('{"error":"forbidden"}', 403)
+      }
+      let raw: unknown
+      try {
+        raw = await request.json()
+      } catch {
+        return apiJson('{"error":"bad request"}', 400)
+      }
+      // Honeypot: bots fill every field; pretend success and drop it.
+      if ((raw as { website?: unknown })?.website) {
+        return apiJson('{"ok":true}')
+      }
+      const payload = validateContact(raw)
+      if (!payload) return apiJson('{"error":"invalid"}', 422)
+
+      const ip = request.headers.get('cf-connecting-ip') ?? 'unknown'
+      const recent = await env.METRICS.prepare(
+        "SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > datetime('now', '-10 minutes')",
+      )
+        .bind(ip)
+        .first<{ n: number }>()
+        .catch(() => null)
+      if ((recent?.n ?? 0) >= CONTACT_RATE_LIMIT) {
+        return apiJson('{"error":"rate limited"}', 429)
+      }
+
+      const at = new Date().toISOString()
+      await env.METRICS.prepare(
+        'INSERT INTO contact (at, ip, name, email, message) VALUES (?1, ?2, ?3, ?4, ?5)',
+      )
+        .bind(at, ip, payload.name, payload.email, payload.message)
+        .run()
+        .catch(() => {})
+
+      try {
+        const mime = buildContactMime(CONTACT_FROM, CONTACT_TO, payload, at)
+        await env.CONTACT_EMAIL.send(new EmailMessage(CONTACT_FROM, CONTACT_TO, mime))
+      } catch {
+        // The submission is already in D1; surface a soft error.
+        return apiJson('{"error":"send failed"}', 502)
+      }
+      return apiJson('{"ok":true}')
+    }
+
+    // 1f. Visitor countries (D1), aggregated by recordGeo() below.
     if (url.pathname === '/api/geo') {
       const rows = await env.METRICS.prepare('SELECT country, count FROM geo')
         .all<{ country: string; count: number }>()

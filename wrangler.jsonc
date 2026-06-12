@@ -32,6 +32,12 @@
       "bucket_name": "rozsoshnykh-backups"
     }
   ],
+  "send_email": [
+    {
+      "name": "CONTACT_EMAIL",
+      "destination_address": "d.rossoshnyh@gmail.com"
+    }
+  ],
   "routes": [
     { "pattern": "rozsoshnykh.no", "custom_domain": true },
     { "pattern": "www.rozsoshnykh.no", "custom_domain": true }
