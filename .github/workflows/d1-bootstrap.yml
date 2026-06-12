@@ -1,0 +1,50 @@
+name: Bootstrap D1 (one-shot)
+
+# Manual workflow that creates the metrics D1 database and applies the
+# schema. Run once from the Actions tab → "Run workflow" — then I read
+# the database_id it prints and wire it into wrangler.jsonc.
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Create D1 database (idempotent)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          if npx wrangler d1 list --json | grep -q '"name": "rozsoshnykh-metrics"'; then
+            echo "rozsoshnykh-metrics already exists"
+          else
+            npx wrangler d1 create rozsoshnykh-metrics
+          fi
+          echo "--- Existing D1 databases ---"
+          npx wrangler d1 list
+
+      - name: Apply schema (idempotent — uses CREATE TABLE IF NOT EXISTS)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute rozsoshnykh-metrics --remote --file=schema/metrics.sql
+
+      - name: Print database_id for wrangler.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "=========================================="
+          echo "Copy the uuid below into wrangler.jsonc"
+          echo "=========================================="
+          npx wrangler d1 list --json | python3 -c "import json,sys; [print(d['uuid']) for d in json.load(sys.stdin) if d['name']=='rozsoshnykh-metrics']"
