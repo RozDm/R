@@ -91,7 +91,7 @@ export default function StatusDashboard() {
     <div className="flex flex-col gap-8 min-h-[352px]">
       {/* Overall banner */}
       <div
-        className={`flex items-center gap-3 rounded-xl border p-5 ${
+        className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border p-5 ${
           noData
             ? 'border-gray-200 dark:border-gray-800'
             : allUp
@@ -102,7 +102,7 @@ export default function StatusDashboard() {
         aria-live="polite"
       >
         <span
-          className={`inline-block w-3 h-3 rounded-full ${
+          className={`inline-block w-3 h-3 rounded-full shrink-0 ${
             noData ? 'bg-gray-400' : allUp ? 'bg-green-500' : 'bg-red-500 animate-pulse'
           }`}
         />
@@ -113,7 +113,7 @@ export default function StatusDashboard() {
               ? 'Alle systemer operative'
               : `Driftsforstyrrelser — ${downCount} av ${results.length} tjenester nede`}
         </span>
-        <span className="ml-auto text-xs font-mono text-gray-500 dark:text-gray-400">
+        <span className="basis-full sm:basis-auto sm:ml-auto text-xs font-mono text-gray-500 dark:text-gray-400">
           Oppdatert: {formatTime(data.updatedAt)}
         </span>
       </div>
@@ -129,13 +129,13 @@ export default function StatusDashboard() {
                 : 'border-red-500/40 bg-red-500/5'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <span className={`inline-block w-2.5 h-2.5 rounded-full ${r.ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-              <div className="flex flex-col">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${r.ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+              <div className="flex flex-col min-w-0">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">{r.name}</span>
-                <span className="text-xs font-mono text-gray-500 dark:text-gray-400">{r.url}</span>
+                <span className="text-xs font-mono text-gray-500 dark:text-gray-400 break-all">{r.url}</span>
               </div>
-              <div className="ml-auto text-right">
+              <div className="basis-full sm:basis-auto sm:ml-auto text-left sm:text-right">
                 <div className={`text-sm font-mono ${r.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {r.ok ? 'Operativ' : 'Nede'}
                 </div>
@@ -146,14 +146,14 @@ export default function StatusDashboard() {
             </div>
             {history.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <div className="flex gap-[3px]">
+                <div className="flex gap-px sm:gap-[3px] min-w-0">
                   {history.map((h, i) => {
                     const up = h.up?.[r.name]
                     return (
                       <span
                         key={i}
                         title={`${formatTime(h.at)} — ${up === undefined ? 'ingen data' : up ? 'oppe' : 'nede'}`}
-                        className={`h-6 flex-1 rounded-sm ${
+                        className={`h-6 flex-1 min-w-0 rounded-sm ${
                           up === undefined ? 'bg-gray-300 dark:bg-gray-700' : up ? 'bg-green-500/70' : 'bg-red-500/70'
                         }`}
                       />
