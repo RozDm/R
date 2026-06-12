@@ -67,18 +67,17 @@ self-fetches over the public URL). A check counts as up only on a final HTTP
 
 ### Metrics
 
-- **Per-post views**: `GET/POST /api/views/<slug>` (KV `views:<slug>`). Counted
-  once per browser session from the post page; bot UAs and cross-origin POSTs
-  are ignored.
-- **Visitors by country**: the Worker reads `request.cf.country` on human-looking
-  HTML navigations (`Sec-Fetch-Mode: navigate` + non-bot UA), batches the counts
-  in the isolate and flushes to KV at most once per minute (`geo` key). `GET
-  /api/geo` feeds the world map on the front page. No cookies, no per-visitor
-  tracking.
-- **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
+Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
+`schema/metrics.sql`) with atomic upserts — no read-modify-write races and a
+100k writes/day free budget.
 
-The KV free tier allows 1000 puts/day total — the gating above keeps usage well
-below that even when CT-log scanners hit a fresh domain.
+- **Per-post views**: `GET/POST /api/views/<slug>`. Counted once per browser
+  session from the post page; bot UAs and cross-origin POSTs are ignored.
+- **Visitors by country**: the Worker reads `request.cf.country` on
+  human-looking HTML navigations (`Sec-Fetch-Mode: navigate` + non-bot UA) and
+  upserts `geo`. `GET /api/geo` feeds the world map on the front page. No
+  cookies, no per-visitor tracking.
+- **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
 
 ### Manual deploy
 
