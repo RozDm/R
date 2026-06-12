@@ -78,35 +78,9 @@ async function runHealthChecks(env: Env): Promise<void> {
   await env.STATUS.put(STATUS_KEY, JSON.stringify(data))
 }
 
-// Weekly backup: dump the D1 metrics tables and the KV uptime snapshot to R2
-// as dated JSON. Objects are tiny (~KB) and weekly, so no retention pruning.
-const BACKUP_CRON = '0 3 * * 1'
-
-async function runBackup(env: Env): Promise<void> {
-  const [geo, views, status] = await Promise.all([
-    env.METRICS.prepare('SELECT country, count FROM geo').all().catch(() => null),
-    env.METRICS.prepare('SELECT slug, count FROM views').all().catch(() => null),
-    env.STATUS.get(STATUS_KEY).catch(() => null),
-  ])
-  const takenAt = new Date().toISOString()
-  const body = JSON.stringify({
-    takenAt,
-    geo: geo?.results ?? [],
-    views: views?.results ?? [],
-    status: status ? JSON.parse(status) : null,
-  })
-  const key = `backups/${takenAt.slice(0, 10)}.json`
-  await env.BACKUPS.put(key, body, { httpMetadata: { contentType: 'application/json' } })
-  await env.BACKUPS.put('backups/latest.json', body, { httpMetadata: { contentType: 'application/json' } })
-}
-
 export default {
-  async scheduled(controller, env, ctx) {
-    if (controller.cron === BACKUP_CRON) {
-      ctx.waitUntil(runBackup(env))
-    } else {
-      ctx.waitUntil(runHealthChecks(env))
-    }
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(runHealthChecks(env))
   },
 
   async fetch(request, env, ctx) {
