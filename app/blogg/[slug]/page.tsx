@@ -113,7 +113,7 @@ export default async function BlogPost({ params }: Props) {
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
           </div>
 
-          <ShareRow url={`${SITE_URL}/blogg/${slug}/`} title={post.title} />
+          <ShareRow url={`${SITE_URL}/blogg/${slug}/`} />
         </article>
       </main>
       <Footer />
