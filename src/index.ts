@@ -10,7 +10,7 @@
 
 import { ENFORCED_CSP, HSTS, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, STATUS_KEY, buildStatusData } from './status'
-import { GEO_KEY, VIEWS_PREFIX, isHumanNavigation, isValidSlug, looksLikeBot, mergeGeo, parseCount, parseGeo } from './metrics'
+import { countriesFromRows, isCountableCountry, isHumanNavigation, isValidSlug, looksLikeBot } from './metrics'
 
 function apiJson(body: string, status = 200): Response {
   const response = new Response(body, {
@@ -23,30 +23,19 @@ function apiJson(body: string, status = 200): Response {
   return response
 }
 
-// Geo views are batched per isolate and flushed to KV at most once per
-// GEO_FLUSH_MS: the free tier allows 1000 writes/day total, and a write per
-// page view blew through that on day one. Counts pending in a recycled
-// isolate are lost — acceptable for a vanity map. The read-modify-write is
-// racy under concurrency; an occasionally lost increment is fine too.
-const GEO_FLUSH_MS = 60_000
-const pendingGeo = new Map<string, number>()
-let lastGeoFlush = 0
-
-function queueGeo(env: Env, ctx: ExecutionContext, country: string | undefined): void {
-  if (!country) return
-  pendingGeo.set(country, (pendingGeo.get(country) ?? 0) + 1)
-  const now = Date.now()
-  if (now - lastGeoFlush < GEO_FLUSH_MS) return
-  lastGeoFlush = now
-  const batch = Object.fromEntries(pendingGeo)
-  pendingGeo.clear()
-  ctx.waitUntil(flushGeo(env, batch).catch(() => {}))
-}
-
-async function flushGeo(env: Env, batch: Record<string, number>): Promise<void> {
-  const raw = await env.STATUS.get(GEO_KEY).catch(() => null)
-  const merged = mergeGeo(raw, batch)
-  if (merged) await env.STATUS.put(GEO_KEY, JSON.stringify(merged))
+// Metrics live in D1 (the STATUS KV keeps only the uptime snapshot):
+// upserts are atomic, so no client-side batching or read-modify-write races,
+// and the free tier allows 100k writes/day vs KV's 1000.
+function recordGeo(env: Env, ctx: ExecutionContext, country: string | undefined): void {
+  if (!isCountableCountry(country)) return
+  ctx.waitUntil(
+    env.METRICS.prepare(
+      'INSERT INTO geo (country, count) VALUES (?1, 1) ON CONFLICT(country) DO UPDATE SET count = count + 1',
+    )
+      .bind(country)
+      .run()
+      .catch(() => {}),
+  )
 }
 
 // Cron: ping each monitor, record latency/status, append to rolling history.
@@ -137,32 +126,39 @@ export default {
       return apiJson(body)
     }
 
-    // 1d. Per-post view counter. GET reads, POST counts one view — the
-    //     increment only happens from the page's own script, so plain
-    //     crawlers don't inflate it.
+    // 1d. Per-post view counter (D1). GET reads, POST counts one view — only
+    //     the page's own same-origin fetch() counts, so plain crawlers and
+    //     external spam don't inflate it.
     const viewsMatch = url.pathname.match(/^\/api\/views\/([^/]+)$/)
     if (viewsMatch) {
       const slug = viewsMatch[1]
       if (!isValidSlug(slug)) return apiJson('{"error":"bad slug"}', 400)
-      const key = `${VIEWS_PREFIX}${slug}`
-      let views = parseCount(await env.STATUS.get(key).catch(() => null))
-      // Only the page's own fetch() counts: browsers label it same-origin,
-      // external curl/spam can't fake that cheaply.
       if (
         request.method === 'POST' &&
         request.headers.get('sec-fetch-site') === 'same-origin' &&
         !looksLikeBot(request.headers.get('user-agent'))
       ) {
-        views += 1
-        ctx.waitUntil(env.STATUS.put(key, String(views)).catch(() => {}))
+        const row = await env.METRICS.prepare(
+          'INSERT INTO views (slug, count) VALUES (?1, 1) ON CONFLICT(slug) DO UPDATE SET count = count + 1 RETURNING count',
+        )
+          .bind(slug)
+          .first<{ count: number }>()
+          .catch(() => null)
+        if (row) return apiJson(JSON.stringify({ views: row.count }))
       }
-      return apiJson(JSON.stringify({ views }))
+      const row = await env.METRICS.prepare('SELECT count FROM views WHERE slug = ?1')
+        .bind(slug)
+        .first<{ count: number }>()
+        .catch(() => null)
+      return apiJson(JSON.stringify({ views: row?.count ?? 0 }))
     }
 
-    // 1e. Visitor countries, aggregated by recordGeo() below.
+    // 1e. Visitor countries (D1), aggregated by recordGeo() below.
     if (url.pathname === '/api/geo') {
-      const raw = await env.STATUS.get(GEO_KEY).catch(() => null)
-      return apiJson(JSON.stringify(parseGeo(raw)))
+      const rows = await env.METRICS.prepare('SELECT country, count FROM geo')
+        .all<{ country: string; count: number }>()
+        .catch(() => null)
+      return apiJson(JSON.stringify({ countries: countriesFromRows(rows?.results ?? []) }))
     }
 
     // 2. Fetch the asset with a clean request: no conditional headers (they make
@@ -175,7 +171,7 @@ export default {
     if ((asset.headers.get('content-type') || '').includes('text/html')) {
       // Geo stats: only human-looking page navigations count.
       if (asset.status === 200 && isHumanNavigation(request.headers)) {
-        queueGeo(env, ctx, request.cf?.country)
+        recordGeo(env, ctx, request.cf?.country)
       }
       const html = await readHtml(asset)
       if (html !== null) {

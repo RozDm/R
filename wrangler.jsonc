@@ -15,6 +15,13 @@
       "id": "18a8d7fb285e4cf6a48fb17d9bc9207d"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "METRICS",
+      "database_name": "rozsoshnykh-metrics",
+      "database_id": "26df4356-17e3-43fb-b96e-c1cdbeb4580b"
+    }
+  ],
   "triggers": {
     "crons": ["*/5 * * * *"]
   },
