@@ -85,7 +85,9 @@ for i in $(seq 1 30); do
 done
 
 echo "== Pages =="
-check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh" "Driftsstatus"
+# Home asserts noindex too: the soft launch must not accidentally start
+# getting indexed before launch (flip robots in app/layout.tsx when ready).
+check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh" "Driftsstatus" 'name="robots" content="noindex'
 check "blogg"       "$BASE/blogg/"           200 "Artikler"
 check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
 check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"

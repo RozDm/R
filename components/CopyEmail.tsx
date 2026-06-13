@@ -1,22 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-
-function legacyCopy(text: string): boolean {
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    const ok = document.execCommand('copy')
-    document.body.removeChild(ta)
-    return ok
-  } catch {
-    return false
-  }
-}
+import { copyText } from '@/lib/clipboard'
 
 // Click copies the address to the clipboard (mailto handlers are unreliable
 // on desktops without a default mail app). Right-click still exposes the
@@ -26,14 +11,7 @@ export default function CopyEmail({ email }: { email: string }) {
 
   const copy = async (e: React.MouseEvent) => {
     e.preventDefault()
-    let ok = false
-    try {
-      await navigator.clipboard.writeText(email)
-      ok = true
-    } catch {
-      ok = legacyCopy(email)
-    }
-    if (ok) {
+    if (await copyText(email)) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
