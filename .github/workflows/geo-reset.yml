@@ -1,0 +1,24 @@
+name: Reset geo counters (one-shot)
+
+# Wipes the D1 geo table for a clean start. The early days of a fresh
+# domain were dominated by CT-log scanners (e.g. a Bulgaria spike) before
+# the Sec-Fetch-Mode gate landed; this clears that noise. Views are left
+# alone — they only count same-origin POSTs from the post page.
+on:
+  workflow_dispatch:
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Truncate geo
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute rozsoshnykh-metrics --remote --command "DELETE FROM geo"

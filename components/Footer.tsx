@@ -28,12 +28,6 @@ export default function Footer() {
             Kontaktskjema
           </Link>
           <a
-            href="mailto:contact@rozsoshnykh.no"
-            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-          >
-            E-post
-          </a>
-          <a
             href="https://github.com/RozDm"
             target="_blank"
             rel="noopener noreferrer"
@@ -50,6 +44,15 @@ export default function Footer() {
             LinkedIn
           </a>
         </div>
+
+        {/* Visible address: mailto opens a mail client where one exists, and
+            the text itself is selectable for everyone else. */}
+        <a
+          href="mailto:contact@rozsoshnykh.no"
+          className="font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+        >
+          contact@rozsoshnykh.no
+        </a>
 
         <Link
           href="/#status"
