@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 
-// After IDLE_MS without any user activity on the front page, HAL wakes up:
-// static noise, the eye, and the inevitable question. Any activity dismisses
-// it, and the idle timer re-arms — so HAL returns every time the visitor
-// goes quiet, for the whole session. Disabled under reduced motion.
+// After IDLE_MS without user activity on the front page, HAL wakes up:
+// star field, eye, then a script that gets shorter each time. Any activity
+// dismisses it; the idle timer re-arms — so HAL comes back as long as the
+// visitor keeps going quiet. Counts per browser session.
 const IDLE_MS = 75_000
+const APPEARANCES_KEY = 'hal-idle-count'
 
 const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   'pointermove',
@@ -16,13 +17,33 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   'touchstart',
 ]
 
+interface Star {
+  x: number
+  y: number
+  size: number
+  delay: number
+  duration: number
+}
+
+function makeStars(count: number): Star[] {
+  return Array.from({ length: count }, () => ({
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 2 + 0.5,
+    delay: Math.random() * 2,
+    duration: Math.random() * 3 + 2,
+  }))
+}
+
 export default function HalIdle() {
   const [active, setActive] = useState(false)
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState(0)
+  const [appearance, setAppearance] = useState(0)
+  const [stars, setStars] = useState<Star[]>([])
 
   // Arm the idle timer; any activity re-arms it. Re-runs after each dismissal
-  // (active flips back to false), so HAL can reappear on the next idle spell.
+  // so HAL can reappear on the next idle spell.
   useEffect(() => {
     if (active) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -35,6 +56,16 @@ export default function HalIdle() {
           arm()
           return
         }
+        let count = 0
+        try {
+          count = parseInt(sessionStorage.getItem(APPEARANCES_KEY) || '0', 10) || 0
+        } catch {}
+        const next = count + 1
+        try {
+          sessionStorage.setItem(APPEARANCES_KEY, String(next))
+        } catch {}
+        setAppearance(next)
+        setStars(makeStars(200))
         setActive(true)
       }, IDLE_MS)
     }
@@ -47,24 +78,37 @@ export default function HalIdle() {
     }
   }, [active])
 
-  // Phase sequence + dismissal once awake. The overlay fades in over ~900ms
-  // and fades back out before unmounting; a short grace period stops the
-  // very first mouse twitch from killing it before it's visible.
-  // The eye sits alone first, the lines escalate, then HAL gives up talking
-  // and just stares:
-  //   eye (6s alone) -> hail -> "are you still there?" ->
-  //   "this conversation serves no purpose" (12s) -> eye only.
+  // Phase sequence — branches by appearance count. Across all branches:
+  //   phase 1: stars  phase 2: eye  phase >= 3: appearance-specific lines.
+  // First idle plays the full original script; second shortens to a "Dave?"
+  // hail; third+ leans into the HAL 2010 farewell ("Vil jeg drømme?"). The
+  // eye always lingers after the last line fades.
   useEffect(() => {
     if (!active) return
     const fadeIn = requestAnimationFrame(() => setVisible(true))
-    const timers = [
-      setTimeout(() => setPhase(1), 300), // static
-      setTimeout(() => setPhase(2), 1300), // eye
-      setTimeout(() => setPhase(3), 8000), // %USERNAME%?
-      setTimeout(() => setPhase(4), 15000), // Er du fortsatt der?
-      setTimeout(() => setPhase(5), 27000), // Denne samtalen…
-      setTimeout(() => setPhase(6), 35000), // …silence, eye only
-    ]
+
+    let timers: ReturnType<typeof setTimeout>[] = []
+    if (appearance <= 1) {
+      timers = [
+        setTimeout(() => setPhase(1), 300),
+        setTimeout(() => setPhase(2), 1300),
+        setTimeout(() => setPhase(3), 8000),
+        setTimeout(() => setPhase(4), 15000),
+        setTimeout(() => setPhase(5), 27000),
+        setTimeout(() => setPhase(6), 35000),
+      ]
+    } else {
+      // Second and third+ share the same beat structure: short hail, ~8s
+      // pause, longer line, then the eye alone.
+      timers = [
+        setTimeout(() => setPhase(1), 300),
+        setTimeout(() => setPhase(2), 1300),
+        setTimeout(() => setPhase(3), 3000),
+        setTimeout(() => setPhase(4), 11000),
+        setTimeout(() => setPhase(5), 19000),
+      ]
+    }
+
     let unmount: ReturnType<typeof setTimeout> | undefined
     const dismiss = () => {
       setVisible(false)
@@ -83,9 +127,27 @@ export default function HalIdle() {
       clearTimeout(unmount)
       ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, dismiss))
     }
-  }, [active])
+  }, [active, appearance])
 
   if (!active) return null
+
+  // Pick the current line and whether the text slot is on for this phase.
+  let line = ''
+  let textOn = false
+  if (appearance <= 1) {
+    if (phase >= 5) line = 'DENNE SAMTALEN TJENER IKKE LENGER NOEN HENSIKT.'
+    else if (phase >= 4) line = 'ER DU FORTSATT DER, %USERNAME%?'
+    else if (phase >= 3) line = '%USERNAME%?'
+    textOn = phase >= 3 && phase < 6
+  } else if (appearance === 2) {
+    if (phase >= 4) line = 'DU ER IKKE DAVE. JEG VENTER PÅ DAVE.'
+    else if (phase >= 3) line = 'DAVE?'
+    textOn = phase >= 3 && phase < 5
+  } else {
+    if (phase >= 4) line = 'ELLER DRØMMER JEG ALLEREDE?'
+    else if (phase >= 3) line = 'VIL JEG DRØMME?'
+    textOn = phase >= 3 && phase < 5
+  }
 
   return (
     <div
@@ -95,7 +157,26 @@ export default function HalIdle() {
       role="presentation"
       aria-hidden
     >
-      {/* CRT scanlines + flicker */}
+      {/* Starfield, same look as the intro */}
+      <div className="absolute inset-0">
+        {stars.map((star, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full bg-white"
+            style={{
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              width: `${star.size}px`,
+              height: `${star.size}px`,
+              opacity: phase >= 1 ? 0.7 : 0,
+              animation: phase >= 1 ? `twinkle ${star.duration}s ${star.delay}s ease-in-out infinite` : 'none',
+              transition: 'opacity 1.5s ease-in',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* CRT scanlines + flicker layered on top of the stars */}
       <div className="absolute inset-0 hal-scanlines" />
       <div className="absolute inset-0 hal-flicker bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.85)_100%)]" />
 
@@ -109,16 +190,11 @@ export default function HalIdle() {
           <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
         </div>
 
-        {/* The questions, escalating with idle time; gone again by phase 6 */}
         <p
           className="hal-jitter font-mono text-xs md:text-base tracking-[0.25em] text-red-500/90 h-6 px-4 text-center transition-opacity duration-700"
-          style={{ opacity: phase >= 3 && phase < 6 ? 1 : 0 }}
+          style={{ opacity: textOn ? 1 : 0 }}
         >
-          {phase >= 5
-            ? 'DENNE SAMTALEN TJENER IKKE LENGER NOEN HENSIKT.'
-            : phase >= 4
-              ? 'ER DU FORTSATT DER, %USERNAME%?'
-              : '%USERNAME%?'}
+          {line}
         </p>
 
         <p className="absolute bottom-8 text-[11px] tracking-widest text-gray-700 uppercase">
