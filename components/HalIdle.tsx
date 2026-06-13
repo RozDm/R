@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Starfield from './Starfield'
+import { makeStars, type Star } from '@/lib/stars'
 
 // After IDLE_MS without user activity on the front page, HAL wakes up:
 // star field, eye, then a script that gets shorter each time. Any activity
@@ -16,24 +18,6 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   'scroll',
   'touchstart',
 ]
-
-interface Star {
-  x: number
-  y: number
-  size: number
-  delay: number
-  duration: number
-}
-
-function makeStars(count: number): Star[] {
-  return Array.from({ length: count }, () => ({
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 2 + 0.5,
-    delay: Math.random() * 2,
-    duration: Math.random() * 3 + 2,
-  }))
-}
 
 export default function HalIdle() {
   const [active, setActive] = useState(false)
@@ -158,23 +142,7 @@ export default function HalIdle() {
       aria-hidden
     >
       {/* Starfield, same look as the intro */}
-      <div className="absolute inset-0">
-        {stars.map((star, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-white"
-            style={{
-              left: `${star.x}%`,
-              top: `${star.y}%`,
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              opacity: phase >= 1 ? 0.7 : 0,
-              animation: phase >= 1 ? `twinkle ${star.duration}s ${star.delay}s ease-in-out infinite` : 'none',
-              transition: 'opacity 1.5s ease-in',
-            }}
-          />
-        ))}
-      </div>
+      <Starfield stars={stars} lit={phase >= 1} litOpacity={0.7} />
 
       {/* CRT scanlines + flicker layered on top of the stars */}
       <div className="absolute inset-0 hal-scanlines" />

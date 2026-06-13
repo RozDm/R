@@ -1,14 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-
-interface Star {
-  x: number
-  y: number
-  size: number
-  delay: number
-  duration: number
-}
+import Starfield from './Starfield'
+import { makeStars, type Star } from '@/lib/stars'
 
 const SEEN_KEY = 'intro-seen'
 
@@ -42,15 +36,7 @@ export default function Intro() {
       return
     }
 
-    setStars(
-      Array.from({ length: 200 }, () => ({
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2 + 0.5,
-        delay: Math.random() * 2,
-        duration: Math.random() * 3 + 2,
-      })),
-    )
+    setStars(makeStars(200))
     setActive(true)
   }, [])
 
@@ -108,24 +94,7 @@ export default function Intro() {
 
       {/* Main sequence: stars, monolith, HAL eye */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {/* Starfield */}
-        <div className={`absolute inset-0 transition-transform duration-[2000ms] ease-in ${phase >= 6 ? 'scale-[20]' : 'scale-100'}`}>
-          {stars.map((star, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full bg-white"
-              style={{
-                left: `${star.x}%`,
-                top: `${star.y}%`,
-                width: `${star.size}px`,
-                height: `${star.size}px`,
-                opacity: phase >= 3 ? 1 : 0,
-                animation: phase >= 3 ? `twinkle ${star.duration}s ${star.delay}s ease-in-out infinite` : 'none',
-                transition: 'opacity 1.5s ease-in',
-              }}
-            />
-          ))}
-        </div>
+        <Starfield stars={stars} lit={phase >= 3} zoom={phase >= 6} />
 
         {/* Monolith */}
         <div

@@ -21,7 +21,11 @@ interface StatusData {
   history?: HistoryEntry[]
 }
 
-const REFRESH_MS = 60_000 // cron runs every 5 min; 1 min keeps the view fresh enough
+// The cron writes every 5 min, so polling that often is plenty when all is
+// well; during an incident, refresh sooner so the dashboard catches recovery
+// (or further trouble) quickly.
+const OK_REFRESH_MS = 90_000
+const DOWN_REFRESH_MS = 30_000
 
 function formatTime(iso?: string): string {
   if (!iso) return '—'
@@ -34,31 +38,41 @@ export default function StatusDashboard() {
 
   useEffect(() => {
     const controller = new AbortController()
+    let timer: ReturnType<typeof setTimeout> | undefined
 
-    const load = async () => {
+    const tick = async () => {
+      if (document.hidden) {
+        timer = setTimeout(tick, OK_REFRESH_MS)
+        return
+      }
       try {
         const res = await fetch('/api/status', { signal: controller.signal, cache: 'no-store' })
         const d: StatusData = await res.json()
         setData(d)
         setState('ok')
+        const anyDown = (d.results || []).some((r) => !r.ok)
+        timer = setTimeout(tick, anyDown ? DOWN_REFRESH_MS : OK_REFRESH_MS)
       } catch {
         // Keep showing the last snapshot if a background refresh fails.
-        if (!controller.signal.aborted) setState((prev) => (prev === 'ok' ? 'ok' : 'error'))
+        if (!controller.signal.aborted) {
+          setState((prev) => (prev === 'ok' ? 'ok' : 'error'))
+          timer = setTimeout(tick, OK_REFRESH_MS)
+        }
       }
     }
 
-    load()
-    const timer = setInterval(() => {
-      if (!document.hidden) load()
-    }, REFRESH_MS)
+    tick()
     const onVisibilityChange = () => {
-      if (!document.hidden) load()
+      if (!document.hidden) {
+        clearTimeout(timer)
+        tick()
+      }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
       controller.abort()
-      clearInterval(timer)
+      clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [])
