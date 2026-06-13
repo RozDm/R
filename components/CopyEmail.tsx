@@ -43,12 +43,15 @@ export default function CopyEmail({ email }: { email: string }) {
     <a
       href={`mailto:${email}`}
       onClick={copy}
+      title="Klikk for å kopiere"
       className="inline-flex items-center gap-2 font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
     >
       {email}
-      <span className="text-xs text-gray-400 dark:text-gray-500" aria-live="polite">
-        {copied ? '— kopiert!' : '— klikk for å kopiere'}
-      </span>
+      {copied && (
+        <span className="text-xs text-green-600 dark:text-green-400" aria-live="polite">
+          kopiert!
+        </span>
+      )}
     </a>
   )
 }
