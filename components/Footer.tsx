@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import StatusDot from './StatusDot'
+import CopyEmail from './CopyEmail'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -45,14 +46,7 @@ export default function Footer() {
           </a>
         </div>
 
-        {/* Visible address: mailto opens a mail client where one exists, and
-            the text itself is selectable for everyone else. */}
-        <a
-          href="mailto:contact@rozsoshnykh.no"
-          className="font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-        >
-          contact@rozsoshnykh.no
-        </a>
+        <CopyEmail email="contact@rozsoshnykh.no" />
 
         <Link
           href="/#status"
