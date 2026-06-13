@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   title: 'Kontakt',
   description: 'Send meg en melding — samarbeid, spørsmål eller bare et hei.',
   alternates: { canonical: `${SITE_URL}/kontakt/` },
+  // A form page with no indexable content; keep it out of search results.
+  robots: { index: false, follow: true },
 }
 
 export default function KontaktPage() {

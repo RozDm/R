@@ -1,35 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-
-function legacyCopy(text: string): boolean {
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    const ok = document.execCommand('copy')
-    document.body.removeChild(ta)
-    return ok
-  } catch {
-    return false
-  }
-}
+import { copyText } from '@/lib/clipboard'
 
 export default function CopyLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false)
 
   const copy = async () => {
-    let ok = false
-    try {
-      await navigator.clipboard.writeText(url)
-      ok = true
-    } catch {
-      ok = legacyCopy(url)
-    }
-    if (ok) {
+    if (await copyText(url)) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
