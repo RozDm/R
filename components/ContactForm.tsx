@@ -7,6 +7,17 @@ type FormState = 'idle' | 'sending' | 'sent' | 'error' | 'ratelimited'
 const inputClass =
   'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900/50 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500/50 focus:outline-none transition-colors'
 
+type Field = HTMLInputElement | HTMLTextAreaElement
+
+// Force a Norwegian browser-validation bubble instead of the browser-locale
+// default; clearValidity lets the field re-validate as the user types.
+const validity = (message: string) => (e: React.FormEvent<Field>) => {
+  e.currentTarget.setCustomValidity(message)
+}
+const clearValidity = (e: React.FormEvent<Field>) => {
+  e.currentTarget.setCustomValidity('')
+}
+
 export default function ContactForm() {
   const [state, setState] = useState<FormState>('idle')
 
@@ -55,17 +66,43 @@ export default function ContactForm() {
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-gray-900 dark:text-white">Navn</span>
-        <input name="name" required maxLength={100} autoComplete="name" className={inputClass} />
+        <input
+          name="name"
+          required
+          maxLength={100}
+          autoComplete="name"
+          className={inputClass}
+          onInvalid={validity('Skriv inn navnet ditt.')}
+          onInput={clearValidity}
+        />
       </label>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-gray-900 dark:text-white">E-post</span>
-        <input name="email" type="email" required maxLength={200} autoComplete="email" className={inputClass} />
+        <input
+          name="email"
+          type="email"
+          required
+          maxLength={200}
+          autoComplete="email"
+          className={inputClass}
+          onInvalid={validity('Skriv inn en gyldig e-postadresse.')}
+          onInput={clearValidity}
+        />
       </label>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-gray-900 dark:text-white">Melding</span>
-        <textarea name="message" required minLength={10} maxLength={5000} rows={6} className={inputClass} />
+        <textarea
+          name="message"
+          required
+          minLength={10}
+          maxLength={5000}
+          rows={6}
+          className={inputClass}
+          onInvalid={validity('Meldingen må være minst 10 tegn.')}
+          onInput={clearValidity}
+        />
       </label>
 
       <div className="flex items-center gap-4">
