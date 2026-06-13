@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 
 // After IDLE_MS without any user activity on the front page, HAL wakes up:
 // static noise, the eye, and the inevitable question. Any activity dismisses
-// it. Shows at most once per browser session, never with reduced motion.
+// it, and the idle timer re-arms — so HAL returns every time the visitor
+// goes quiet, for the whole session. Disabled under reduced motion.
 const IDLE_MS = 75_000
-const SEEN_KEY = 'hal-idle-seen'
 
 const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   'pointermove',
@@ -21,13 +21,11 @@ export default function HalIdle() {
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState(0)
 
-  // Arm the idle timer; any activity re-arms it.
+  // Arm the idle timer; any activity re-arms it. Re-runs after each dismissal
+  // (active flips back to false), so HAL can reappear on the next idle spell.
   useEffect(() => {
     if (active) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    try {
-      if (sessionStorage.getItem(SEEN_KEY)) return
-    } catch {}
 
     let timer: ReturnType<typeof setTimeout> | undefined
     const arm = () => {
@@ -37,9 +35,6 @@ export default function HalIdle() {
           arm()
           return
         }
-        try {
-          sessionStorage.setItem(SEEN_KEY, '1')
-        } catch {}
         setActive(true)
       }, IDLE_MS)
     }
