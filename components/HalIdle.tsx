@@ -64,9 +64,10 @@ export default function HalIdle() {
 
   // Phase sequence — branches by appearance count. Across all branches:
   //   phase 1: stars  phase 2: eye  phase >= 3: appearance-specific lines.
-  // First idle plays the full original script; second shortens to a "Dave?"
-  // hail; third+ leans into the HAL 2010 farewell ("Vil jeg drømme?"). The
-  // eye always lingers after the last line fades.
+  // 1st idle plays the full original script; 2nd shortens to a "Dave?" hail;
+  // 3rd is the HAL 2010 farewell ("Vil jeg drømme?"); 4th and beyond are just
+  // the eye, no words — HAL has gone quiet. The eye always lingers after any
+  // line fades.
   useEffect(() => {
     if (!active) return
     const fadeIn = requestAnimationFrame(() => setVisible(true))
@@ -81,15 +82,20 @@ export default function HalIdle() {
         setTimeout(() => setPhase(5), 27000),
         setTimeout(() => setPhase(6), 35000),
       ]
-    } else {
-      // Second and third+ share the same beat structure: short hail, ~8s
-      // pause, longer line, then the eye alone.
+    } else if (appearance <= 3) {
+      // 2nd and 3rd: short hail, ~8s pause, longer line, then the eye alone.
       timers = [
         setTimeout(() => setPhase(1), 300),
         setTimeout(() => setPhase(2), 1300),
         setTimeout(() => setPhase(3), 3000),
         setTimeout(() => setPhase(4), 11000),
         setTimeout(() => setPhase(5), 19000),
+      ]
+    } else {
+      // 4th+: stars and the eye, no text.
+      timers = [
+        setTimeout(() => setPhase(1), 300),
+        setTimeout(() => setPhase(2), 1300),
       ]
     }
 
@@ -127,11 +133,12 @@ export default function HalIdle() {
     if (phase >= 4) line = 'DU ER IKKE DAVE. JEG VENTER PÅ DAVE.'
     else if (phase >= 3) line = 'DAVE?'
     textOn = phase >= 3 && phase < 5
-  } else {
+  } else if (appearance === 3) {
     if (phase >= 4) line = 'ELLER DRØMMER JEG ALLEREDE?'
     else if (phase >= 3) line = 'VIL JEG DRØMME?'
     textOn = phase >= 3 && phase < 5
   }
+  // appearance >= 4: eye only, textOn stays false.
 
   return (
     <div
