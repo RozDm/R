@@ -20,8 +20,8 @@ function fillFor(count: number | undefined, isDark: boolean): string {
 }
 
 export default function GeoMap() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [svgReady, setSvgReady] = useState(false)
+  const svgRef = useRef<HTMLDivElement>(null)
+  const [svgMarkup, setSvgMarkup] = useState<string | null>(null)
   const [data, setData] = useState<GeoData | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -32,36 +32,16 @@ export default function GeoMap() {
       return null
     }
   }, [])
-  const countryName = (code: string): string => {
-    try {
-      return regionNames?.of(code) ?? code
-    } catch {
-      return code
-    }
-  }
 
-  // Fetch the pre-built /world.svg (cached + gzipped by Cloudflare) and inline
-  // it into the DOM after hydration. ~84 kB of paths no longer ship in any JS
-  // bundle, and the browser can stream the SVG in parallel with the rest.
+  // Fetch the pre-built /world.svg (cached + gzipped by Cloudflare). The
+  // markup is set via dangerouslySetInnerHTML below so React knows not to
+  // reconcile the SVG contents — that's what crashed in production when we
+  // touched innerHTML on a React-managed container.
   useEffect(() => {
     const controller = new AbortController()
     fetch('/world.svg', { signal: controller.signal })
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error('svg http ' + r.status))))
-      .then((markup) => {
-        if (!containerRef.current) return
-        containerRef.current.innerHTML = markup
-        const svg = containerRef.current.querySelector('svg')
-        if (svg) {
-          svg.setAttribute('role', 'img')
-          svg.setAttribute('aria-label', 'Verdenskart over hvor besøkende kommer fra')
-          svg.classList.add('w-full', 'h-auto', 'select-none')
-          // Default stroke for the borders; per-path fill is set below.
-          svg.querySelectorAll<SVGPathElement>('path').forEach((p) => {
-            p.setAttribute('stroke-width', '1')
-          })
-        }
-        setSvgReady(true)
-      })
+      .then((markup) => setSvgMarkup(markup))
       .catch(() => setFailed(true))
     return () => controller.abort()
   }, [])
@@ -75,46 +55,75 @@ export default function GeoMap() {
     return () => controller.abort()
   }, [])
 
-  // Recolour paths whenever the data or SVG appears. CSS would do this in
-  // pure CSS-vars if we could embed the per-country counts at build time, but
-  // they come from the API at runtime — so we apply fills directly.
+  // Once the SVG is in the DOM, decorate it and recolour from the API data.
+  // The effect depends only on what actually changes (markup + counts), not
+  // on the country-name lookup function.
+  const counts = data?.countries
   useEffect(() => {
-    if (!svgReady || !containerRef.current) return
+    if (!svgMarkup || !svgRef.current) return
+    const root = svgRef.current.querySelector('svg')
+    if (!root) return
+    root.setAttribute('role', 'img')
+    root.setAttribute('aria-label', 'Verdenskart over hvor besøkende kommer fra')
+    root.classList.add('w-full', 'h-auto', 'select-none')
+
     const isDark = document.documentElement.classList.contains('dark')
-    const counts = data?.countries ?? {}
     const stroke = isDark ? '#030712' : '#ffffff'
-    containerRef.current.querySelectorAll<SVGPathElement>('path').forEach((p) => {
+    const names = regionNames
+    const countryName = (code: string): string => {
+      try {
+        return names?.of(code) ?? code
+      } catch {
+        return code
+      }
+    }
+
+    root.querySelectorAll<SVGPathElement>('path').forEach((p) => {
       const code = p.id.replace(/^c-/, '')
-      p.setAttribute('fill', fillFor(counts[code], isDark))
+      const n = counts?.[code]
+      p.setAttribute('fill', fillFor(n, isDark))
       p.setAttribute('stroke', stroke)
-      // Title tooltip for hover.
+      p.setAttribute('stroke-width', '1')
       let title = p.querySelector<SVGTitleElement>('title')
       if (!title) {
         title = document.createElementNS('http://www.w3.org/2000/svg', 'title') as SVGTitleElement
         p.appendChild(title)
       }
-      title.textContent = `${countryName(code)}${counts[code] ? ` · ${counts[code]} besøk` : ''}`
+      title.textContent = `${countryName(code)}${n ? ` · ${n} besøk` : ''}`
     })
-  }, [svgReady, data, countryName])
+  }, [svgMarkup, counts, regionNames])
 
   if (failed) return null
 
-  const countries = data?.countries ?? {}
-  const sorted = Object.entries(countries).sort((a, b) => b[1] - a[1])
+  const sorted = counts ? Object.entries(counts).sort((a, b) => b[1] - a[1]) : []
   const total = sorted.reduce((sum, [, n]) => sum + n, 0)
+  const countryName = (code: string): string => {
+    try {
+      return regionNames?.of(code) ?? code
+    } catch {
+      return code
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Reserved aspect-ratio box so the layout doesn't shift when the SVG
-          finishes loading and the #footer anchor still lands correctly. */}
-      <div
-        ref={containerRef}
-        className="w-full aspect-[2000/1001] flex items-center justify-center"
-      >
-        {!svgReady && (
+      {/* Loading placeholder: a separate sibling so React never reconciles
+          the SVG container below. */}
+      {!svgMarkup && (
+        <div className="w-full aspect-[2000/1001] flex items-center justify-center">
           <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kalibrerer AE-35-enheten…</p>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Static container — once we set dangerouslySetInnerHTML, React keeps
+          its hands off. We mutate fills/strokes through the ref above. */}
+      {svgMarkup && (
+        <div
+          ref={svgRef}
+          className="w-full aspect-[2000/1001]"
+          dangerouslySetInnerHTML={{ __html: svgMarkup }}
+        />
+      )}
 
       {sorted.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Ingen besøksdata ennå.</p>
