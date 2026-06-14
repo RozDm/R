@@ -56,14 +56,16 @@ export default function Intro() {
       setActive(false)
     }
 
+    // Greeting fades in over 1600ms, so it needs to hold past ~1750ms before
+    // fading out — the later phase-2 gives it room to be seen.
     const timers = [
       setTimeout(() => setPhase(1), 150),
-      setTimeout(() => setPhase(2), 1500),
-      setTimeout(() => setPhase(3), 2300),
-      setTimeout(() => setPhase(4), 2800),
-      setTimeout(() => setPhase(5), 3400),
-      setTimeout(() => setPhase(6), 4800),
-      setTimeout(finish, 5500),
+      setTimeout(() => setPhase(2), 3000),
+      setTimeout(() => setPhase(3), 3500),
+      setTimeout(() => setPhase(4), 4000),
+      setTimeout(() => setPhase(5), 4600),
+      setTimeout(() => setPhase(6), 6000),
+      setTimeout(finish, 6700),
     ]
     return () => timers.forEach(clearTimeout)
   }, [active])
@@ -84,7 +86,7 @@ export default function Intro() {
       {/* Opening greeting card: appears first, fades out before the
           starfield reveal. */}
       <div
-        className="absolute inset-0 flex items-center justify-center transition-opacity duration-[800ms] ease-in-out"
+        className="absolute inset-0 flex items-center justify-center transition-opacity duration-[1600ms] ease-in-out"
         style={{ opacity: phase === 1 ? 1 : 0 }}
       >
         <p className="font-mono text-sm md:text-base tracking-[0.3em] text-gray-500">
@@ -124,7 +126,7 @@ export default function Intro() {
 
       {/* Skip hint */}
       <p
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[11px] tracking-widest text-gray-700 uppercase transition-opacity duration-1000"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[11px] tracking-widest text-gray-700 uppercase transition-opacity duration-[1600ms] ease-in-out"
         style={{ opacity: phase >= 1 && phase < 6 ? 1 : 0 }}
       >
         Klikk for å fortsette
