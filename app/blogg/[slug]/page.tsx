@@ -8,7 +8,8 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ShareRow from '@/components/ShareRow'
 import ViewCounter from '@/components/ViewCounter'
-import { getPostBySlug, getPostSlugs, formatDate } from '@/lib/blog'
+import { getPostBySlug, getPostSlugs, getAdjacentPosts, formatDate } from '@/lib/blog'
+import { tagToSlug } from '@/lib/tags'
 import { SITE_URL, AUTHOR } from '@/lib/site'
 
 interface Props {
@@ -54,6 +55,8 @@ export default async function BlogPost({ params }: Props) {
     notFound()
   }
 
+  const { prev, next } = getAdjacentPosts(slug)
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -73,9 +76,20 @@ export default async function BlogPost({ params }: Props) {
     },
   }
 
+  const breadcrumbs = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Hjem', item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: 'Blogg', item: `${SITE_URL}/blogg/` },
+      { '@type': 'ListItem', position: 3, name: post.title, item: `${SITE_URL}/blogg/${slug}/` },
+    ],
+  }
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
       <Header />
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20">
         <Link
@@ -90,12 +104,13 @@ export default async function BlogPost({ params }: Props) {
             {post.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {post.tags.map((tag) => (
-                  <span
+                  <Link
                     key={tag}
-                    className="text-[11px] px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
+                    href={`/blogg/tag/${tagToSlug(tag)}/`}
+                    className="text-[11px] px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-500/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                   >
                     {tag}
-                  </span>
+                  </Link>
                 ))}
               </div>
             )}
@@ -115,6 +130,35 @@ export default async function BlogPost({ params }: Props) {
           </div>
 
           <ShareRow url={`${SITE_URL}/blogg/${slug}/`} />
+
+          {(prev || next) && (
+            <nav className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 grid gap-4 sm:grid-cols-2">
+              {prev ? (
+                <Link
+                  href={`/blogg/${prev.slug}/`}
+                  className="group rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-red-500/30 dark:hover:border-red-500/20 transition-colors"
+                >
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">&larr; Forrige</span>
+                  <span className="mt-1 block text-sm font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                    {prev.title}
+                  </span>
+                </Link>
+              ) : (
+                <span />
+              )}
+              {next && (
+                <Link
+                  href={`/blogg/${next.slug}/`}
+                  className="group rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-right hover:border-red-500/30 dark:hover:border-red-500/20 transition-colors sm:col-start-2"
+                >
+                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">Neste &rarr;</span>
+                  <span className="mt-1 block text-sm font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                    {next.title}
+                  </span>
+                </Link>
+              )}
+            </nav>
+          )}
         </article>
       </main>
       <Footer />

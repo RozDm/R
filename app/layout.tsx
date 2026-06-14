@@ -79,6 +79,15 @@ export default function RootLayout({
     sameAs: AUTHOR.sameAs,
   }
 
+  const webSiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: AUTHOR.name,
+    url: SITE_URL,
+    inLanguage: 'nb-NO',
+    author: { '@type': 'Person', name: AUTHOR.name },
+  }
+
   return (
     <html lang="nb" className={intelOneMono.variable} suppressHydrationWarning>
       <head>
@@ -95,6 +104,10 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
         />
         <script
           dangerouslySetInnerHTML={{
