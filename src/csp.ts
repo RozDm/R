@@ -10,13 +10,20 @@
 // fallback policy keeps 'unsafe-inline' as a safety net so the site never
 // breaks.
 
+// Turnstile lives at challenges.cloudflare.com — its script needs script-src,
+// its iframe needs frame-src, the widget calls home over connect-src. We add
+// these to every CSP unconditionally: the worker can't tell which HTML route
+// renders the contact form, and the extra origin is harmless elsewhere.
+const TURNSTILE_HOST = 'https://challenges.cloudflare.com'
+
 export const ENFORCED_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
-  "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
+  `connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
+  `frame-src ${TURNSTILE_HOST}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -27,11 +34,12 @@ export const ENFORCED_CSP = [
 export function strictCsp(hashes: string[]): string {
   return [
     "default-src 'self'",
-    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com`,
+    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self' data:",
-    "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
+    `connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
+    `frame-src ${TURNSTILE_HOST}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

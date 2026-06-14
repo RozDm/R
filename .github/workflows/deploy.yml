@@ -26,7 +26,12 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
+      - name: Build
+        env:
+          # Public Turnstile site key inlined into the bundle at build time;
+          # empty string keeps the widget off, matching the worker gate.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+        run: npm run build
 
       - uses: cloudflare/wrangler-action@v3
         with:
