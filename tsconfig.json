@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -11,7 +15,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -19,13 +23,26 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   // src + worker-configuration.d.ts use the Workers runtime types, which clash
   // with lib.dom — they are type-checked separately via tsconfig.worker.json.
   // src/csp.ts and src/status.ts are still checked here transitively (tests
   // import them); only DOM-compatible web APIs are allowed in those two files.
-  "exclude": ["node_modules", "src", "worker-configuration.d.ts", "out"]
+  "exclude": [
+    "node_modules",
+    "src",
+    "worker-configuration.d.ts",
+    "out"
+  ]
 }
