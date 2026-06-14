@@ -21,6 +21,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // Classic post-hydration sync: the inline <head> script set the dark
+    // class before paint; we read the truth back into React state once we
+    // know we're in the browser. set-state-in-effect is the right pattern
+    // here — there's no alternative way to learn the initial value.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
     setThemeState(
       document.documentElement.classList.contains('dark') ? 'dark' : 'light',
