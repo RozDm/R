@@ -123,3 +123,72 @@ html.intro-active::before {
 .hal-jitter {
   animation: hal-jitter 0.4s steps(2, end) infinite;
 }
+
+/* Syntax highlighting (rehype-highlight / highlight.js token classes).
+   Light by default, dark under .dark. Palette tuned to the site's reds
+   and grays rather than a stock theme. */
+.hljs {
+  color: #1e293b;
+  background: transparent;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #94a3b8;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-built_in,
+.hljs-name {
+  color: #b91c1c;
+}
+.hljs-string,
+.hljs-meta-string,
+.hljs-regexp {
+  color: #047857;
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-attr,
+.hljs-attribute {
+  color: #b45309;
+}
+.hljs-title,
+.hljs-section,
+.hljs-function .hljs-title,
+.hljs-type {
+  color: #1d4ed8;
+}
+.hljs-variable,
+.hljs-template-variable,
+.hljs-meta {
+  color: #7c3aed;
+}
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
+
+.dark .hljs { color: #e2e8f0; }
+.dark .hljs-comment,
+.dark .hljs-quote { color: #64748b; }
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-literal,
+.dark .hljs-built_in,
+.dark .hljs-name { color: #f87171; }
+.dark .hljs-string,
+.dark .hljs-meta-string,
+.dark .hljs-regexp { color: #34d399; }
+.dark .hljs-number,
+.dark .hljs-symbol,
+.dark .hljs-bullet,
+.dark .hljs-attr,
+.dark .hljs-attribute { color: #fbbf24; }
+.dark .hljs-title,
+.dark .hljs-section,
+.dark .hljs-function .hljs-title,
+.dark .hljs-type { color: #60a5fa; }
+.dark .hljs-variable,
+.dark .hljs-template-variable,
+.dark .hljs-meta { color: #c4b5fd; }
