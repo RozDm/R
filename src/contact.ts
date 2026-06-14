@@ -14,12 +14,16 @@ export interface ContactPayload {
   message: string
 }
 
+export interface ContactInput extends ContactPayload {
+  turnstileToken: string | null
+}
+
 // Loose but practical: something@something.tld, no spaces.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-export function validateContact(input: unknown): ContactPayload | null {
+export function validateContact(input: unknown): ContactInput | null {
   if (typeof input !== 'object' || input === null) return null
-  const { name, email, message } = input as Record<string, unknown>
+  const { name, email, message, turnstileToken } = input as Record<string, unknown>
   if (typeof name !== 'string' || typeof email !== 'string' || typeof message !== 'string') return null
   const n = name.trim()
   const e = email.trim()
@@ -27,7 +31,31 @@ export function validateContact(input: unknown): ContactPayload | null {
   if (!n || n.length > CONTACT_LIMITS.name) return null
   if (!EMAIL_RE.test(e) || e.length > CONTACT_LIMITS.email) return null
   if (m.length < CONTACT_LIMITS.messageMin || m.length > CONTACT_LIMITS.message) return null
-  return { name: n, email: e, message: m }
+  return {
+    name: n,
+    email: e,
+    message: m,
+    turnstileToken: typeof turnstileToken === 'string' && turnstileToken.length > 0 ? turnstileToken : null,
+  }
+}
+
+// Cloudflare Turnstile siteverify. Returns true on a valid token, false
+// otherwise (or on transport failure — fail closed). The `remoteip` is the
+// visitor's IP for the audit trail.
+export async function verifyTurnstile(token: string, secret: string, remoteip?: string): Promise<boolean> {
+  const body = new URLSearchParams({ secret, response: token })
+  if (remoteip) body.set('remoteip', remoteip)
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body,
+    })
+    if (!res.ok) return false
+    const data = (await res.json()) as { success?: boolean }
+    return data.success === true
+  } catch {
+    return false
+  }
 }
 
 function base64Utf8(text: string): string {
