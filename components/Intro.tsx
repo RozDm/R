@@ -36,6 +36,10 @@ export default function Intro() {
       return
     }
 
+    // The intro is gated by sessionStorage that's only readable on the
+    // client, so the mount-time check is the only honest place to flip
+    // state — set-state-in-effect lint is informational here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStars(makeStars(200))
     setActive(true)
   }, [])

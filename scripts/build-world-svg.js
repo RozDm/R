@@ -1,8 +1,10 @@
 // Generates public/world.svg from world-map-country-shapes at build time so
 // the runtime doesn't have to ship 85 kB of JSON to draw the map. Re-run when
 // the package version bumps:  node scripts/build-world-svg.js
-const fs = require('node:fs')
-const shapes = require('world-map-country-shapes').default || require('world-map-country-shapes')
+import fs from 'node:fs'
+import shapesPkg from 'world-map-country-shapes'
+
+const shapes = shapesPkg.default ?? shapesPkg
 
 const paths = shapes
   .map((c) => `<path id="c-${c.id}" d="${c.shape}"/>`)
