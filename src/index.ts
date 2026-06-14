@@ -11,7 +11,7 @@
 import { ENFORCED_CSP, HSTS, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, STATUS_KEY, buildStatusData } from './status'
 import { countriesFromRows, isCountableCountry, isHumanNavigation, isValidSlug, looksLikeBot } from './metrics'
-import { buildContactMime, validateContact } from './contact'
+import { buildContactMime, validateContact, verifyTurnstile } from './contact'
 import { EmailMessage } from 'cloudflare:email'
 
 const CONTACT_FROM = 'contact@rozsoshnykh.no'
@@ -183,6 +183,18 @@ export default {
       if (!payload) return apiJson('{"error":"invalid"}', 422)
 
       const ip = request.headers.get('cf-connecting-ip') ?? 'unknown'
+
+      // Turnstile is wired in but only enforced when the secret is set, so
+      // pushing the code never breaks the form on its own — the dashboard
+      // setup activates it.
+      if (env.TURNSTILE_SECRET) {
+        if (!payload.turnstileToken) {
+          return apiJson('{"error":"challenge required"}', 403)
+        }
+        const ok = await verifyTurnstile(payload.turnstileToken, env.TURNSTILE_SECRET, ip)
+        if (!ok) return apiJson('{"error":"challenge failed"}', 403)
+      }
+
       const recent = await env.METRICS.prepare(
         "SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > datetime('now', '-10 minutes')",
       )

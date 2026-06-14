@@ -5,7 +5,16 @@ const valid = { name: 'Ola Nordmann', email: 'ola@example.no', message: 'Hei! De
 
 describe('validateContact', () => {
   it('accepts a normal payload and trims fields', () => {
-    expect(validateContact({ ...valid, name: '  Ola Nordmann  ' })).toEqual(valid)
+    expect(validateContact({ ...valid, name: '  Ola Nordmann  ' })).toEqual({ ...valid, turnstileToken: null })
+  })
+
+  it('keeps a Turnstile token when present', () => {
+    expect(validateContact({ ...valid, turnstileToken: 'tk' })).toEqual({ ...valid, turnstileToken: 'tk' })
+  })
+
+  it('treats empty/non-string tokens as missing', () => {
+    expect(validateContact({ ...valid, turnstileToken: '' })?.turnstileToken).toBeNull()
+    expect(validateContact({ ...valid, turnstileToken: 42 })?.turnstileToken).toBeNull()
   })
 
   it('rejects missing/short/long fields', () => {

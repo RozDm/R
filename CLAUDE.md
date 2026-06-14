@@ -21,8 +21,15 @@ Norwegian (nb-NO); code and comments are English.
   - `metrics.ts` — pure logic for view/geo counters.
 - KV namespace `STATUS` holds only the uptime snapshot (`status` key).
 - D1 database `rozsoshnykh-metrics` (binding `METRICS`, schema in
-  `schema/metrics.sql`): `views(slug, count)` and `geo(country, count)`;
-  increments are atomic `INSERT … ON CONFLICT … count = count + 1`.
+  `schema/metrics.sql`): `views(slug, count)`, `geo(country, count)`, and
+  `contact(id, at, ip, name, email, message)`. Counters use atomic
+  `INSERT … ON CONFLICT … count = count + 1`.
+- Contact form has Turnstile wired in but feature-gated by env: the widget
+  renders only when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set at build time,
+  and the worker enforces verification only when `TURNSTILE_SECRET` is set
+  (`wrangler secret put TURNSTILE_SECRET`). Both halves must be on for the
+  challenge to apply; either side empty keeps the form working with the
+  pre-existing defences (Sec-Fetch, UA filter, honeypot, D1 rate limit).
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count),
   `/api/geo`. Geo is recorded on the edge from `request.cf.country` for
   human-looking navigations (`Sec-Fetch-Mode: navigate` + non-bot UA).

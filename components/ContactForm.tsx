@@ -1,8 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import Turnstile from './Turnstile'
 
-type FormState = 'idle' | 'sending' | 'sent' | 'error' | 'ratelimited'
+type FormState = 'idle' | 'sending' | 'sent' | 'error' | 'ratelimited' | 'challenge'
+
+// Set at build time from CF Turnstile (Site Key). Empty -> widget is not
+// rendered and the worker also leaves the check off when its secret is
+// unset, so deploys stay safe without keys configured.
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900/50 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500/50 focus:outline-none transition-colors'
@@ -20,9 +26,16 @@ const clearValidity = (e: React.FormEvent<Field>) => {
 
 export default function ContactForm() {
   const [state, setState] = useState<FormState>('idle')
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+
+  const onToken = useCallback((token: string | null) => setTurnstileToken(token), [])
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (SITE_KEY && !turnstileToken) {
+      setState('challenge')
+      return
+    }
     const form = e.currentTarget
     const data = Object.fromEntries(new FormData(form).entries())
     setState('sending')
@@ -30,13 +43,14 @@ export default function ContactForm() {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, turnstileToken }),
       })
       if (res.ok) {
         form.reset()
+        setTurnstileToken(null)
         setState('sent')
       } else {
-        setState(res.status === 429 ? 'ratelimited' : 'error')
+        setState(res.status === 429 ? 'ratelimited' : res.status === 403 ? 'challenge' : 'error')
       }
     } catch {
       setState('error')
@@ -54,15 +68,18 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4 max-w-xl">
-      {/* Honeypot: hidden from humans, irresistible to bots. */}
-      <input
-        type="text"
-        name="website"
-        tabIndex={-1}
-        autoComplete="off"
+      {/* Honeypot: off-screen rather than display:none, since modern bots
+          increasingly skip display:none. Hidden from assistive tech via
+          aria-hidden and tabIndex={-1}. */}
+      <div
         aria-hidden
-        className="hidden"
-      />
+        style={{ position: 'absolute', left: '-9999px', top: 'auto', width: 1, height: 1, overflow: 'hidden' }}
+      >
+        <label>
+          Website
+          <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+        </label>
+      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-gray-900 dark:text-white">Navn</span>
@@ -105,6 +122,8 @@ export default function ContactForm() {
         />
       </label>
 
+      {SITE_KEY && <Turnstile siteKey={SITE_KEY} onToken={onToken} />}
+
       <div className="flex items-center gap-4">
         <button
           type="submit"
@@ -121,6 +140,11 @@ export default function ContactForm() {
         {state === 'ratelimited' && (
           <p className="text-sm text-red-500 dark:text-red-400" role="alert">
             For mange meldinger på kort tid — prøv igjen om noen minutter.
+          </p>
+        )}
+        {state === 'challenge' && (
+          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+            Bekreft at du ikke er en bot, så prøv igjen.
           </p>
         )}
       </div>
