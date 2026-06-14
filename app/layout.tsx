@@ -98,7 +98,7 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(location.pathname==='/'&&!sessionStorage.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},6500)}}catch(e){}})()`,
+            __html: `(function(){try{if(location.pathname==='/'&&!sessionStorage.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
           }}
         />
         <script
