@@ -102,6 +102,7 @@ check "robots.txt"  "$BASE/robots.txt"       200 "Sitemap: $BASE/sitemap.xml"
 check "sitemap"     "$BASE/sitemap.xml"      200 "<loc>$BASE/blogg/"
 check "rss"         "$BASE/feed.xml"         200 "<rss"
 check "og-image"    "$BASE/opengraph-image"  200
+check "world-svg"   "$BASE/world.svg"        200 "<svg"
 
 echo "== Canonical host =="
 check_redirect "www"         "https://www.rozsoshnykh.no/"        "$BASE/"
