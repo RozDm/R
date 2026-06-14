@@ -179,3 +179,15 @@ export function normalizeTags(tags: unknown): string[] {
   }
   return result
 }
+
+/**
+ * URL-safe slug for a tag, used in /blogg/tag/<slug>.
+ * «CI/CD» → «ci-cd», «Node.js» → «node-js», «C++» → «c». Lossy, so always
+ * resolve back by comparing slugs of known tags rather than reversing.
+ */
+export function tagToSlug(tag: string): string {
+  return tag
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}

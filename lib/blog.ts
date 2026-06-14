@@ -39,6 +39,29 @@ export function getAllPosts(): PostMeta[] {
     .sort((a, b) => (a.date < b.date ? 1 : -1))
 }
 
+// All distinct tags across posts, sorted, for static tag pages.
+export function getAllTags(): string[] {
+  return Array.from(new Set(getAllPosts().flatMap((p) => p.tags))).sort((a, b) =>
+    a.localeCompare(b, 'nb-NO'),
+  )
+}
+
+export function getPostsByTag(tag: string): PostMeta[] {
+  const key = tag.toLowerCase()
+  return getAllPosts().filter((p) => p.tags.some((t) => t.toLowerCase() === key))
+}
+
+// Posts are sorted newest-first; "previous" is older, "next" is newer.
+export function getAdjacentPosts(slug: string): { prev: PostMeta | null; next: PostMeta | null } {
+  const posts = getAllPosts()
+  const i = posts.findIndex((p) => p.slug === slug)
+  if (i === -1) return { prev: null, next: null }
+  return {
+    prev: posts[i + 1] ?? null,
+    next: posts[i - 1] ?? null,
+  }
+}
+
 export function formatDate(date: string): string {
   if (!date) return ''
   return new Intl.DateTimeFormat('nb-NO', { dateStyle: 'long' }).format(new Date(date))
