@@ -17,9 +17,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     return d > acc ? d : acc
   }, LAUNCH_DATE)
 
+  // /kontakt is intentionally excluded — it's noindex, and a sitemap must
+  // not list URLs we tell crawlers not to index (contradictory signal).
   return [
     { url: `${SITE_URL}/`, lastModified: LAUNCH_DATE },
-    { url: `${SITE_URL}/kontakt/`, lastModified: LAUNCH_DATE },
     { url: `${SITE_URL}/blogg/`, lastModified: latestPostDate },
     ...posts.map((post) => ({
       url: `${SITE_URL}/blogg/${post.slug}/`,
