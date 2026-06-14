@@ -134,8 +134,7 @@ export default function HalIdle() {
     else if (phase >= 3) line = 'DAVE?'
     textOn = phase >= 3 && phase < 5
   } else if (appearance === 3) {
-    if (phase >= 4) line = 'ELLER DRØMMER JEG ALLEREDE?'
-    else if (phase >= 3) line = 'VIL JEG DRØMME?'
+    if (phase >= 3) line = 'VIL JEG DRØMME?'
     textOn = phase >= 3 && phase < 5
   }
   // appearance >= 4: eye only, textOn stays false.
@@ -166,13 +165,13 @@ export default function HalIdle() {
         </div>
 
         <p
-          className="hal-jitter font-mono text-xs md:text-base tracking-[0.25em] text-red-500/90 h-6 px-4 text-center transition-opacity duration-700"
+          className="hal-jitter font-mono text-xs md:text-base tracking-[0.25em] text-red-500/90 h-6 px-4 text-center transition-opacity duration-[1600ms] ease-in-out"
           style={{ opacity: textOn ? 1 : 0 }}
         >
           {line}
         </p>
 
-        <p className="absolute bottom-8 text-[11px] tracking-widest text-gray-700 uppercase">
+        <p className="hal-flicker absolute bottom-8 text-[11px] tracking-widest text-gray-700 uppercase">
           Beveg musen for å fortsette
         </p>
       </div>
