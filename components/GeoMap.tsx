@@ -1,11 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-
-interface CountryShape {
-  id: string
-  shape: string
-}
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 interface GeoData {
   countries: Record<string, number>
@@ -17,20 +12,19 @@ function flag(code: string): string {
 }
 
 // Intensity buckets keep the map readable regardless of absolute numbers.
-function fillFor(count: number | undefined): string {
-  if (!count) return 'fill-gray-200 dark:fill-gray-800'
-  if (count < 3) return 'fill-red-500/30'
-  if (count < 10) return 'fill-red-500/55'
-  return 'fill-red-500/80'
+function fillFor(count: number | undefined, isDark: boolean): string {
+  if (!count) return isDark ? '#1f2937' : '#e5e7eb' // gray-800 / gray-200
+  if (count < 3) return 'rgba(239, 68, 68, 0.30)'
+  if (count < 10) return 'rgba(239, 68, 68, 0.55)'
+  return 'rgba(239, 68, 68, 0.80)'
 }
 
 export default function GeoMap() {
-  const [shapes, setShapes] = useState<CountryShape[] | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [svgReady, setSvgReady] = useState(false)
   const [data, setData] = useState<GeoData | null>(null)
   const [failed, setFailed] = useState(false)
 
-  // Full Norwegian country names from the ISO code, built into the browser —
-  // no dependency, falls back to the code itself if the API is missing.
   const regionNames = useMemo(() => {
     try {
       return new Intl.DisplayNames(['nb'], { type: 'region' })
@@ -46,20 +40,30 @@ export default function GeoMap() {
     }
   }
 
-  // The map paths are ~85 kB — load them lazily after hydration so they
-  // never weigh down the first paint of the front page.
+  // Fetch the pre-built /world.svg (cached + gzipped by Cloudflare) and inline
+  // it into the DOM after hydration. ~84 kB of paths no longer ship in any JS
+  // bundle, and the browser can stream the SVG in parallel with the rest.
   useEffect(() => {
-    let cancelled = false
-    import('world-map-country-shapes')
-      .then((m) => {
-        if (!cancelled) setShapes((m.default ?? m) as unknown as CountryShape[])
+    const controller = new AbortController()
+    fetch('/world.svg', { signal: controller.signal })
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error('svg http ' + r.status))))
+      .then((markup) => {
+        if (!containerRef.current) return
+        containerRef.current.innerHTML = markup
+        const svg = containerRef.current.querySelector('svg')
+        if (svg) {
+          svg.setAttribute('role', 'img')
+          svg.setAttribute('aria-label', 'Verdenskart over hvor besøkende kommer fra')
+          svg.classList.add('w-full', 'h-auto', 'select-none')
+          // Default stroke for the borders; per-path fill is set below.
+          svg.querySelectorAll<SVGPathElement>('path').forEach((p) => {
+            p.setAttribute('stroke-width', '1')
+          })
+        }
+        setSvgReady(true)
       })
-      .catch(() => {
-        if (!cancelled) setFailed(true)
-      })
-    return () => {
-      cancelled = true
-    }
+      .catch(() => setFailed(true))
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -71,22 +75,29 @@ export default function GeoMap() {
     return () => controller.abort()
   }, [])
 
+  // Recolour paths whenever the data or SVG appears. CSS would do this in
+  // pure CSS-vars if we could embed the per-country counts at build time, but
+  // they come from the API at runtime — so we apply fills directly.
+  useEffect(() => {
+    if (!svgReady || !containerRef.current) return
+    const isDark = document.documentElement.classList.contains('dark')
+    const counts = data?.countries ?? {}
+    const stroke = isDark ? '#030712' : '#ffffff'
+    containerRef.current.querySelectorAll<SVGPathElement>('path').forEach((p) => {
+      const code = p.id.replace(/^c-/, '')
+      p.setAttribute('fill', fillFor(counts[code], isDark))
+      p.setAttribute('stroke', stroke)
+      // Title tooltip for hover.
+      let title = p.querySelector<SVGTitleElement>('title')
+      if (!title) {
+        title = document.createElementNS('http://www.w3.org/2000/svg', 'title') as SVGTitleElement
+        p.appendChild(title)
+      }
+      title.textContent = `${countryName(code)}${counts[code] ? ` · ${counts[code]} besøk` : ''}`
+    })
+  }, [svgReady, data, countryName])
+
   if (failed) return null
-  // Reserve the final footprint while the 85 kB of map paths load: the SVG
-  // is 2000x1001, the legend line below is ~28px. Keeps the #footer anchor
-  // from shifting when the chunk arrives.
-  if (!shapes) {
-    return (
-      <div className="flex flex-col gap-5">
-        <div className="w-full aspect-[2000/1001] flex items-center justify-center">
-          <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kalibrerer AE-35-enheten…</p>
-        </div>
-        <p className="text-xs font-mono text-transparent select-none" aria-hidden>
-          —
-        </p>
-      </div>
-    )
-  }
 
   const countries = data?.countries ?? {}
   const sorted = Object.entries(countries).sort((a, b) => b[1] - a[1])
@@ -94,23 +105,16 @@ export default function GeoMap() {
 
   return (
     <div className="flex flex-col gap-5">
-      <svg
-        viewBox="0 0 2000 1001"
-        role="img"
-        aria-label="Verdenskart over hvor besøkende kommer fra"
-        className="w-full h-auto select-none"
+      {/* Reserved aspect-ratio box so the layout doesn't shift when the SVG
+          finishes loading and the #footer anchor still lands correctly. */}
+      <div
+        ref={containerRef}
+        className="w-full aspect-[2000/1001] flex items-center justify-center"
       >
-        {shapes.map((c) => (
-          <path
-            key={c.id}
-            d={c.shape}
-            className={`${fillFor(countries[c.id])} stroke-white dark:stroke-gray-950 transition-colors duration-500`}
-            strokeWidth="1"
-          >
-            <title>{`${countryName(c.id)}${countries[c.id] ? ` · ${countries[c.id]} besøk` : ''}`}</title>
-          </path>
-        ))}
-      </svg>
+        {!svgReady && (
+          <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kalibrerer AE-35-enheten…</p>
+        )}
+      </div>
 
       {sorted.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Ingen besøksdata ennå.</p>
