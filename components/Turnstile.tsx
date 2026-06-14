@@ -3,9 +3,10 @@
 import { useEffect, useRef } from 'react'
 
 // Minimal Turnstile widget wrapper. Lazy-loads the Cloudflare script on mount,
-// renders into our div, and surfaces the token via onToken. We use 'managed'
-// appearance so most humans never see a checkbox; only suspect requests get
-// a challenge.
+// renders into our div, and surfaces the token via onToken. We use 'always'
+// appearance so the widget renders openly — silent modes trip strict
+// Tracking Prevention in Edge/Brave with noisy console warnings even though
+// the challenge itself still works.
 
 interface TurnstileGlobal {
   render: (
@@ -69,7 +70,7 @@ export default function Turnstile({
         widgetIdRef.current = window.turnstile.render(ref.current, {
           sitekey: siteKey,
           theme: 'auto',
-          appearance: 'interaction-only',
+          appearance: 'always',
           callback: (token) => onToken(token),
           'error-callback': () => {
             onToken(null)
