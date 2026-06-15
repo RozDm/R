@@ -21,3 +21,4 @@ CREATE TABLE IF NOT EXISTS contact (
   message TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS contact_ip_at ON contact (ip, at);
+CREATE INDEX IF NOT EXISTS contact_email_at ON contact (email, at);

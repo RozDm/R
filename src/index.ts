@@ -16,8 +16,13 @@ import { EmailMessage } from 'cloudflare:email'
 
 const CONTACT_FROM = 'contact@rozsoshnykh.no'
 const CONTACT_TO = 'd.rossoshnyh@gmail.com'
-// Max submissions per IP per 10 minutes.
-const CONTACT_RATE_LIMIT = 3
+// Max submissions per IP in a 10-minute window — covers casual abuse from a
+// single network.
+const CONTACT_IP_LIMIT = 3
+// Max submissions per e-mail address in a 1-hour window — spammers typically
+// reuse the same throwaway address while rotating IPs, so this catches what
+// the IP gate misses.
+const CONTACT_EMAIL_LIMIT = 2
 
 function apiJson(body: string, status = 200): Response {
   const response = new Response(body, {
@@ -195,13 +200,24 @@ export default {
         if (!ok) return apiJson('{"error":"challenge failed"}', 403)
       }
 
-      const recent = await env.METRICS.prepare(
-        "SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > datetime('now', '-10 minutes')",
-      )
-        .bind(ip)
-        .first<{ n: number }>()
-        .catch(() => null)
-      if ((recent?.n ?? 0) >= CONTACT_RATE_LIMIT) {
+      const [recentByIp, recentByEmail] = await Promise.all([
+        env.METRICS.prepare(
+          "SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > datetime('now', '-10 minutes')",
+        )
+          .bind(ip)
+          .first<{ n: number }>()
+          .catch(() => null),
+        env.METRICS.prepare(
+          "SELECT COUNT(*) AS n FROM contact WHERE email = ?1 AND at > datetime('now', '-1 hour')",
+        )
+          .bind(payload.email)
+          .first<{ n: number }>()
+          .catch(() => null),
+      ])
+      if ((recentByIp?.n ?? 0) >= CONTACT_IP_LIMIT) {
+        return apiJson('{"error":"rate limited"}', 429)
+      }
+      if ((recentByEmail?.n ?? 0) >= CONTACT_EMAIL_LIMIT) {
         return apiJson('{"error":"rate limited"}', 429)
       }
 
