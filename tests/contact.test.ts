@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { buildContactMime, encodeMimeHeader, validateContact } from '@/src/contact'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { buildContactMime, encodeMimeHeader, validateContact, verifyTurnstile } from '@/src/contact'
 
 const valid = { name: 'Ola Nordmann', email: 'ola@example.no', message: 'Hei! Dette er en testmelding.' }
 
@@ -71,5 +71,44 @@ describe('buildContactMime', () => {
     for (const line of body.split('\r\n')) {
       expect(line.length).toBeLessThanOrEqual(76)
     }
+  })
+})
+
+describe('verifyTurnstile', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('returns true when siteverify reports success', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ success: true }), { status: 200 })))
+    expect(await verifyTurnstile('tok', 'secret', '1.2.3.4')).toBe(true)
+  })
+
+  it('returns false when siteverify reports failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ success: false }), { status: 200 })))
+    expect(await verifyTurnstile('tok', 'secret')).toBe(false)
+  })
+
+  it('fails closed on a non-200 response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })))
+    expect(await verifyTurnstile('tok', 'secret')).toBe(false)
+  })
+
+  it('fails closed when fetch throws', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network') }))
+    expect(await verifyTurnstile('tok', 'secret')).toBe(false)
+  })
+
+  it('passes the token and remoteip to siteverify', async () => {
+    let captured: URLSearchParams | undefined
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        captured = init?.body as URLSearchParams
+        return new Response(JSON.stringify({ success: true }), { status: 200 })
+      }),
+    )
+    await verifyTurnstile('the-token', 'the-secret', '9.9.9.9')
+    expect(captured?.get('response')).toBe('the-token')
+    expect(captured?.get('secret')).toBe('the-secret')
+    expect(captured?.get('remoteip')).toBe('9.9.9.9')
   })
 })
