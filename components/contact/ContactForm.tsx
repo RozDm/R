@@ -62,6 +62,12 @@ export default function ContactForm() {
       <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-6" role="status">
         <p className="font-medium text-gray-900 dark:text-white">Takk! Meldingen er sendt.</p>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Jeg svarer som regel innen en dag eller to.</p>
+        <button
+          onClick={() => setState('idle')}
+          className="mt-4 text-sm font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+        >
+          Send en til &rarr;
+        </button>
       </div>
     )
   }

@@ -1,4 +1,5 @@
-import { getAllPosts } from '@/lib/blog'
+import { getPostSlugs, getPostBySlug } from '@/lib/blog'
+import { markdownToHtml } from '@/lib/markdown'
 import { SITE_URL, AUTHOR } from '@/lib/site'
 
 export const dynamic = 'force-static'
@@ -13,29 +14,35 @@ function escapeXml(s: string): string {
 }
 
 export async function GET() {
-  const posts = getAllPosts()
-  const items = posts
-    .map((post) => {
+  const posts = getPostSlugs()
+    .map((slug) => getPostBySlug(slug))
+    .filter((p) => p.date)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+
+  const items = await Promise.all(
+    posts.map(async (post) => {
       const url = `${SITE_URL}/blogg/${post.slug}/`
-      const pubDate = post.date ? `\n      <pubDate>${new Date(post.date).toUTCString()}</pubDate>` : ''
+      const html = await markdownToHtml(post.content)
       return `    <item>
       <title>${escapeXml(post.title)}</title>
       <link>${url}</link>
-      <guid isPermaLink="true">${url}</guid>${pubDate}
+      <guid isPermaLink="true">${url}</guid>
+      <pubDate>${new Date(post.date).toUTCString()}</pubDate>
       <description>${escapeXml(post.description)}</description>
+      <content:encoded><![CDATA[${html}]]></content:encoded>
     </item>`
-    })
-    .join('\n')
+    }),
+  )
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>${escapeXml(AUTHOR.name)} – Blogg</title>
     <link>${SITE_URL}/blogg/</link>
     <atom:link href="${SITE_URL}/feed.xml" rel="self" type="application/rss+xml"/>
     <description>Artikler om systemadministrasjon, DevOps, infrastruktur, automatisering og sikkerhet.</description>
     <language>nb-NO</language>
-${items}
+${items.join('\n')}
   </channel>
 </rss>
 `
