@@ -1,13 +1,18 @@
 # CLAUDE.md
 
 Personal portfolio + blog for Dmytro Rozsoshnykh, live at https://rozsoshnykh.no.
-Next.js 15 static export served by a Cloudflare Worker. All site copy is
-Norwegian (nb-NO); code and comments are English.
+Next.js 16 static export (App Router, `output: 'export'`) served by a Cloudflare
+Worker. React 19, TypeScript 6, Tailwind v4. All site copy is Norwegian (nb-NO);
+code and comments are English.
 
 ## Architecture
 
 - `app/`, `components/` — Next App Router, `output: 'export'`, `trailingSlash: true`,
   Tailwind v4 (no config file, `@theme` in `app/globals.css`).
+- Routes: `/` (Hero/Skills/Certifications/Status/Visitors sections), `/blogg`,
+  `/blogg/[slug]`, `/blogg/tag/[slug]`, `/kontakt`, plus `feed.xml`, `sitemap`,
+  `robots`, `manifest`, OG images. `error.tsx`/`global-error.tsx` are the
+  client error boundaries (HAL-voiced "Systemfeil").
 - `src/` — Cloudflare Worker, runs in front of the static export
   (`run_worker_first`):
   - `index.ts` — routing: HTTPS + canonical-host 301s (www/workers.dev → apex),
@@ -30,9 +35,19 @@ Norwegian (nb-NO); code and comments are English.
   (`wrangler secret put TURNSTILE_SECRET`). Both halves must be on for the
   challenge to apply; either side empty keeps the form working with the
   pre-existing defences (Sec-Fetch, UA filter, honeypot, D1 rate limit).
-- Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count),
-  `/api/geo`. Geo is recorded on the edge from `request.cf.country` for
-  human-looking navigations (`Sec-Fetch-Mode: navigate` + non-bot UA).
+- Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count —
+  same-origin + non-bot only), `/api/geo`, `/api/contact` (POST). Geo is
+  recorded on the edge from `request.cf.country` for human-looking
+  navigations (`Sec-Fetch-Mode: navigate` + non-bot UA).
+- The visitor world map is a build-time artifact: `scripts/build-world-svg.mjs`
+  (run by `prebuild`) emits `public/world.svg` from `world-map-country-shapes`
+  (a devDependency). `GeoMap` fetches that SVG and injects it via
+  `dangerouslySetInnerHTML` — never touch a React-managed node's innerHTML by
+  ref, that crashed prod once.
+- `TURNSTILE_SECRET` is a runtime Worker secret (not in wrangler.jsonc), typed
+  via `src/env.d.ts`; the deploy workflow pushes it with `wrangler secret put`
+  from a GitHub secret. `TURNSTILE_SITE_KEY` is a GitHub secret inlined into
+  the build as `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
 - TypeScript is split: app uses `tsconfig.json` (lib.dom), worker uses
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
   `wrangler.jsonc` change run `npm run cf-typegen` and commit the result.
@@ -56,17 +71,23 @@ Norwegian (nb-NO); code and comments are English.
   staggered `animate-fade-in` delays (0/150/300/450/600ms).
 - Accent is red-500/red-400; font is Intel One Mono via CSS variable.
 - 2001: A Space Odyssey theme is deliberate and load-bearing: intro
-  (`HEI %USERNAME%` → stars → monolith → HAL eye), 404, `HalIdle` screensaver
-  (idle 75s on the front page), loader copy («Åpner podbay-dørene…»,
-  «Kalibrerer AE-35-enheten…»), console greeting, `HISTORY_LIMIT = 149`.
-  Keep the `%USERNAME%` placeholder joke literal — it is not a template var.
+  (`HEI %USERNAME%` → stars → monolith → HAL eye), 404, `error.tsx`,
+  `HalIdle` screensaver (idle 75s on the front page; recurring, script
+  shortens each appearance, cinematic CRT line reveal via `.hal-text-reveal`),
+  loader copy («Åpner podbay-dørene…», «Kalibrerer AE-35-enheten…»), console
+  greeting, `HISTORY_LIMIT = 149`. Keep the `%USERNAME%` placeholder joke
+  literal — it is not a template var.
 - Blog posts: `content/blog/<slug>.md`, frontmatter `title`, `description`,
   `date` (ISO), `tags`. Tags are normalized/deduped via `lib/tags.ts`
-  (aliases → canonical names). Reading time is computed, not stored.
+  (aliases → canonical names, `tagToSlug` for URLs). Reading time is computed,
+  not stored. Code blocks are highlighted at build via `rehype-highlight`
+  (theme in `app/globals.css`).
 - SEO: canonicals + trailing slash everywhere, OG images via `next/og`,
-  JSON-LD (Person sitewide, BlogPosting + image per post), RSS at `/feed.xml`.
-  `robots.index: false` in `app/layout.tsx` until launch — flip it only when
-  asked, then submit the sitemap in Search Console.
+  JSON-LD (Person + WebSite sitewide, BlogPosting + image + BreadcrumbList per
+  post), RSS at `/feed.xml`, prev/next + tag pages. `robots.index: false` in
+  `app/layout.tsx` until launch — flip it only when asked, then submit the
+  sitemap in Search Console. `/kontakt` and `/status`-style utility content
+  stay noindex permanently; the sitemap must not list noindex URLs.
 
 ## Gotchas
 
@@ -79,6 +100,15 @@ Norwegian (nb-NO); code and comments are English.
 - KV free tier: 1000 writes/day total — that's why metrics moved to D1
   (100k writes/day); only the 5-minute cron writes to KV. Don't add KV
   writes lightly.
+- ESLint stays on 9 (with `eslint-config-next` 16's native flat config); the
+  React plugin it pulls in is not yet ESLint-10-compatible. Don't bump ESLint.
+- `package.json` is NOT `"type": "module"` — adding it breaks the Next 16 /
+  turbopack config load. Standalone Node scripts use the `.mjs` extension
+  instead (e.g. `scripts/build-world-svg.mjs`).
+- No R2 (it requires a card even on the free tier) — the metrics backup plan
+  is a future GitHub Actions cron, not an R2 bucket.
+- `@cloudflare/vitest-pool-workers` is not yet compatible with Vitest 4, so
+  worker routes are covered by `scripts/smoke.sh` in CI, not unit tests.
 - Session branches: work on a `claude/*` branch, PRs are squash-merged, so
   reset the branch onto `origin/main` before starting new work or the next
   PR will conflict with its own squashed history.
