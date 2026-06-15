@@ -1,12 +1,12 @@
-import Intro from '@/components/Intro'
-import HalIdle from '@/components/HalIdle'
-import Header from '@/components/Header'
-import Hero from '@/components/Hero'
-import Skills from '@/components/Skills'
-import Certifications from '@/components/Certifications'
-import Status from '@/components/Status'
-import Visitors from '@/components/Visitors'
-import Footer from '@/components/Footer'
+import Intro from '@/components/effects/Intro'
+import HalIdle from '@/components/effects/HalIdle'
+import Header from '@/components/layout/Header'
+import Hero from '@/components/home/Hero'
+import Skills from '@/components/home/Skills'
+import Certifications from '@/components/home/Certifications'
+import Status from '@/components/home/Status'
+import Visitors from '@/components/home/Visitors'
+import Footer from '@/components/layout/Footer'
 
 export default function Home() {
   return (
