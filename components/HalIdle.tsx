@@ -164,11 +164,20 @@ export default function HalIdle() {
           <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
         </div>
 
+        {/* Each line focuses in (keyed reveal); the whole slot blurs+fades
+            back out when its time is up via the parent transition. */}
         <p
-          className="hal-jitter font-mono text-xs md:text-base tracking-[0.25em] text-red-500/90 h-6 px-4 text-center transition-opacity duration-[1600ms] ease-in-out"
-          style={{ opacity: textOn ? 1 : 0 }}
+          className="font-mono text-xs md:text-base text-red-500/90 h-6 px-4 text-center transition-all duration-[1400ms] ease-in-out"
+          style={{
+            opacity: textOn ? 1 : 0,
+            filter: textOn ? 'blur(0)' : 'blur(10px)',
+          }}
         >
-          {line}
+          {textOn && (
+            <span key={line} className="hal-text-reveal inline-block tracking-[0.25em]">
+              {line}
+            </span>
+          )}
         </p>
 
         <p className="hal-flicker absolute bottom-8 text-[11px] tracking-widest text-gray-700 uppercase">

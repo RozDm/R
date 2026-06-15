@@ -124,6 +124,40 @@ html.intro-active::before {
   animation: hal-jitter 0.4s steps(2, end) infinite;
 }
 
+/* HAL line reveal: the text focuses in from a blur with letters drawing
+   together and a red glow that peaks, then settles — like a signal coming
+   into focus on a CRT. Applied per-line (keyed) so each phrase plays it. */
+@keyframes hal-text-reveal {
+  0% {
+    opacity: 0;
+    filter: blur(12px);
+    transform: scale(0.94);
+    letter-spacing: 0.6em;
+    text-shadow: none;
+  }
+  55% {
+    opacity: 1;
+    text-shadow: 0 0 18px rgba(239, 68, 68, 0.75);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+    letter-spacing: 0.25em;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  }
+}
+
+.hal-text-reveal {
+  animation: hal-text-reveal 1.8s cubic-bezier(0.2, 0.6, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hal-text-reveal {
+    animation: none;
+  }
+}
+
 /* Syntax highlighting (rehype-highlight / highlight.js token classes).
    Light by default, dark under .dark. Palette tuned to the site's reds
    and grays rather than a stock theme. */
