@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import HashLink from './HashLink'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
 
@@ -19,13 +20,13 @@ export default function Header() {
         </Link>
         <nav className="hidden md:flex items-center gap-8" aria-label="Hovednavigasjon">
           {navLinks.map(({ href, label }) => (
-            <Link
+            <HashLink
               key={href}
               href={href}
               className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm tracking-wide"
             >
               {label}
-            </Link>
+            </HashLink>
           ))}
           <ThemeToggle />
         </nav>

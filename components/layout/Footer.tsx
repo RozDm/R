@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import HashLink from './HashLink'
 import StatusDot from './StatusDot'
 import CopyEmail from './CopyEmail'
 
@@ -48,13 +49,13 @@ export default function Footer() {
 
         <CopyEmail email="contact@rozsoshnykh.no" />
 
-        <Link
+        <HashLink
           href="/#status"
           className="inline-flex items-center gap-2 text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors pt-2"
         >
           <StatusDot />
           Driftsstatus
-        </Link>
+        </HashLink>
 
         <p className="text-xs text-gray-400 dark:text-gray-600 pt-8 font-mono">
           &copy; {currentYear} Dmytro Rozsoshnykh
