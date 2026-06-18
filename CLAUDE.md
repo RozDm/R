@@ -17,9 +17,13 @@ code and comments are English.
   (`run_worker_first`):
   - `index.ts` — routing: HTTPS + canonical-host 301s (www/workers.dev → apex),
     `/status/` → `/#status`, API endpoints, per-request **hash-based CSP** for
-    HTML it can decode (fallback policy keeps `unsafe-inline`).
+    HTML it can decode.
   - `csp.ts` — security headers/CSP helpers (DOM-compatible APIs only; it is
-    type-checked under BOTH tsconfigs because tests import it).
+    type-checked under BOTH tsconfigs because tests import it). Three policies:
+    `strictCsp(hashes)` for readable HTML, `ENFORCED_CSP` for non-HTML assets +
+    redirects (no `unsafe-inline` — nothing executes inline there), and
+    `HTML_FALLBACK_CSP` (keeps `unsafe-inline`) only for HTML we couldn't decode
+    to hash — effectively unreachable since assets are fetched as identity.
   - `status.ts` — uptime cron config + pure KV snapshot logic. `MONITORS` is
     the list of monitored services. `HISTORY_LIMIT = 149` (monolith 1:4:9 —
     intentional, don't "fix" it).
@@ -34,7 +38,9 @@ code and comments are English.
   and the worker enforces verification only when `TURNSTILE_SECRET` is set
   (`wrangler secret put TURNSTILE_SECRET`). Both halves must be on for the
   challenge to apply; either side empty keeps the form working with the
-  pre-existing defences (Sec-Fetch, UA filter, honeypot, D1 rate limit).
+  pre-existing defences (Sec-Fetch, UA filter, honeypot, D1 rate limit). A
+  double-submit (same address + message within 2 min) is deduped in D1 and
+  ack'd without a second e-mail — content-keyed, so no schema column is needed.
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count —
   same-origin + non-bot only), `/api/geo`, `/api/contact` (POST). Geo is
   recorded on the edge from `request.cf.country` for human-looking
@@ -43,7 +49,9 @@ code and comments are English.
   (run by `prebuild`) emits `public/world.svg` from `world-map-country-shapes`
   (a devDependency). `GeoMap` fetches that SVG and injects it via
   `dangerouslySetInnerHTML` — never touch a React-managed node's innerHTML by
-  ref, that crashed prod once.
+  ref, that crashed prod once. Country colours come from CSS (`.geo-map path`,
+  vars `--map-empty`/`--map-stroke` switch on `.dark`); JS only stamps a
+  `data-v` intensity bucket (1/2/3), so a theme toggle recolours with no re-run.
 - `TURNSTILE_SECRET` is a runtime Worker secret (not in wrangler.jsonc), typed
   via `src/env.d.ts`; the deploy workflow pushes it with `wrangler secret put`
   from a GitHub secret. `TURNSTILE_SITE_KEY` is a GitHub secret inlined into
@@ -79,8 +87,9 @@ code and comments are English.
   literal — it is not a template var.
 - Blog posts: `content/blog/<slug>.md`, frontmatter `title`, `description`,
   `date` (ISO), `tags`. Tags are normalized/deduped via `lib/tags.ts`
-  (aliases → canonical names, `tagToSlug` for URLs). Reading time is computed,
-  not stored. Code blocks are highlighted at build via `rehype-highlight`
+  (`normalizeTag`/`normalizeTags`/`tagToSlug`); the canonical list and alias
+  map live in `data/tags.ts` (data next to `skills.ts`/`certifications.ts`,
+  logic in `lib/`). Reading time is computed, not stored. Code blocks are highlighted at build via `rehype-highlight`
   (theme in `app/globals.css`).
 - SEO: canonicals + trailing slash everywhere, OG images via `next/og`,
   JSON-LD (Person + WebSite sitewide, BlogPosting + image + BreadcrumbList per
@@ -109,6 +118,10 @@ code and comments are English.
   is a future GitHub Actions cron, not an R2 bucket.
 - `@cloudflare/vitest-pool-workers` is not yet compatible with Vitest 4, so
   worker routes are covered by `scripts/smoke.sh` in CI, not unit tests.
+- `StatusDashboard` is code-split via `next/dynamic` (`ssr: false`,
+  `LazyStatusDashboard.tsx`), so it is NOT in the static HTML — the `Driftsstatus`
+  heading the smoke test greps lives in the server component `Status.tsx`. Keep
+  it there; don't move it into the dashboard or the smoke check breaks.
 - Session branches: work on a `claude/*` branch, PRs are squash-merged, so
   reset the branch onto `origin/main` before starting new work or the next
   PR will conflict with its own squashed history.

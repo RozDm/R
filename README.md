@@ -53,7 +53,7 @@ components/         React components (Hero, Skills, StatusDashboard, GeoMap,
                     HalIdle, ContactForm, Turnstile, …)
 content/blog/       Markdown posts (frontmatter: title, description, date, tags)
 context/            ThemeContext (light/dark with no FOUC)
-data/               Skills and certifications
+data/               Skills, certifications, and tag canon + aliases (tags.ts)
 lib/                blog.ts, tags.ts, reading-time.ts, clipboard.ts, stars.ts, site.ts
 schema/             metrics.sql (views, geo, contact tables)
 scripts/            smoke.sh, build-world-svg.mjs
@@ -95,7 +95,8 @@ Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
 `POST /api/contact` → validate → Cloudflare Turnstile → store in D1 (`contact`,
 also a backup copy) → send via Email Routing (`contact@rozsoshnykh.no`, Reply-To
 the sender). Defence in depth: Turnstile + same-origin check + bot-UA filter +
-off-screen honeypot + per-IP rate limit (3 / 10 min, from D1).
+off-screen honeypot + per-IP rate limit (3 / 10 min, from D1) + short-window
+dedup (identical address + message within 2 min is ack'd without a second mail).
 
 Turnstile is feature-gated: the widget renders only when `TURNSTILE_SITE_KEY`
 is set, and the worker enforces it only when `TURNSTILE_SECRET` is set, so the
