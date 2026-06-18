@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildContactMime, encodeMimeHeader, validateContact, verifyTurnstile } from '@/src/contact'
+import {
+  buildContactMime,
+  buildStatusAlertMime,
+  encodeMimeHeader,
+  validateContact,
+  verifyTurnstile,
+} from '@/src/contact'
 
 const valid = { name: 'Ola Nordmann', email: 'ola@example.no', message: 'Hei! Dette er en testmelding.' }
 
@@ -71,6 +77,47 @@ describe('buildContactMime', () => {
     for (const line of body.split('\r\n')) {
       expect(line.length).toBeLessThanOrEqual(76)
     }
+  })
+})
+
+describe('buildStatusAlertMime', () => {
+  const monitor = { name: 'NetBox', url: 'https://netbox.test/', ok: false, status: 502, ms: 1234 }
+  const mime = buildStatusAlertMime('status@rozsoshnykh.no', 'me@example.com', monitor, '2026-06-12T18:00:00Z')
+
+  it('carries the right envelope headers and no Reply-To', () => {
+    expect(mime).toContain('From: Status <status@rozsoshnykh.no>')
+    expect(mime).toContain('To: <me@example.com>')
+    expect(mime).not.toContain('Reply-To:')
+  })
+
+  it('uses distinct Norwegian subjects for down and recovery', () => {
+    const downSubject = mime.split('\r\n').find((l) => l.startsWith('Subject: '))
+    expect(downSubject).toBe('Subject: Status: NetBox er nede')
+
+    const up = buildStatusAlertMime('status@rozsoshnykh.no', 'me@example.com', { ...monitor, ok: true, status: 200 }, '2026-06-12T18:00:00Z')
+    const upSubject = up.split('\r\n').find((l) => l.startsWith('Subject: '))
+    expect(upSubject).toBe('Subject: Status: NetBox er oppe igjen')
+  })
+
+  it('RFC 2047-encodes a service name with non-ASCII characters', () => {
+    const m = buildStatusAlertMime(
+      'status@rozsoshnykh.no',
+      'me@example.com',
+      { ...monitor, name: 'Overvåking' },
+      '2026-06-12T18:00:00Z',
+    )
+    const subject = m.split('\r\n').find((l) => l.startsWith('Subject: '))
+    expect(subject).toMatch(/^Subject: =\?utf-8\?B\?[A-Za-z0-9+/]+=*\?=$/)
+  })
+
+  it('base64 body decodes back to the monitor details', () => {
+    const body = mime.split('\r\n\r\n')[1].replace(/\r\n/g, '')
+    const text = Buffer.from(body, 'base64').toString('utf8')
+    expect(text).toContain('Tjeneste: NetBox')
+    expect(text).toContain('URL: https://netbox.test/')
+    expect(text).toContain('HTTP: 502')
+    expect(text).toContain('Latens: 1234 ms')
+    expect(text).toContain('Status: NEDE')
   })
 })
 

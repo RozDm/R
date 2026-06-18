@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HISTORY_LIMIT, buildStatusData } from '@/src/status'
+import { HISTORY_LIMIT, buildStatusData, detectTransitions, parseHistory } from '@/src/status'
 import type { HistoryEntry, MonitorResult } from '@/src/status'
 
 const result = (name: string, ok: boolean): MonitorResult => ({
@@ -61,5 +61,65 @@ describe('buildStatusData', () => {
   it('records up/down per monitor when multiple are present', () => {
     const data = buildStatusData(null, [result('A', true), result('B', false)], '2026-01-01T00:00:00Z')
     expect(data.history[0].up).toEqual({ A: true, B: false })
+  })
+})
+
+describe('parseHistory', () => {
+  it('returns [] for null, empty, malformed, and legacy entries', () => {
+    expect(parseHistory(null)).toEqual([])
+    expect(parseHistory('not json {{{')).toEqual([])
+    expect(parseHistory(JSON.stringify({ history: [{ at: '2026-01-01T00:00:00Z', up: true }] }))).toEqual([])
+  })
+
+  it('keeps only well-formed entries', () => {
+    const raw = JSON.stringify({
+      history: [
+        { at: '2026-01-01T00:00:00Z', up: { A: true } },
+        { at: 'x', up: null },
+      ],
+    })
+    expect(parseHistory(raw)).toEqual([{ at: '2026-01-01T00:00:00Z', up: { A: true } }])
+  })
+})
+
+describe('detectTransitions', () => {
+  it('emits nothing on a first-ever run (no previous history)', () => {
+    expect(detectTransitions([], [result('A', true), result('A', false)])).toEqual([])
+  })
+
+  it('emits nothing for a new monitor missing from the previous tick', () => {
+    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: true } }]
+    expect(detectTransitions(prev, [result('A', true), result('B', false)]).map((r) => r.name)).toEqual([])
+  })
+
+  it('emits nothing when state is unchanged', () => {
+    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: true, B: false } }]
+    expect(detectTransitions(prev, [result('A', true), result('B', false)])).toEqual([])
+  })
+
+  it('emits a down -> up recovery', () => {
+    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: false } }]
+    const out = detectTransitions(prev, [result('A', true)])
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ name: 'A', ok: true })
+  })
+
+  it('emits an up -> down incident', () => {
+    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: true } }]
+    const out = detectTransitions(prev, [result('A', false)])
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ name: 'A', ok: false })
+  })
+
+  it('only compares against the most recent entry', () => {
+    // Two ticks ago A was down, last tick it was up — only "last tick" counts,
+    // so a current down-state is a fresh transition.
+    const prev: HistoryEntry[] = [
+      { at: '2026-01-01T00:00:00Z', up: { A: false } },
+      { at: '2026-01-01T00:05:00Z', up: { A: true } },
+    ]
+    const out = detectTransitions(prev, [result('A', false)])
+    expect(out).toHaveLength(1)
+    expect(out[0].ok).toBe(false)
   })
 })

@@ -68,6 +68,20 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   if ((recentByIp?.n ?? 0) >= CONTACT_IP_LIMIT) return apiJson('{"error":"rate limited"}', 429)
   if ((recentByEmail?.n ?? 0) >= CONTACT_EMAIL_LIMIT) return apiJson('{"error":"rate limited"}', 429)
 
+  // Idempotency: a double-submit (double-click, lost response + retry, browser
+  // resend) would otherwise store a second row and send a second e-mail. Treat
+  // an identical message from the same address within a short window as the
+  // same submission and ack it without re-sending. Keyed on content rather
+  // than a client token so it needs no schema change and survives a client
+  // that forgets to send a key.
+  const duplicate = await env.METRICS.prepare(
+    "SELECT 1 AS n FROM contact WHERE email = ?1 AND message = ?2 AND at > datetime('now', '-2 minutes') LIMIT 1",
+  )
+    .bind(payload.email, payload.message)
+    .first<{ n: number }>()
+    .catch(() => null)
+  if (duplicate) return apiJson('{"ok":true}')
+
   const at = new Date().toISOString()
   await env.METRICS.prepare(
     'INSERT INTO contact (at, ip, name, email, message) VALUES (?1, ?2, ?3, ?4, ?5)',
