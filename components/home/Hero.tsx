@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import HashLink from '../layout/HashLink'
 
 export default function Hero() {
   return (
@@ -19,18 +19,18 @@ export default function Hero() {
         med solid forståelse for programmering og utvikling.
       </p>
       <div className="flex gap-4 pt-2">
-        <Link
+        <HashLink
           href="/#skills"
           className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition text-sm font-medium tracking-wide"
         >
           Min kompetanse
-        </Link>
-        <Link
+        </HashLink>
+        <HashLink
           href="/#footer"
           className="px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:border-gray-500 dark:hover:border-gray-500 transition text-sm font-medium tracking-wide"
         >
           Kontakt
-        </Link>
+        </HashLink>
       </div>
     </section>
   )
