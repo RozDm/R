@@ -9,7 +9,7 @@
 // Types for Env and the Workers runtime come from worker-configuration.d.ts,
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
 
-import { ENFORCED_CSP, HSTS, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
+import { ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, STATUS_KEY, buildStatusData } from './status'
 import { isHumanNavigation } from './metrics'
 import { handleStatus } from './routes/status'
@@ -125,12 +125,18 @@ export default {
         })
         applyBaseHeaders(response.headers)
         response.headers.set('Strict-Transport-Security', HSTS)
-        // Strict CSP is enforced for HTML we can read; the asset fallback below
-        // still serves ENFORCED_CSP (with 'unsafe-inline') so brotli or any
-        // other path we can't hash stays working.
+        // Strict hash-based CSP for HTML we can read — no 'unsafe-inline'.
         response.headers.set('Content-Security-Policy', strictCsp(hashes))
         return response
       }
+      // HTML we couldn't decode to hash (e.g. brotli): serve the bytes as-is
+      // but keep 'unsafe-inline' so its inline scripts still run. Effectively
+      // unreachable since we fetch assets as identity above.
+      const response = new Response(asset.body, asset)
+      applyBaseHeaders(response.headers)
+      response.headers.set('Strict-Transport-Security', HSTS)
+      response.headers.set('Content-Security-Policy', HTML_FALLBACK_CSP)
+      return response
     }
 
     // Everything else: headers only, body untouched.
