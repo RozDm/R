@@ -86,6 +86,26 @@ html.intro-active::before {
   background: #334155;
 }
 
+/* Visitor world map. Base fill/stroke come from CSS variables so a dark-mode
+   toggle recolours every country with no JS re-run; GeoMap only stamps a
+   data-v intensity bucket (1/2/3) on countries that have visits. */
+.geo-map {
+  --map-empty: #e5e7eb; /* gray-200 */
+  --map-stroke: #ffffff;
+}
+.dark .geo-map {
+  --map-empty: #1f2937; /* gray-800 */
+  --map-stroke: #030712;
+}
+.geo-map path {
+  fill: var(--map-empty);
+  stroke: var(--map-stroke);
+  stroke-width: 1;
+}
+.geo-map path[data-v="1"] { fill: rgba(239, 68, 68, 0.3); }
+.geo-map path[data-v="2"] { fill: rgba(239, 68, 68, 0.55); }
+.geo-map path[data-v="3"] { fill: rgba(239, 68, 68, 0.8); }
+
 /* HAL idle overlay: CRT noise. Keyframes are cheap (opacity/transform only). */
 .hal-scanlines {
   background: repeating-linear-gradient(
