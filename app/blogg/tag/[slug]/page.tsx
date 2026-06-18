@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const tag = resolveTag(slug)
   if (!tag) return {}
   return {
-    title: `${tag} – Blogg`,
+    title: `Emne: ${tag}`,
     description: `Artikler merket med ${tag}.`,
     alternates: { canonical: `${SITE_URL}/blogg/tag/${slug}/` },
   }
@@ -49,11 +49,14 @@ export default async function TagPage({ params }: Props) {
         </Link>
 
         <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          Tag
+          Emne
         </p>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-10">
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
           {tag}
         </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
+          {posts.length} {posts.length === 1 ? 'artikkel' : 'artikler'}
+        </p>
 
         <div className="flex flex-col gap-4">
           {posts.map((post) => (
