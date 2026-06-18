@@ -23,7 +23,10 @@
     }
   ],
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    // */5 = health checks. 0 3 * * * = daily prune of the contact table at
+    // 03:00 UTC (~04:00–05:00 Oslo, off-peak). Dispatch lives in scheduled()
+    // — must update PRUNE_CRON in src/index.ts if this changes.
+    "crons": ["*/5 * * * *", "0 3 * * *"]
   },
   "send_email": [
     {
