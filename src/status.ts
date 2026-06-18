@@ -46,21 +46,43 @@ function isHistoryEntry(value: unknown): value is HistoryEntry {
   return typeof entry.at === 'string' && typeof entry.up === 'object' && entry.up !== null
 }
 
+// Parse the stored snapshot's history (or [] if empty/malformed/legacy). Shared
+// between buildStatusData (to append onto) and detectTransitions (to compare
+// against), so the "drop legacy aggregated up: boolean" rule lives in one place.
+export function parseHistory(raw: string | null): HistoryEntry[] {
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    const prev = (parsed as { history?: unknown }).history
+    if (Array.isArray(prev)) return prev.filter(isHistoryEntry)
+  } catch {}
+  return []
+}
+
 // Merge fresh results into the stored snapshot. Entries in the old format
 // (aggregated `up: boolean`) are dropped, as is anything unparsable.
 export function buildStatusData(raw: string | null, results: MonitorResult[], updatedAt: string): StatusData {
-  let history: HistoryEntry[] = []
-  if (raw) {
-    try {
-      const parsed: unknown = JSON.parse(raw)
-      const prev = (parsed as { history?: unknown }).history
-      if (Array.isArray(prev)) history = prev.filter(isHistoryEntry)
-    } catch {}
-  }
+  let history = parseHistory(raw)
   history.push({
     at: updatedAt,
     up: Object.fromEntries(results.map((r) => [r.name, r.ok])),
   })
   if (history.length > HISTORY_LIMIT) history = history.slice(-HISTORY_LIMIT)
   return { updatedAt, results, history }
+}
+
+// Per-monitor up/down transitions vs. the previous tick. First-ever runs and
+// newly-added monitors emit nothing — no prior boolean to compare against, so
+// we don't fire a misleading "down" alert on deploy. A single missed cron
+// tick simply delays detection by 5 minutes, never invents one.
+export function detectTransitions(
+  previousHistory: HistoryEntry[],
+  results: MonitorResult[],
+): MonitorResult[] {
+  if (previousHistory.length === 0) return []
+  const last = previousHistory[previousHistory.length - 1].up
+  return results.filter((r) => {
+    const wasUp = last[r.name]
+    return typeof wasUp === 'boolean' && wasUp !== r.ok
+  })
 }
