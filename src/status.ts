@@ -13,6 +13,12 @@ export const STATUS_KEY = 'status'
 // check / 5 min.
 export const HISTORY_LIMIT = 149
 
+// Bound each external probe. Without it a host that accepts the connection but
+// never responds leaves the fetch pending — Promise.all then waits on it,
+// inflating the recorded latency and blurring "slow" vs. "down". On timeout the
+// fetch throws and the probe is recorded as down (ok = false, ms ≈ this value).
+export const MONITOR_TIMEOUT_MS = 10_000
+
 export interface MonitorResult {
   name: string
   url: string

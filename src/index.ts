@@ -10,7 +10,7 @@
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
 
 import { ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
-import { MONITORS, STATUS_KEY, buildStatusData } from './status'
+import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData } from './status'
 import { isHumanNavigation } from './metrics'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
@@ -45,6 +45,8 @@ async function runHealthChecks(env: Env): Promise<void> {
               // Follow redirects (NetBox sends / to /login/) and require a
               // clean 200 on the final response — 3xx/4xx/5xx count as down.
               redirect: 'follow',
+              // Bound the probe so a hung host is recorded as down, not waited on.
+              signal: AbortSignal.timeout(MONITOR_TIMEOUT_MS),
               headers: {
                 'User-Agent': 'StatusMonitor/1.0 (+https://rozsoshnykh.no/status)',
               },
