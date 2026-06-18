@@ -6,9 +6,11 @@
 // inline scripts. Hashes are computed from the exact HTML being served, so
 // they are always self-consistent and independent of build determinism.
 //
-// For anything else (assets, or HTML in an encoding we can't decode), the
-// fallback policy keeps 'unsafe-inline' as a safety net so the site never
-// breaks.
+// Non-HTML responses (assets, redirects) parse no document, so no inline
+// script ever executes against them — their fallback CSP needs no
+// 'unsafe-inline' (ENFORCED_CSP). The only place that still needs it is HTML
+// we could not decode to hash; HTML_FALLBACK_CSP covers that rare case so the
+// page never breaks, while keeping 'unsafe-inline' off every other response.
 
 // Turnstile lives at challenges.cloudflare.com — its script needs script-src,
 // its iframe needs frame-src, the widget calls home over connect-src. We add
@@ -16,9 +18,12 @@
 // renders the contact form, and the extra origin is harmless elsewhere.
 const TURNSTILE_HOST = 'https://challenges.cloudflare.com'
 
-export const ENFORCED_CSP = [
+// Trailing script origins shared by every policy (beacon + Turnstile).
+const SCRIPT_TAIL = `https://static.cloudflareinsights.com ${TURNSTILE_HOST}`
+
+// Directives identical across all three policies; only script-src varies.
+const COMMON_DIRECTIVES = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
@@ -28,23 +33,27 @@ export const ENFORCED_CSP = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+]
+
+// Fallback for non-HTML assets and redirects: nothing executes inline here, so
+// 'self' alone is enough — no 'unsafe-inline'.
+export const ENFORCED_CSP = [
+  `script-src 'self' ${SCRIPT_TAIL}`,
+  ...COMMON_DIRECTIVES,
+  'upgrade-insecure-requests',
+].join('; ')
+
+// Last resort for HTML we couldn't decode (e.g. an encoding we can't
+// decompress): keep 'unsafe-inline' so its inline scripts still run. Should be
+// effectively unreachable since assets are fetched as identity.
+export const HTML_FALLBACK_CSP = [
+  `script-src 'self' 'unsafe-inline' ${SCRIPT_TAIL}`,
+  ...COMMON_DIRECTIVES,
   'upgrade-insecure-requests',
 ].join('; ')
 
 export function strictCsp(hashes: string[]): string {
-  return [
-    "default-src 'self'",
-    `script-src 'self' ${hashes.join(' ')} https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
-    "font-src 'self' data:",
-    `connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
-    `frame-src ${TURNSTILE_HOST}`,
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "object-src 'none'",
-  ].join('; ')
+  return [`script-src 'self' ${hashes.join(' ')} ${SCRIPT_TAIL}`, ...COMMON_DIRECTIVES].join('; ')
 }
 
 const BASE_SECURITY_HEADERS: Record<string, string> = {
@@ -52,6 +61,11 @@ const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  // Isolates the top-level browsing context: a popup opened by the page can't
+  // reach window.opener back into us. Our LinkedIn share link already sets
+  // rel="noopener", so this is defence-in-depth for any future popup. Safe
+  // alongside Turnstile (iframes aren't affected by COOP).
+  'Cross-Origin-Opener-Policy': 'same-origin',
 }
 
 export const HSTS = 'max-age=63072000; includeSubDomains; preload'

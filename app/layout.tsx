@@ -7,7 +7,9 @@ import { SITE_URL, AUTHOR } from '@/lib/site'
 
 const intelOneMono = Intel_One_Mono({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  // 400 body · 500 (font-medium) · 600 (prose <strong>/<h3>) · 700 (font-bold).
+  // 300 dropped — unreferenced in markup and not a typography-plugin default.
+  weight: ['400', '500', '600', '700'],
   variable: '--font-intel-mono',
   display: 'swap',
   adjustFontFallback: false,

@@ -1,4 +1,4 @@
-import StatusDashboard from './StatusDashboard'
+import StatusDashboard from './LazyStatusDashboard'
 
 export default function Status() {
   return (

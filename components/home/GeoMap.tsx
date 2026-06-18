@@ -11,12 +11,14 @@ function flag(code: string): string {
   return String.fromCodePoint(...[...code].map((c) => 0x1f1a5 + c.charCodeAt(0)))
 }
 
-// Intensity buckets keep the map readable regardless of absolute numbers.
-function fillFor(count: number | undefined, isDark: boolean): string {
-  if (!count) return isDark ? '#1f2937' : '#e5e7eb' // gray-800 / gray-200
-  if (count < 3) return 'rgba(239, 68, 68, 0.30)'
-  if (count < 10) return 'rgba(239, 68, 68, 0.55)'
-  return 'rgba(239, 68, 68, 0.80)'
+// Intensity bucket (1/2/3) keeps the map readable regardless of absolute
+// numbers. The colours themselves live in CSS (.geo-map path[data-v]); here we
+// only decide which bucket a country falls into. null = no visits.
+function bucketFor(count: number | undefined): '1' | '2' | '3' | null {
+  if (!count) return null
+  if (count < 3) return '1'
+  if (count < 10) return '2'
+  return '3'
 }
 
 export default function GeoMap() {
@@ -67,8 +69,6 @@ export default function GeoMap() {
     root.setAttribute('aria-label', 'Verdenskart over hvor besøkende kommer fra')
     root.classList.add('w-full', 'h-auto', 'select-none')
 
-    const isDark = document.documentElement.classList.contains('dark')
-    const stroke = isDark ? '#030712' : '#ffffff'
     const names = regionNames
     const countryName = (code: string): string => {
       try {
@@ -81,9 +81,10 @@ export default function GeoMap() {
     root.querySelectorAll<SVGPathElement>('path').forEach((p) => {
       const code = p.id.replace(/^c-/, '')
       const n = counts?.[code]
-      p.setAttribute('fill', fillFor(n, isDark))
-      p.setAttribute('stroke', stroke)
-      p.setAttribute('stroke-width', '1')
+      // Fill/stroke come from CSS; only the data-driven intensity is set here.
+      const bucket = bucketFor(n)
+      if (bucket) p.setAttribute('data-v', bucket)
+      else p.removeAttribute('data-v')
       let title = p.querySelector<SVGTitleElement>('title')
       if (!title) {
         title = document.createElementNS('http://www.w3.org/2000/svg', 'title') as SVGTitleElement
@@ -120,7 +121,7 @@ export default function GeoMap() {
       {svgMarkup && (
         <div
           ref={svgRef}
-          className="w-full aspect-[2000/1001]"
+          className="geo-map w-full aspect-[2000/1001]"
           dangerouslySetInnerHTML={{ __html: svgMarkup }}
         />
       )}

@@ -1,5 +1,5 @@
-// Pure logic for the contact form: payload validation and MIME assembly.
-// (DOM-compatible APIs only — tests import this under the app tsconfig.)
+// Pure logic for outbound mail: contact-form validation/MIME and status-alert
+// MIME. (DOM-compatible APIs only — tests import this under the app tsconfig.)
 
 export const CONTACT_LIMITS = {
   name: 100,
@@ -88,6 +88,35 @@ export function buildContactMime(
     `From: Kontaktskjema <${from}>`,
     `To: <${to}>`,
     `Reply-To: <${payload.email}>`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrapped,
+  ].join('\r\n')
+}
+
+// Plain-text alert for an uptime-monitor state change. No Reply-To (no human
+// on the other end), short fixed body so the inbox is greppable. Reuses the
+// same base64 + RFC 2047 encoding as the contact mail so Email Routing handles
+// the two identically.
+export function buildStatusAlertMime(
+  from: string,
+  to: string,
+  monitor: { name: string; url: string; ok: boolean; status: number; ms: number },
+  at: string,
+): string {
+  const subject = encodeMimeHeader(
+    monitor.ok ? `Status: ${monitor.name} er oppe igjen` : `Status: ${monitor.name} er nede`,
+  )
+  const body = base64Utf8(
+    `Tjeneste: ${monitor.name}\nURL: ${monitor.url}\nTidspunkt: ${at}\nHTTP: ${monitor.status}\nLatens: ${monitor.ms} ms\nStatus: ${monitor.ok ? 'OK' : 'NEDE'}\n`,
+  )
+  const wrapped = body.replace(/(.{76})/g, '$1\r\n')
+  return [
+    `From: Status <${from}>`,
+    `To: <${to}>`,
     `Subject: ${subject}`,
     'MIME-Version: 1.0',
     'Content-Type: text/plain; charset=utf-8',

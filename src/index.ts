@@ -9,13 +9,20 @@
 // Types for Env and the Workers runtime come from worker-configuration.d.ts,
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
 
-import { ENFORCED_CSP, HSTS, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
-import { MONITORS, STATUS_KEY, buildStatusData } from './status'
+import { EmailMessage } from 'cloudflare:email'
+import { ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
+import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
+import { buildStatusAlertMime } from './contact'
 import { isHumanNavigation } from './metrics'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
 import { handleGeo, recordGeo } from './routes/geo'
 import { handleContact } from './routes/contact'
+
+const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
+const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
+// Daily prune cron pattern — must match the entry in wrangler.jsonc.
+const PRUNE_CRON = '0 3 * * *'
 
 function redirect301(target: string | null, location: string): Response {
   const response = new Response(target, {
@@ -45,6 +52,8 @@ async function runHealthChecks(env: Env): Promise<void> {
               // Follow redirects (NetBox sends / to /login/) and require a
               // clean 200 on the final response — 3xx/4xx/5xx count as down.
               redirect: 'follow',
+              // Bound the probe so a hung host is recorded as down, not waited on.
+              signal: AbortSignal.timeout(MONITOR_TIMEOUT_MS),
               headers: {
                 'User-Agent': 'StatusMonitor/1.0 (+https://rozsoshnykh.no/status)',
               },
@@ -59,13 +68,40 @@ async function runHealthChecks(env: Env): Promise<void> {
   )
 
   const raw = await env.STATUS.get(STATUS_KEY).catch(() => null)
-  const data = buildStatusData(raw, results, new Date().toISOString())
+  const previousHistory = parseHistory(raw)
+  const transitions = detectTransitions(previousHistory, results)
+  const updatedAt = new Date().toISOString()
+  const data = buildStatusData(raw, results, updatedAt)
   await env.STATUS.put(STATUS_KEY, JSON.stringify(data))
+
+  for (const t of transitions) {
+    try {
+      const mime = buildStatusAlertMime(STATUS_ALERT_FROM, STATUS_ALERT_TO, t, updatedAt)
+      await env.CONTACT_EMAIL.send(new EmailMessage(STATUS_ALERT_FROM, STATUS_ALERT_TO, mime))
+    } catch {
+      // Alerting is best-effort: a send failure must not stop the status
+      // snapshot from being written or block subsequent transitions.
+    }
+  }
+}
+
+// Daily prune of the contact table. Rate-limit windows are 10 min and 1 hour,
+// so anything older is backup-only; 30 days bounds the table without losing
+// recent data. Best-effort: a failed prune just delays the next attempt by
+// 24 hours.
+async function pruneContactRows(env: Env): Promise<void> {
+  await env.METRICS.prepare("DELETE FROM contact WHERE at < datetime('now', '-30 days')")
+    .run()
+    .catch(() => {})
 }
 
 export default {
-  async scheduled(_controller, env, ctx) {
-    ctx.waitUntil(runHealthChecks(env))
+  async scheduled(controller, env, ctx) {
+    if (controller.cron === PRUNE_CRON) {
+      ctx.waitUntil(pruneContactRows(env))
+    } else {
+      ctx.waitUntil(runHealthChecks(env))
+    }
   },
 
   async fetch(request, env, ctx) {
@@ -125,12 +161,18 @@ export default {
         })
         applyBaseHeaders(response.headers)
         response.headers.set('Strict-Transport-Security', HSTS)
-        // Strict CSP is enforced for HTML we can read; the asset fallback below
-        // still serves ENFORCED_CSP (with 'unsafe-inline') so brotli or any
-        // other path we can't hash stays working.
+        // Strict hash-based CSP for HTML we can read — no 'unsafe-inline'.
         response.headers.set('Content-Security-Policy', strictCsp(hashes))
         return response
       }
+      // HTML we couldn't decode to hash (e.g. brotli): serve the bytes as-is
+      // but keep 'unsafe-inline' so its inline scripts still run. Effectively
+      // unreachable since we fetch assets as identity above.
+      const response = new Response(asset.body, asset)
+      applyBaseHeaders(response.headers)
+      response.headers.set('Strict-Transport-Security', HSTS)
+      response.headers.set('Content-Security-Policy', HTML_FALLBACK_CSP)
+      return response
     }
 
     // Everything else: headers only, body untouched.

@@ -15,21 +15,30 @@ interface ListedPost {
 
 type SortOrder = 'newest' | 'oldest'
 
+// Initial page size; "Vis flere" reveals another batch. Tuned high enough
+// that today's archive renders in one batch — pagination kicks in only when
+// the list actually grows.
+const PAGE_SIZE = 12
+
 export default function BlogList({ posts }: { posts: ListedPost[] }) {
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const allTags = useMemo(
     () => Array.from(new Set(posts.flatMap((p) => p.tags))).sort(),
     [posts],
   )
 
-  const visible = useMemo(() => {
-    const filtered = activeTag ? posts.filter((p) => p.tags.includes(activeTag)) : posts
-    return [...filtered].sort((a, b) =>
+  const filtered = useMemo(() => {
+    const f = activeTag ? posts.filter((p) => p.tags.includes(activeTag)) : posts
+    return [...f].sort((a, b) =>
       sortOrder === 'newest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date),
     )
   }, [posts, activeTag, sortOrder])
+
+  const visible = filtered.slice(0, visibleCount)
+  const remaining = filtered.length - visible.length
 
   if (posts.length === 0) {
     return <p className="text-gray-500 dark:text-gray-400">Ingen artikler ennå.</p>
@@ -132,6 +141,14 @@ export default function BlogList({ posts }: { posts: ListedPost[] }) {
               )}
             </Link>
           ))}
+          {remaining > 0 && (
+            <button
+              onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+              className="self-center mt-2 inline-flex items-center gap-1.5 text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            >
+              Vis flere artikler ({remaining} igjen)
+            </button>
+          )}
         </div>
       )}
     </div>
