@@ -52,6 +52,11 @@ code and comments are English.
   ref, that crashed prod once. Country colours come from CSS (`.geo-map path`,
   vars `--map-empty`/`--map-stroke` switch on `.dark`); JS only stamps a
   `data-v` intensity bucket (1/2/3), so a theme toggle recolours with no re-run.
+  The build script also bakes a grey `fill`/`stroke` onto every `<path>` and the
+  CSS keeps `var()` fallbacks — don't strip either: a path with no resolved fill
+  defaults to **black**, so the bare-var version flashed (and sometimes stuck)
+  an all-black map. Presentation attributes sit below CSS in the cascade, so the
+  theme vars and `data-v` rules still win.
 - `TURNSTILE_SECRET` is a runtime Worker secret (not in wrangler.jsonc), typed
   via `src/env.d.ts`; the deploy workflow pushes it with `wrangler secret put`
   from a GitHub secret. `TURNSTILE_SITE_KEY` is a GitHub secret inlined into

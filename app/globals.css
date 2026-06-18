@@ -97,9 +97,12 @@ html.intro-active::before {
   --map-empty: #1f2937; /* gray-800 */
   --map-stroke: #030712;
 }
+/* Fallbacks matter: a bare var() that fails to resolve is "invalid at
+   computed-value time", which makes fill revert to its initial value — black —
+   painting the whole map black. The literals keep an unresolved var grey. */
 .geo-map path {
-  fill: var(--map-empty);
-  stroke: var(--map-stroke);
+  fill: var(--map-empty, #e5e7eb);
+  stroke: var(--map-stroke, #ffffff);
   stroke-width: 1;
 }
 .geo-map path[data-v="1"] { fill: rgba(239, 68, 68, 0.3); }
