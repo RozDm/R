@@ -61,6 +61,11 @@ const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  // Isolates the top-level browsing context: a popup opened by the page can't
+  // reach window.opener back into us. Our LinkedIn share link already sets
+  // rel="noopener", so this is defence-in-depth for any future popup. Safe
+  // alongside Turnstile (iframes aren't affected by COOP).
+  'Cross-Origin-Opener-Policy': 'same-origin',
 }
 
 export const HSTS = 'max-age=63072000; includeSubDomains; preload'

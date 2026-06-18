@@ -111,6 +111,7 @@ check_redirect "workers.dev" "https://d.rozsoshnykh.workers.dev/" "$BASE/"
 echo "== Security headers =="
 check_header "HSTS"       "$BASE/" "^strict-transport-security:"
 check_header "CSP (hash)" "$BASE/" "^content-security-policy:.*sha256-"
+check_header "COOP"       "$BASE/" "^cross-origin-opener-policy: same-origin"
 
 if [ "$FAIL" = "1" ]; then
   echo; echo "Smoke test FAILED"
