@@ -25,15 +25,21 @@ export async function handleTimeseries(
   const metric = parseMetric(url.searchParams.get('metric'))
   if (!metric) return apiJson('{"error":"bad metric"}', 400)
   const { key: rangeKey, range } = parseRange(url.searchParams.get('range'))
+  // ?debug=1 bypasses the edge cache and dumps the raw AE response (status +
+  // body) so an empty chart is diagnosable from the browser without poking
+  // around in Worker logs. Safe to expose: AE returns only aggregate rows for
+  // the public metric/range we already serve.
+  const debug = url.searchParams.get('debug') === '1'
 
   // URL-based cache key is enough — the response only depends on metric+range.
   const cache = await cachedApiJson(request)
-  if (cache.hit) return cache.hit
+  if (!debug && cache.hit) return cache.hit
 
   let points: { ts: string; value: number }[] = []
+  let debugInfo: Record<string, unknown> | undefined
   if (env.CF_ACCOUNT_ID && env.AE_API_TOKEN) {
+    const sql = buildSeriesSql(DATASET, metric, range)
     try {
-      const sql = buildSeriesSql(DATASET, metric, range)
       const res = await fetch(
         `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/analytics_engine/sql`,
         {
@@ -45,16 +51,32 @@ export async function handleTimeseries(
           body: sql,
         },
       )
+      const text = await res.text()
       if (res.ok) {
-        const payload: unknown = await res.json()
-        points = parseSeriesResponse(payload)
+        try {
+          points = parseSeriesResponse(JSON.parse(text))
+        } catch (err) {
+          console.error('timeseries: AE JSON parse failed', err, text.slice(0, 200))
+        }
+      } else {
+        // Surface the failure in Worker observability logs so we don't have
+        // to guess why the chart is empty (typical cause: token missing
+        // Account.Analytics:Read, returns 403 with a JSON error envelope).
+        console.error('timeseries: AE returned', res.status, text.slice(0, 200))
       }
-    } catch {
-      // Network/JSON failure — degrade to an empty series. Better an empty
-      // sparkline than a 500 on a vanity endpoint.
+      if (debug) debugInfo = { sql, status: res.status, body: text.slice(0, 1000) }
+    } catch (err) {
+      console.error('timeseries: AE fetch failed', err)
+      if (debug) debugInfo = { sql, error: String(err) }
+    }
+  } else if (debug) {
+    debugInfo = {
+      hasAccountId: Boolean(env.CF_ACCOUNT_ID),
+      hasToken: Boolean(env.AE_API_TOKEN),
     }
   }
 
-  const body = JSON.stringify({ metric, range: rangeKey, points })
+  const body = JSON.stringify({ metric, range: rangeKey, points, ...(debugInfo ? { debug: debugInfo } : {}) })
+  if (debug) return apiJson(body, 200, 'no-store')
   return putCachedApiJson(ctx, cache.key, body, range.ttlSeconds)
 }

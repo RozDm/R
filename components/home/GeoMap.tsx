@@ -132,7 +132,7 @@ export default function GeoMap() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-mono text-gray-500 dark:text-gray-400">
           {sorted.map(([code, count]) => (
             <span key={code} className="inline-flex items-center gap-1.5">
-              <span aria-hidden>{flag(code)}</span>
+              <span aria-hidden className="font-flag">{flag(code)}</span>
               {countryName(code)} <span className="text-gray-400 dark:text-gray-500">{count}</span>
             </span>
           ))}
