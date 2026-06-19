@@ -6,6 +6,7 @@ import Skills from '@/components/home/Skills'
 import Certifications from '@/components/home/Certifications'
 import Status from '@/components/home/Status'
 import Visitors from '@/components/home/Visitors'
+import Trends from '@/components/home/Trends'
 import Footer from '@/components/layout/Footer'
 
 export default function Home() {
@@ -23,6 +24,7 @@ export default function Home() {
         <Certifications />
         <Status />
         <Visitors />
+        <Trends />
       </main>
       <Footer />
     </>
