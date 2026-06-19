@@ -21,7 +21,7 @@ export interface SeriesRange {
 const RANGES: Record<string, SeriesRange> = {
   '24h': { intervalSql: "INTERVAL '24' HOUR", bucketSql: 'toStartOfHour(timestamp)', ttlSeconds: 60 },
   '7d':  { intervalSql: "INTERVAL '7' DAY",   bucketSql: 'toStartOfHour(timestamp)', ttlSeconds: 300 },
-  '30d': { intervalSql: "INTERVAL '30' DAY",  bucketSql: 'toStartOfInterval(timestamp, INTERVAL 6 HOUR)', ttlSeconds: 600 },
+  '30d': { intervalSql: "INTERVAL '30' DAY",  bucketSql: "toStartOfInterval(timestamp, INTERVAL '6' HOUR)", ttlSeconds: 600 },
 }
 
 export function parseRange(value: string | null): { key: string; range: SeriesRange } {
