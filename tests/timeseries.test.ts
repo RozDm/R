@@ -41,6 +41,18 @@ describe('buildSeriesSql', () => {
     expect(buildSeriesSql('ds', 'geo', parseRange('24h').range)).toContain('toStartOfHour')
     expect(buildSeriesSql('ds', 'geo', parseRange('30d').range)).toContain('toStartOfInterval')
   })
+
+  // AE's SQL parser rejects bare INTERVAL N UNIT — it wants a string literal,
+  // INTERVAL 'N' UNIT. We had `INTERVAL 6 HOUR` in 30d's bucket clause and the
+  // chart silently went blank with a 422 from AE. Pin the quoted form for
+  // every range so a future tweak can't drop the quotes again.
+  it("quotes every INTERVAL literal (AE rejects bare INTERVAL N UNIT)", () => {
+    for (const key of ['24h', '7d', '30d'] as const) {
+      const sql = buildSeriesSql('ds', 'geo', parseRange(key).range)
+      expect(sql).not.toMatch(/INTERVAL\s+\d/)
+      expect(sql).toMatch(/INTERVAL\s+'\d+'/)
+    }
+  })
 })
 
 describe('parseSeriesResponse', () => {
