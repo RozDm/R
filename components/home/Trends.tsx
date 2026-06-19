@@ -82,7 +82,7 @@ export default function Trends() {
     return () => controller.abort()
   }, [metric, range])
 
-  const { linePath, areaPath, yMax, total, tickLabels } = useMemo(() => {
+  const { linePath, areaPath, yMax, total, tickLabels, markers } = useMemo(() => {
     const points = series?.points ?? []
     const max = niceCeil(Math.max(1, ...points.map((p) => p.value)))
     const step = points.length > 1 ? PLOT_W / (points.length - 1) : 0
@@ -99,7 +99,8 @@ export default function Trends() {
         ? `${line} L${coords[coords.length - 1].x.toFixed(1)} ${(PAD_T + PLOT_H).toFixed(1)} L${coords[0].x.toFixed(1)} ${(PAD_T + PLOT_H).toFixed(1)} Z`
         : ''
     // Three x-axis ticks: first, middle, last point — enough orientation
-    // without crowding the labels into each other on mobile.
+    // without crowding the labels into each other on mobile. A lone point
+    // gets a single centred label so it isn't left unlabelled.
     const ticks: { x: number; label: string }[] = []
     if (coords.length >= 2) {
       const mid = Math.floor(coords.length / 2)
@@ -108,6 +109,8 @@ export default function Trends() {
         { x: coords[mid].x, label: formatTick(coords[mid].ts, range) },
         { x: coords[coords.length - 1].x, label: formatTick(coords[coords.length - 1].ts, range) },
       )
+    } else if (coords.length === 1) {
+      ticks.push({ x: coords[0].x, label: formatTick(coords[0].ts, range) })
     }
     return {
       linePath: line,
@@ -115,6 +118,7 @@ export default function Trends() {
       yMax: max,
       total: points.reduce((sum, p) => sum + p.value, 0),
       tickLabels: ticks,
+      markers: coords,
     }
   }, [series, range])
 
@@ -122,7 +126,9 @@ export default function Trends() {
 
   const points = series?.points ?? []
   const isEmpty = !loading && points.length === 0
-  const yTicks = [0, yMax / 2, yMax]
+  // Integer, de-duplicated y-ticks: a max of 1 would otherwise label 0/0.5/1
+  // as "0,1,1" after rounding. Collapsing to unique ints keeps it honest.
+  const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
   const metricLabel = METRICS.find((m) => m.id === metric)?.label ?? ''
   const rangeLabel = RANGES.find((r) => r.id === range)?.label ?? ''
 
@@ -221,6 +227,12 @@ export default function Trends() {
               <path d={areaPath} className="fill-red-500/10" />
               <path d={linePath} fill="none" className="stroke-red-500" strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
             </>
+          )}
+
+          {/* A single bucket can't draw a line — mark it with a dot so the
+              chart isn't blank when only one hour/interval has data. */}
+          {points.length === 1 && markers[0] && (
+            <circle cx={markers[0].x} cy={markers[0].y} r="4" className="fill-red-500" />
           )}
 
           {tickLabels.map((t, i) => (
