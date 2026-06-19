@@ -21,6 +21,11 @@ export function recordGeo(env: Env, ctx: ExecutionContext, country: string | und
       .run()
       .catch(() => {}),
   )
+  // Time-series point so we can graph visits over time. D1 keeps the running
+  // total per country; AE keeps the timestamped trail.
+  try {
+    env.METRICS_AE.writeDataPoint({ indexes: [country], blobs: ['geo', country], doubles: [1] })
+  } catch {}
 }
 
 export async function handleGeo(
