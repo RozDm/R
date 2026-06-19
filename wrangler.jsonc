@@ -22,18 +22,14 @@
       "database_id": "26df4356-17e3-43fb-b96e-c1cdbeb4580b"
     }
   ],
-  // Time-series sink for view/geo events. Sampled, append-only, 10M writes/day
-  // free. D1 still holds the current totals (cheap to read); AE keeps history
-  // so we can draw "visits over time" graphs that D1 counters can't answer.
-  //
-  // Reading from AE needs an API token (Account Analytics:Read) and the
-  // account id; both are runtime secrets, not in this file:
-  //   wrangler secret put CF_ACCOUNT_ID
-  //   wrangler secret put AE_API_TOKEN
-  // The read route falls back to an empty time-series when either is unset.
-  "analytics_engine_datasets": [
-    { "binding": "METRICS_AE", "dataset": "rozsoshnykh_metrics" }
-  ],
+  // Analytics Engine binding is intentionally absent — see /api/timeseries:
+  // the read route already exists and degrades to an empty series, but writes
+  // (writeDataPoint) need a dataset binding here AND the AE feature enabled
+  // on the Cloudflare account, which currently isn't. Re-add when ready:
+  //   "analytics_engine_datasets": [
+  //     { "binding": "METRICS_AE", "dataset": "rozsoshnykh_metrics" }
+  //   ]
+  // …and uncomment the writeDataPoint calls in routes/views.ts + routes/geo.ts.
   "triggers": {
     // */5 = health checks. 0 3 * * * = daily prune of the contact table at
     // 03:00 UTC (~04:00–05:00 Oslo, off-peak). Dispatch lives in scheduled()
