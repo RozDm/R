@@ -23,7 +23,7 @@ export default function Header() {
             <HashLink
               key={href}
               href={href}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm tracking-wide"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 ease-out text-sm tracking-wide"
             >
               {label}
             </HashLink>

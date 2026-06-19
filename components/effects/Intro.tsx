@@ -45,9 +45,11 @@ export default function Intro() {
   }, [])
 
   // Run the phase sequence once the overlay is active.
-  // 1 = greeting in   2 = greeting out
-  // 3 = stars         4 = monolith        5 = HAL eye
-  // 6 = overlay fade
+  // 1 = greeting in      2 = greeting out
+  // 3 = stars            4 = monolith            5 = HAL eye
+  // 6 = HAL+monolith fade out (gives them their own exit animation
+  //     instead of disappearing with the overlay)
+  // 7 = overlay fade
   useEffect(() => {
     if (!active) return
 
@@ -68,23 +70,28 @@ export default function Intro() {
       setTimeout(() => setPhase(3), 3500),
       setTimeout(() => setPhase(4), 4000),
       setTimeout(() => setPhase(5), 4600),
-      setTimeout(() => setPhase(6), 6000),
-      setTimeout(finish, 6700),
+      // HAL and monolith get a 2200ms "look" then 2000ms to play their
+      // own exit (monolith rotates + shrinks, HAL fades) before the
+      // overlay starts going. Roughly twice as long as the old combined
+      // 1400ms fade so the closing beat actually lands.
+      setTimeout(() => setPhase(6), 6800),
+      setTimeout(() => setPhase(7), 8800),
+      setTimeout(finish, 10200),
     ]
     return () => timers.forEach(clearTimeout)
   }, [active])
 
   const skip = useCallback(() => {
     markSeen()
-    setPhase(6)
-    setTimeout(() => setActive(false), 700)
+    setPhase(7)
+    setTimeout(() => setActive(false), 1400)
   }, [])
 
   if (!active) return null
 
   return (
     <div
-      className={`fixed inset-0 z-[100] bg-black cursor-pointer select-none overflow-hidden transition-opacity duration-700 ${phase >= 6 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+      className={`fixed inset-0 z-[100] bg-black cursor-pointer select-none overflow-hidden transition-opacity duration-[1400ms] ease-in-out ${phase >= 7 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
       onClick={skip}
     >
       {/* Opening greeting card: appears first, fades out before the
@@ -100,27 +107,32 @@ export default function Intro() {
 
       {/* Main sequence: stars, monolith, HAL eye */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <Starfield stars={stars} lit={phase >= 3} zoom={phase >= 6} />
+        <Starfield stars={stars} lit={phase >= 3} zoom={phase >= 7} />
 
-        {/* Monolith */}
+        {/* Monolith: in on phase 4, holds through 5, on phase 6 it tilts
+            away and fades. transition-all 2000ms lets the exit fully
+            land before the overlay starts going. */}
         <div
-          className="relative z-10 transition-all duration-[1500ms]"
+          className="relative z-10 transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
-            opacity: phase >= 4 ? 1 : 0,
-            transform: phase >= 4
-              ? phase >= 6 ? 'perspective(500px) rotateY(90deg) scale(0.5)' : 'perspective(500px) rotateY(0deg) scale(1)'
+            opacity: phase >= 4 && phase < 6 ? 1 : 0,
+            transform: phase >= 6
+              ? 'perspective(500px) rotateY(90deg) scale(0.5)'
+              : phase >= 4
+              ? 'perspective(500px) rotateY(0deg) scale(1)'
               : 'perspective(500px) rotateY(-15deg) scale(0.8)',
           }}
         >
           <div className="w-[50px] h-[200px] md:w-[60px] md:h-[240px] bg-black border border-white/[0.06] shadow-[0_0_80px_rgba(255,255,255,0.04)]" />
         </div>
 
-        {/* HAL 9000 Eye */}
+        {/* HAL 9000 Eye: pulses out on phase 6 (slight scale up + fade)
+            so the eye doesn't just blink off with the overlay. */}
         <div
-          className="relative z-10 mt-10 transition-all duration-1000"
+          className="relative z-10 mt-10 transition-all duration-[1800ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
-            opacity: phase >= 5 ? 1 : 0,
-            transform: phase >= 5 ? 'scale(1)' : 'scale(0.3)',
+            opacity: phase >= 5 && phase < 6 ? 1 : 0,
+            transform: phase >= 6 ? 'scale(1.25)' : phase >= 5 ? 'scale(1)' : 'scale(0.3)',
           }}
         >
           <div className="w-[50px] h-[50px] md:w-[60px] md:h-[60px] rounded-full bg-[radial-gradient(circle,#ff2020_0%,#cc0000_25%,#800000_45%,#3d0000_65%,#1a0a0a_100%)] shadow-[0_0_50px_15px_rgba(255,0,0,0.25)]" />
@@ -131,7 +143,7 @@ export default function Intro() {
       {/* Skip hint */}
       <p
         className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[11px] tracking-widest text-gray-700 uppercase transition-opacity duration-[1600ms] ease-in-out"
-        style={{ opacity: phase >= 1 && phase < 6 ? 1 : 0 }}
+        style={{ opacity: phase >= 1 && phase < 7 ? 1 : 0 }}
       >
         Klikk for å fortsette
       </p>
