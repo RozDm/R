@@ -13,7 +13,8 @@ Live: https://rozsoshnykh.no
 - Content: markdown posts in `content/blog/` (gray-matter + react-markdown +
   remark-gfm + rehype-highlight for code blocks)
 - Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (`STATUS`),
-  D1 (`METRICS`), Email Routing (`CONTACT_EMAIL`), cron `*/5 * * * *`
+  D1 (`METRICS`), Email Routing (`CONTACT_EMAIL`), crons `*/5 * * * *` (uptime)
+  and `0 3 * * *` (daily prune of the contact table, 30-day window)
 - Worker (`src/`) handles canonical host (301 from `www` and `*.workers.dev`),
   strict per-request hash CSP for HTML it can decode, security headers, and the
   `/api/*` endpoints
@@ -39,7 +40,9 @@ smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs.
 
 One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 (create the D1 + apply schema), `kv-to-d1-migrate` (legacy data move),
-`geo-reset` (wipe the geo table).
+`geo-reset` (wipe the geo table). `d1-backup` runs weekly (and on-demand) and
+uploads a SQL dump of `rozsoshnykh-metrics` as a 90-day GHA artifact —
+off-platform backup beyond Cloudflare's built-in 30-day Time Travel.
 
 Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
 `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`.
@@ -65,10 +68,12 @@ wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, CONTACT_EMAIL,
 ### Uptime monitoring
 
 The cron pings every entry in `MONITORS` (`src/status.ts`) every 5 minutes and
-writes a JSON snapshot to KV (`status` key). `/api/status` serves the snapshot;
-the front page (`/#status`) renders it with per-service history, capped at
-`HISTORY_LIMIT` (149 ≈ 12.5h — the monolith's 1:4:9 proportions). The dashboard
-polls adaptively: 90s when all is up, 30s during an incident.
+writes a JSON snapshot to KV (`status` key). `/api/status` serves the snapshot
+(edge-cached 60 s — well under the cron interval, so refreshes still land
+promptly while KV reads stay near zero); the front page (`/#status`) renders
+it with per-service history, capped at `HISTORY_LIMIT` (149 ≈ 12.5h — the
+monolith's 1:4:9 proportions). The dashboard polls adaptively: 90s when all
+is up, 30s during an incident.
 
 Add a service by extending `MONITORS`. Use `internal: true` for routes that
 point at this site itself (the ASSETS binding is required — Workers block
@@ -85,9 +90,9 @@ Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
   session from the post page; bot UAs and cross-origin POSTs are ignored.
 - **Visitors by country**: the Worker reads `request.cf.country` on
   human-looking HTML navigations (`Sec-Fetch-Mode: navigate` + non-bot UA) and
-  upserts `geo`. `GET /api/geo` feeds the world map on the front page (a
-  build-time `public/world.svg`, not a JS bundle). No cookies, no per-visitor
-  tracking.
+  upserts `geo` in D1. `GET /api/geo` feeds the world map on the front page (a
+  build-time `public/world.svg`, not a JS bundle) and is edge-cached for 5 min.
+  No cookies, no per-visitor tracking.
 - **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
 
 ### Contact form (`/kontakt`)
@@ -95,8 +100,11 @@ Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
 `POST /api/contact` → validate → Cloudflare Turnstile → store in D1 (`contact`,
 also a backup copy) → send via Email Routing (`contact@rozsoshnykh.no`, Reply-To
 the sender). Defence in depth: Turnstile + same-origin check + bot-UA filter +
-off-screen honeypot + per-IP rate limit (3 / 10 min, from D1) + short-window
-dedup (identical address + message within 2 min is ack'd without a second mail).
+off-screen honeypot + per-IP rate limit (3 / 10 min) + per-email rate limit
+(2 / hour, catches IP-rotating spammers reusing a throwaway address) + short-
+window dedup (identical address + message within 2 min is ack'd without a
+second mail). Both rate-limit windows query D1; a daily cron prunes the table
+to a 30-day window.
 
 Turnstile is feature-gated: the widget renders only when `TURNSTILE_SITE_KEY`
 is set, and the worker enforces it only when `TURNSTILE_SECRET` is set, so the
