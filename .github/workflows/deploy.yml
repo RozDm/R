@@ -33,19 +33,27 @@ jobs:
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
         run: npm run build
 
-      # Push the Turnstile secret to the worker before deploy, so the new
-      # code sees it immediately. No-op when the secret isn't configured.
-      - name: Sync Turnstile secret
+      # Push runtime secrets before deploy so the new code sees them on the
+      # next request. Each one is a no-op when the GH secret isn't configured.
+      - name: Sync runtime secrets
         env:
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          AE_API_TOKEN: ${{ secrets.AE_API_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          if [ -n "$TURNSTILE_SECRET" ]; then
-            printf '%s' "$TURNSTILE_SECRET" | npx wrangler secret put TURNSTILE_SECRET
-          else
-            echo "TURNSTILE_SECRET not set — skipping"
-          fi
+          put_secret() {
+            local name=$1 value=$2
+            if [ -n "$value" ]; then
+              printf '%s' "$value" | npx wrangler secret put "$name"
+            else
+              echo "$name not set — skipping"
+            fi
+          }
+          put_secret TURNSTILE_SECRET "$TURNSTILE_SECRET"
+          put_secret CF_ACCOUNT_ID    "$CF_ACCOUNT_ID"
+          put_secret AE_API_TOKEN     "$AE_API_TOKEN"
 
       - uses: cloudflare/wrangler-action@v3
         with:
