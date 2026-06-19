@@ -42,6 +42,21 @@
   50% { opacity: 1; }
 }
 
+/* Soft route entrance. app/template.tsx re-mounts on every navigation, so
+   this plays as a gentle cross-fade each time you click through — pages ease
+   in instead of snapping. OPACITY ONLY on purpose: a transform here would
+   make the wrapper a containing block for position:fixed descendants and
+   could disturb the sticky header / intro overlays, so we avoid it. The
+   home route opts out entirely (its cinematic intro owns the entrance). */
+@keyframes page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-page-in {
+  animation: page-in 0.45s ease-out both;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
@@ -194,6 +209,9 @@ html.intro-active::before {
 
 @media (prefers-reduced-motion: reduce) {
   .hal-text-reveal {
+    animation: none;
+  }
+  .animate-page-in {
     animation: none;
   }
 }
