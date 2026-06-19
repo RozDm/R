@@ -22,7 +22,7 @@ export default function CopyEmail({ email }: { email: string }) {
       href={`mailto:${email}`}
       onClick={copy}
       title="Klikk for å kopiere"
-      className="inline-flex items-center gap-2 font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+      className="inline-flex items-center gap-2 font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out"
     >
       {email}
       {copied && (
