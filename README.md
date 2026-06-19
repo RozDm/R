@@ -40,9 +40,11 @@ smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs.
 
 One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 (create the D1 + apply schema), `kv-to-d1-migrate` (legacy data move),
-`geo-reset` (wipe the geo table). `d1-backup` runs weekly (and on-demand) and
-uploads a SQL dump of `rozsoshnykh-metrics` as a 90-day GHA artifact —
-off-platform backup beyond Cloudflare's built-in 30-day Time Travel.
+`reset-metrics` (type `RESET` to wipe the `views` + `geo` counters, prints
+before/after counts — supersedes the older geo-only `geo-reset`). `d1-backup`
+runs weekly (and on-demand) and uploads a SQL dump of `rozsoshnykh-metrics` as
+a 90-day GHA artifact — off-platform backup beyond Cloudflare's built-in 30-day
+Time Travel.
 
 Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
 `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
@@ -53,7 +55,8 @@ reuses `CLOUDFLARE_ACCOUNT_ID`).
 
 ```
 app/                Next App Router: home, /blogg, /blogg/tag/[slug], /kontakt,
-                    feed.xml, sitemap, robots, manifest, OG images, error boundaries
+                    feed.xml, sitemap, robots, manifest, OG images, error
+                    boundaries, template.tsx (opacity route cross-fade)
 components/         React components (Hero, Skills, StatusDashboard, GeoMap,
                     HalIdle, ContactForm, Turnstile, …)
 content/blog/       Markdown posts (frontmatter: title, description, date, tags)
@@ -94,15 +97,22 @@ Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
   human-looking HTML navigations (`Sec-Fetch-Mode: navigate` + non-bot UA) and
   upserts `geo` in D1. `GET /api/geo` feeds the world map on the front page (a
   build-time `public/world.svg`, not a JS bundle) and is edge-cached for 5 min.
-  No cookies, no per-visitor tracking.
+  No cookies, no per-visitor tracking. The country legend renders flag emoji
+  through a self-hosted Twemoji subset (`public/fonts/`, `@font-face` with a
+  regional-indicator `unicode-range` so it only downloads when a flag is on the
+  page) — Windows/Linux without flag glyphs would otherwise show letter pairs.
 - **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
 - **Time-series** of views and visits live in a Workers Analytics Engine
   dataset (`METRICS_AE`, binding `rozsoshnykh_metrics`). Each view-POST and
   geo upsert appends a sampled data point; `GET /api/timeseries?metric=view|geo&range=24h|7d|30d`
-  reads them back via the AE SQL API. Free tier: 10M writes/day, sampled
-  reads. Reading needs two runtime secrets (`CF_ACCOUNT_ID` + `AE_API_TOKEN`,
-  the latter with `Account Analytics:Read`); without them the route degrades
-  to an empty series and the sparkline on the front page collapses cleanly.
+  reads them back via the AE SQL API and feeds the front-page **Trends** card
+  (metric × range tabs, hand-rolled SVG — `?debug=1` bypasses the edge cache and
+  echoes the raw AE SQL/status/body when a chart looks empty). Free tier: 10M
+  writes/day, sampled reads. Reading needs two runtime secrets (`CF_ACCOUNT_ID`
+  + `AE_API_TOKEN`, the latter with `Account Analytics:Read`); without them the
+  route degrades to an empty series and the Trends card shows "Ingen data ennå".
+  AE is append-only — counters reset via `reset-metrics`, but AE points just age
+  out of the 24h/7d/30d window.
 
 ### Contact form (`/kontakt`)
 
