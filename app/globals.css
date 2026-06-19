@@ -1,12 +1,29 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Twemoji subset for ISO 3166 regional indicators (🇳🇴 etc.). Windows
+   ships without flag glyphs and many Linux desktops lack Noto Color Emoji,
+   so the system fallback shows two letters instead of a flag. The
+   unicode-range narrows the download to the 26 regional-indicator code
+   points — browsers only fetch the font when a flag character is on the
+   page, so cost is ~0 elsewhere. */
+@font-face {
+  font-family: 'Twemoji Country Flags';
+  unicode-range: U+1F1E6-1F1FF;
+  src: url('/fonts/TwemojiCountryFlags.woff2') format('woff2');
+  font-display: swap;
+}
+
 @theme {
   --color-primary-light: #3b82f6;
   --color-primary-dark: #60a5fa;
   --animate-fade-in: fade-in 0.8s ease-out both;
   --font-sans: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-mono: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.font-flag {
+  font-family: 'Twemoji Country Flags', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 @keyframes fade-in {
