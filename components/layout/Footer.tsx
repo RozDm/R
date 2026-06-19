@@ -25,7 +25,7 @@ export default function Footer() {
         <div className="flex gap-8 text-sm font-medium pt-2">
           <Link
             href="/kontakt/"
-            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out"
           >
             Kontaktskjema
           </Link>
@@ -33,7 +33,7 @@ export default function Footer() {
             href="https://github.com/RozDm"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out"
           >
             GitHub
           </a>
@@ -41,7 +41,7 @@ export default function Footer() {
             href="https://www.linkedin.com/in/dmytro-rozsoshnykh/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out"
           >
             LinkedIn
           </a>
@@ -51,7 +51,7 @@ export default function Footer() {
 
         <HashLink
           href="/#status"
-          className="inline-flex items-center gap-2 text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors pt-2"
+          className="inline-flex items-center gap-2 text-xs font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out pt-2"
         >
           <StatusDot />
           Driftsstatus

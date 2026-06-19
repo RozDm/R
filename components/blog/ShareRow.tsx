@@ -4,7 +4,7 @@ import CopyLink from './CopyLink'
 export default function ShareRow({ url }: { url: string }) {
   const u = encodeURIComponent(url)
   const linkClass =
-    'inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors'
+    'inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out'
 
   return (
     <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-mono">

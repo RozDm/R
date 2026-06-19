@@ -11,7 +11,7 @@ type FormState = 'idle' | 'sending' | 'sent' | 'error' | 'ratelimited' | 'challe
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900/50 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500/50 focus:outline-none transition-colors'
+  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900/50 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500/50 focus:outline-none transition-colors duration-200 ease-out'
 
 type Field = HTMLInputElement | HTMLTextAreaElement
 
@@ -64,7 +64,7 @@ export default function ContactForm() {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Jeg svarer som regel innen en dag eller to.</p>
         <button
           onClick={() => setState('idle')}
-          className="mt-4 text-sm font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          className="mt-4 text-sm font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out"
         >
           Send en til &rarr;
         </button>
@@ -134,7 +134,7 @@ export default function ContactForm() {
         <button
           type="submit"
           disabled={state === 'sending'}
-          className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition text-sm font-medium tracking-wide disabled:opacity-50"
+          className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition-opacity duration-200 ease-out text-sm font-medium tracking-wide disabled:opacity-50"
         >
           {state === 'sending' ? 'Sender…' : 'Send melding'}
         </button>

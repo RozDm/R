@@ -148,7 +148,7 @@ export default function Trends() {
         </p>
       </div>
 
-      <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors">
+      <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div role="tablist" aria-label="Metrikk" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
             {METRICS.map((m) => (
@@ -157,7 +157,7 @@ export default function Trends() {
                 role="tab"
                 aria-selected={metric === m.id}
                 onClick={() => setMetric(m.id)}
-                className={`px-3 py-1.5 transition-colors ${metric === m.id ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                className={`px-3 py-1.5 transition-colors duration-200 ease-out ${metric === m.id ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
               >
                 {m.label}
               </button>
@@ -170,7 +170,7 @@ export default function Trends() {
                 role="tab"
                 aria-selected={range === r.id}
                 onClick={() => setRange(r.id)}
-                className={`px-3 py-1.5 transition-colors ${range === r.id ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+                className={`px-3 py-1.5 transition-colors duration-200 ease-out ${range === r.id ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
               >
                 {r.label}
               </button>
@@ -190,7 +190,7 @@ export default function Trends() {
 
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className={`w-full h-56 transition-opacity ${loading ? 'opacity-50' : ''}`}
+          className={`w-full h-56 transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
           role="img"
           aria-label={`${metricLabel} – tidsserie, siste ${rangeLabel}`}
           preserveAspectRatio="none"
