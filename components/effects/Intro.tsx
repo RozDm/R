@@ -130,8 +130,7 @@ export default function Intro() {
           }}
         >
           <div
-            className="w-[50px] h-[200px] md:w-[60px] md:h-[240px] border border-white/25 shadow-[0_0_70px_rgba(225,232,255,0.13)]"
-            style={{ background: 'linear-gradient(160deg, #26272d 0%, #0a0a0c 48%, #15161b 100%)' }}
+            className="w-[50px] h-[200px] md:w-[60px] md:h-[240px] bg-black border border-white/10 shadow-[0_0_60px_rgba(255,255,255,0.06)]"
           />
         </div>
 
