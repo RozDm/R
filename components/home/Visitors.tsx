@@ -1,5 +1,4 @@
 import GeoMap from './GeoMap'
-import Sparkline from './Sparkline'
 
 export default function Visitors() {
   return (
@@ -13,12 +12,10 @@ export default function Visitors() {
         </h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
           Landet hentes fra Cloudflare på kanten og telles i D1 — ingen
-          informasjonskapsler, ingen sporing av enkeltpersoner. Tidsserien
-          under er sampled og lagres i Workers Analytics Engine.
+          informasjonskapsler, ingen sporing av enkeltpersoner.
         </p>
       </div>
       <GeoMap />
-      <Sparkline metric="geo" range="7d" label="Besøk per time, siste uken" />
     </section>
   )
 }
