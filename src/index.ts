@@ -18,6 +18,7 @@ import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
 import { handleGeo, recordGeo } from './routes/geo'
 import { handleContact } from './routes/contact'
+import { handleTimeseries } from './routes/timeseries'
 
 const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
 const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
@@ -133,6 +134,7 @@ export default {
       (await handleStatus(url, request, env, ctx)) ??
       (await handleViews(url, request, env)) ??
       (await handleGeo(url, request, env, ctx)) ??
+      (await handleTimeseries(url, request, env, ctx)) ??
       (await handleContact(url, request, env))
     if (apiResponse) return apiResponse
 

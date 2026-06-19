@@ -1,0 +1,82 @@
+import { describe, expect, it } from 'vitest'
+import { buildSeriesSql, parseMetric, parseRange, parseSeriesResponse } from '@/src/timeseries'
+
+describe('parseMetric', () => {
+  it('accepts the two supported metrics', () => {
+    expect(parseMetric('view')).toBe('view')
+    expect(parseMetric('geo')).toBe('geo')
+  })
+
+  it('rejects everything else, including null', () => {
+    expect(parseMetric('VIEW')).toBeNull()
+    expect(parseMetric('contact')).toBeNull()
+    expect(parseMetric('')).toBeNull()
+    expect(parseMetric(null)).toBeNull()
+  })
+})
+
+describe('parseRange', () => {
+  it('returns the requested known range', () => {
+    expect(parseRange('24h').key).toBe('24h')
+    expect(parseRange('7d').key).toBe('7d')
+    expect(parseRange('30d').key).toBe('30d')
+  })
+
+  it('falls back to 7d on unknown or missing input', () => {
+    expect(parseRange(null).key).toBe('7d')
+    expect(parseRange('garbage').key).toBe('7d')
+    expect(parseRange('__proto__').key).toBe('7d')
+  })
+})
+
+describe('buildSeriesSql', () => {
+  it('embeds the metric literal in the WHERE clause', () => {
+    const sql = buildSeriesSql('ds', 'view', parseRange('7d').range)
+    expect(sql).toContain("blob1 = 'view'")
+    expect(sql).toContain('FROM ds')
+    expect(sql).toContain('FORMAT JSON')
+  })
+
+  it('uses different bucket sizes per range', () => {
+    expect(buildSeriesSql('ds', 'geo', parseRange('24h').range)).toContain('toStartOfHour')
+    expect(buildSeriesSql('ds', 'geo', parseRange('30d').range)).toContain('toStartOfInterval')
+  })
+})
+
+describe('parseSeriesResponse', () => {
+  it('extracts the [{ts, value}] points', () => {
+    const payload = {
+      data: [
+        { ts: '2026-06-19T00:00:00Z', value: 3 },
+        { ts: '2026-06-19T01:00:00Z', value: 7 },
+      ],
+    }
+    expect(parseSeriesResponse(payload)).toEqual([
+      { ts: '2026-06-19T00:00:00Z', value: 3 },
+      { ts: '2026-06-19T01:00:00Z', value: 7 },
+    ])
+  })
+
+  it('coerces stringy numbers (AE sometimes serialises SUMs as strings)', () => {
+    expect(parseSeriesResponse({ data: [{ ts: 'x', value: '5' }] })).toEqual([{ ts: 'x', value: 5 }])
+  })
+
+  it('drops malformed rows', () => {
+    expect(
+      parseSeriesResponse({
+        data: [
+          { ts: 'x', value: 1 },
+          { ts: 2, value: 3 },
+          { ts: 'y', value: -1 },
+          { ts: 'z', value: 'NaN' },
+        ],
+      }),
+    ).toEqual([{ ts: 'x', value: 1 }])
+  })
+
+  it('returns [] on garbage input', () => {
+    expect(parseSeriesResponse(null)).toEqual([])
+    expect(parseSeriesResponse({})).toEqual([])
+    expect(parseSeriesResponse({ data: 'no' })).toEqual([])
+  })
+})

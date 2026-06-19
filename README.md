@@ -45,7 +45,9 @@ uploads a SQL dump of `rozsoshnykh-metrics` as a 90-day GHA artifact —
 off-platform backup beyond Cloudflare's built-in 30-day Time Travel.
 
 Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
-`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`.
+`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
+token for the Analytics Engine SQL API; `CF_ACCOUNT_ID` for the same call
+reuses `CLOUDFLARE_ACCOUNT_ID`).
 
 ### Layout
 
@@ -94,6 +96,13 @@ Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
   build-time `public/world.svg`, not a JS bundle) and is edge-cached for 5 min.
   No cookies, no per-visitor tracking.
 - **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
+- **Time-series** of views and visits live in a Workers Analytics Engine
+  dataset (`METRICS_AE`, binding `rozsoshnykh_metrics`). Each view-POST and
+  geo upsert appends a sampled data point; `GET /api/timeseries?metric=view|geo&range=24h|7d|30d`
+  reads them back via the AE SQL API. Free tier: 10M writes/day, sampled
+  reads. Reading needs two runtime secrets (`CF_ACCOUNT_ID` + `AE_API_TOKEN`,
+  the latter with `Account Analytics:Read`); without them the route degrades
+  to an empty series and the sparkline on the front page collapses cleanly.
 
 ### Contact form (`/kontakt`)
 
