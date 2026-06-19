@@ -22,15 +22,7 @@ export async function handleViews(url: URL, request: Request, env: Env): Promise
       .bind(slug)
       .first<{ count: number }>()
       .catch(() => null)
-    if (row) {
-      // Append a time-series point alongside the D1 increment. Sampled,
-      // append-only, so it doesn't fight the D1 counter — D1 stays the
-      // truth for totals, AE answers "when".
-      try {
-        env.METRICS_AE.writeDataPoint({ indexes: [slug], blobs: ['view', slug], doubles: [1] })
-      } catch {}
-      return apiJson(JSON.stringify({ views: row.count }))
-    }
+    if (row) return apiJson(JSON.stringify({ views: row.count }))
   }
 
   const row = await env.METRICS.prepare('SELECT count FROM views WHERE slug = ?1')
