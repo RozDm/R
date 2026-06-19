@@ -44,7 +44,7 @@ html {
 /* Pre-paint cover for the first-visit intro, toggled by an inline script
    in <head> before React mounts. Prevents a flash of page content before
    the animated Intro overlay (z-100) takes over. Removed by Intro once it
-   mounts, and by a 6.5s safety timeout if JS never reaches React. */
+   mounts, and by a 7.5s safety timeout if JS never reaches React. */
 html.intro-active {
   overflow: hidden;
 }

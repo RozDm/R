@@ -11,7 +11,7 @@ export default function Visitors() {
           Hvor leserne kommer fra
         </h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-          Landet hentes fra Cloudflare på kanten og telles i KV — ingen
+          Landet hentes fra Cloudflare på kanten og telles i D1 — ingen
           informasjonskapsler, ingen sporing av enkeltpersoner.
         </p>
       </div>

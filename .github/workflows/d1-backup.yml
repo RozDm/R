@@ -1,0 +1,40 @@
+name: Backup D1
+
+# Weekly off-platform snapshot of the metrics database. D1 Time Travel already
+# covers the last 30 days of point-in-time restore on Cloudflare's side; this
+# is the longer-horizon insurance — a downloadable SQL dump stored as a GitHub
+# Actions artifact (free, retained 90 days). Manual trigger lets me grab one
+# before a risky migration.
+on:
+  schedule:
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Export D1 to SQL
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          mkdir -p backup
+          ts=$(date -u +'%Y%m%dT%H%M%SZ')
+          npx wrangler d1 export rozsoshnykh-metrics --remote --output "backup/metrics-${ts}.sql"
+          ls -lh backup/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d1-metrics-backup
+          path: backup/*.sql
+          retention-days: 90
