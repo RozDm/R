@@ -13,6 +13,13 @@ function escapeXml(s: string): string {
     .replaceAll("'", '&apos;')
 }
 
+// Safely embed arbitrary HTML inside <![CDATA[ … ]]>. A literal `]]>` would
+// close the section early and feed garbage to the parser; split it so neither
+// half can match the terminator.
+function cdataSafe(s: string): string {
+  return s.replaceAll(']]>', ']]]]><![CDATA[>')
+}
+
 export async function GET() {
   const posts = getPostSlugs()
     .map((slug) => getPostBySlug(slug))
@@ -29,7 +36,7 @@ export async function GET() {
       <guid isPermaLink="true">${url}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
       <description>${escapeXml(post.description)}</description>
-      <content:encoded><![CDATA[${html}]]></content:encoded>
+      <content:encoded><![CDATA[${cdataSafe(html)}]]></content:encoded>
     </item>`
     }),
   )

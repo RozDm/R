@@ -1,8 +1,8 @@
 name: CI
 
+# deploy.yml already runs the same lint/typecheck/test/build gate on push to
+# main, so we only need this workflow for PRs.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
