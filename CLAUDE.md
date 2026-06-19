@@ -9,7 +9,7 @@ code and comments are English.
 
 - `app/`, `components/` — Next App Router, `output: 'export'`, `trailingSlash: true`,
   Tailwind v4 (no config file, `@theme` in `app/globals.css`).
-- Routes: `/` (Hero/Skills/Certifications/Status/Visitors sections), `/blogg`,
+- Routes: `/` (Hero/Skills/Certifications/Status/Visitors/Trends sections), `/blogg`,
   `/blogg/[slug]`, `/blogg/tag/[slug]`, `/kontakt`, plus `feed.xml`, `sitemap`,
   `robots`, `manifest`, OG images. `error.tsx`/`global-error.tsx` are the
   client error boundaries (HAL-voiced "Systemfeil").
@@ -28,11 +28,26 @@ code and comments are English.
     the list of monitored services. `HISTORY_LIMIT = 149` (monolith 1:4:9 —
     intentional, don't "fix" it).
   - `metrics.ts` — pure logic for view/geo counters.
+  - `timeseries.ts` — pure helpers for the AE-backed time-series endpoint
+    (metric/range parsing, SQL builder, AE-response parser); type-checked under
+    both tsconfigs since tests import it. Every `INTERVAL` literal is quoted
+    (`INTERVAL '6' HOUR`) — AE's SQL parser 422s on the bare `INTERVAL 6 HOUR`.
 - KV namespace `STATUS` holds only the uptime snapshot (`status` key).
 - D1 database `rozsoshnykh-metrics` (binding `METRICS`, schema in
   `schema/metrics.sql`): `views(slug, count)`, `geo(country, count)`, and
   `contact(id, at, ip, name, email, message)`. Counters use atomic
   `INSERT … ON CONFLICT … count = count + 1`.
+- Analytics Engine dataset `rozsoshnykh_metrics` (binding `METRICS_AE`) holds
+  the sampled time-series behind the front-page **Trends** card
+  (`components/home/Trends.tsx` — metric `Besøk`/`Sidevisninger` × range
+  24t/7d/30d, hand-rolled SVG, single-point dot). Each view-POST and geo upsert
+  also appends an AE point (`blob1` = `view`|`geo`); D1 stays the truth for
+  totals, AE answers "when". Reads need two runtime Worker secrets —
+  `CF_ACCOUNT_ID` + `AE_API_TOKEN` (token scoped `Account Analytics:Read`) —
+  both fed from the `CLOUDFLARE_ACCOUNT_ID` / `AE_API_TOKEN` GitHub secrets by
+  the deploy workflow's `wrangler secret put` loop. Missing either → empty
+  series + "Ingen data ennå" (writes collect before the read token exists). AE
+  is append-only/immutable — it cannot be wiped.
 - Contact form has Turnstile wired in but feature-gated by env: the widget
   renders only when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set at build time,
   and the worker enforces verification only when `TURNSTILE_SECRET` is set
@@ -42,7 +57,10 @@ code and comments are English.
   double-submit (same address + message within 2 min) is deduped in D1 and
   ack'd without a second e-mail — content-keyed, so no schema column is needed.
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count —
-  same-origin + non-bot only), `/api/geo`, `/api/contact` (POST). Geo is
+  same-origin + non-bot only), `/api/geo`,
+  `/api/timeseries?metric=view|geo&range=24h|7d|30d` (GET, edge-cached per
+  metric+range; `?debug=1` bypasses the cache and echoes the AE SQL + HTTP
+  status + raw body to diagnose an empty chart), `/api/contact` (POST). Geo is
   recorded on the edge from `request.cf.country` for human-looking
   navigations (`Sec-Fetch-Mode: navigate` + non-bot UA).
 - The visitor world map is a build-time artifact: `scripts/build-world-svg.mjs`
@@ -81,7 +99,7 @@ code and comments are English.
 - Section pattern on the front page: mono uppercase red eyebrow
   (`text-red-500 … tracking-widest uppercase`) + bold h2 + cards
   (`bg-white dark:bg-gray-900/50 rounded-xl border … hover:border-red-500/30`),
-  staggered `animate-fade-in` delays (0/150/300/450/600ms).
+  staggered `animate-fade-in` delays (0/150/300/450/600/750ms).
 - Accent is red-500/red-400; font is Intel One Mono via CSS variable.
 - 2001: A Space Odyssey theme is deliberate and load-bearing: intro
   (`HEI %USERNAME%` → stars → monolith → HAL eye), 404, `error.tsx`,
@@ -121,6 +139,23 @@ code and comments are English.
   instead (e.g. `scripts/build-world-svg.mjs`).
 - No R2 (it requires a card even on the free tier) — the metrics backup plan
   is a future GitHub Actions cron, not an R2 bucket.
+- Resetting metrics: the manual `reset-metrics.yml` (`workflow_dispatch`, type
+  `RESET` to confirm) wipes the D1 `views` + `geo` counters and prints
+  before/after counts; it supersedes the older geo-only `geo-reset.yml`. AE
+  can't be reset (append-only) — its points age out of the 24h/7d/30d windows
+  on their own, or add a launch-epoch floor to the SQL for a clean graph sooner.
+- Country flags in the GeoMap legend use a self-hosted Twemoji subset
+  (`public/fonts/TwemojiCountryFlags.woff2`, `@font-face` with
+  `unicode-range: U+1F1E6-1F1FF`, class `.font-flag`) — Windows ships no
+  regional-indicator glyphs, so the system fallback renders letter pairs. The
+  `unicode-range` keeps the font from downloading unless a flag is on the page;
+  `font-src 'self'` already covers it.
+- `app/template.tsx` cross-fades route changes (450ms `animate-page-in`;
+  templates re-mount per navigation). OPACITY-ONLY on purpose — a transform
+  would become a containing block for the `position:fixed` intro overlays /
+  sticky header — and the **home route opts out** (`usePathname() !== '/'`) so
+  the intro's z-100 overlay + black pre-paint cover keep a clean stacking
+  context. Respects `prefers-reduced-motion`.
 - `@cloudflare/vitest-pool-workers` is not yet compatible with Vitest 4, so
   worker routes are covered by `scripts/smoke.sh` in CI, not unit tests.
 - `StatusDashboard` is code-split via `next/dynamic` (`ssr: false`,
