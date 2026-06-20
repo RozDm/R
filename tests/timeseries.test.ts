@@ -42,6 +42,16 @@ describe('buildSeriesSql', () => {
     expect(buildSeriesSql('ds', 'geo', parseRange('30d').range)).toContain('toStartOfInterval')
   })
 
+  it('adds an epoch floor when one is passed (cuts off pre-relaunch AE points)', () => {
+    const sql = buildSeriesSql('ds', 'geo', parseRange('7d').range, '2026-06-20 17:15:00')
+    expect(sql).toContain("timestamp >= toDateTime('2026-06-20 17:15:00')")
+  })
+
+  it("omits the floor when epoch is empty (no clause leaks into the WHERE)", () => {
+    const sql = buildSeriesSql('ds', 'geo', parseRange('7d').range, '')
+    expect(sql).not.toContain('toDateTime')
+  })
+
   // AE's SQL parser rejects bare INTERVAL N UNIT — it wants a string literal,
   // INTERVAL 'N' UNIT. We had `INTERVAL 6 HOUR` in 30d's bucket clause and the
   // chart silently went blank with a 422 from AE. Pin the quoted form for

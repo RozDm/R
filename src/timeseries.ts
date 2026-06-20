@@ -29,13 +29,30 @@ export function parseRange(value: string | null): { key: string; range: SeriesRa
   return { key, range: RANGES[key] }
 }
 
+// AE is append-only and can't be wiped, but old points (pre-relaunch,
+// dev-noise, etc.) shouldn't show in the chart forever. METRICS_EPOCH is a
+// UTC timestamp ('YYYY-MM-DD HH:MM:SS') — when set, AE silently ignores
+// anything older. Empty/absent → no floor, behaves as before.
+export const METRICS_EPOCH = '2026-06-20 17:15:00'
+
 // Build the AE SQL query. Identifiers are fixed strings (dataset, blob index,
-// bucket function from RANGES) — no user input is interpolated.
-export function buildSeriesSql(dataset: string, metric: SeriesMetric, range: SeriesRange): string {
+// bucket function from RANGES) — no user input is interpolated. The optional
+// epoch floor lets us cut off pre-relaunch noise that AE can't delete.
+export function buildSeriesSql(
+  dataset: string,
+  metric: SeriesMetric,
+  range: SeriesRange,
+  epoch: string = METRICS_EPOCH,
+): string {
+  const where = [
+    `blob1 = '${metric}'`,
+    `timestamp > NOW() - ${range.intervalSql}`,
+    ...(epoch ? [`timestamp >= toDateTime('${epoch}')`] : []),
+  ].join(' AND ')
   return [
     `SELECT ${range.bucketSql} AS ts, SUM(_sample_interval) AS value`,
     `FROM ${dataset}`,
-    `WHERE blob1 = '${metric}' AND timestamp > NOW() - ${range.intervalSql}`,
+    `WHERE ${where}`,
     'GROUP BY ts',
     'ORDER BY ts ASC',
     'FORMAT JSON',

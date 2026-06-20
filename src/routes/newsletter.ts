@@ -4,12 +4,13 @@
 // lands. No confirmation e-mail is dispatched yet — the row sits with
 // confirmed_at = NULL and waits for Phase 2.
 //
-// Defence in depth mirrors /api/contact: same-origin + bot-UA + honeypot +
-// Turnstile (when configured) + per-IP rate limit.
+// Defence in depth: same-origin + bot-UA + honeypot + per-IP rate limit.
+// Turnstile is *not* attached here (Phase 1 doesn't send mail and the
+// abuse surface is just a row in D1); the contact form is the one that
+// kicks off real e-mail and keeps the challenge.
 import { apiJson } from '../http'
 import { looksLikeBot } from '../metrics'
 import { validateNewsletter } from '../newsletter'
-import { verifyTurnstile } from '../contact'
 
 // Max sign-ups per IP per hour. Lower than the contact form — nobody
 // legitimately signs up for the same newsletter many times in a row.
@@ -45,14 +46,6 @@ export async function handleNewsletter(
   if (!payload) return apiJson('{"error":"invalid"}', 422)
 
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown'
-
-  if (env.TURNSTILE_SECRET) {
-    if (!payload.turnstileToken) {
-      return apiJson('{"error":"challenge required"}', 403)
-    }
-    const ok = await verifyTurnstile(payload.turnstileToken, env.TURNSTILE_SECRET, ip)
-    if (!ok) return apiJson('{"error":"challenge failed"}', 403)
-  }
 
   const recent = await env.METRICS.prepare(
     "SELECT COUNT(*) AS n FROM subscribers WHERE ip = ?1 AND at > datetime('now', '-1 hour')",
