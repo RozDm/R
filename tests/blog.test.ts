@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags } from '@/lib/blog'
+import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags, filterPublished } from '@/lib/blog'
 
 // lib/blog reads markdown off disk; mock node:fs so these tests exercise the
 // ordering / adjacency / tag logic against a fixed set, independent of whatever
@@ -83,5 +83,29 @@ describe('getPostsByTag', () => {
 describe('getAllTags', () => {
   it('returns distinct tags sorted nb-NO', () => {
     expect(getAllTags()).toEqual(['Docker', 'Linux'])
+  })
+})
+
+describe('filterPublished', () => {
+  type P = { slug: string; draft?: boolean }
+  const set: P[] = [{ slug: 'a' }, { slug: 'b', draft: true }, { slug: 'c', draft: false }]
+
+  it('keeps everything when includeDrafts is true (dev preview path)', () => {
+    expect(filterPublished(set, { includeDrafts: true }).map((p) => p.slug)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('drops draft:true entries when includeDrafts is false (production build path)', () => {
+    expect(filterPublished(set, { includeDrafts: false }).map((p) => p.slug)).toEqual(['a', 'c'])
+  })
+
+  it('treats missing/undefined draft as published — frontmatter without the key is implicitly published', () => {
+    const noFlag: P[] = [{ slug: 'no-flag' }]
+    expect(filterPublished(noFlag, { includeDrafts: false })).toEqual([{ slug: 'no-flag' }])
+  })
+
+  it('does not mutate the input array', () => {
+    const before = [...set]
+    filterPublished(set, { includeDrafts: false })
+    expect(set).toEqual(before)
   })
 })

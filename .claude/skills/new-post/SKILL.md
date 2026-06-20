@@ -30,6 +30,7 @@ title: "<title>"
 description: "<description>"
 date: "<YYYY-MM-DD>"
 tags: ["<Tag1>", "<Tag2>"]
+draft: true
 ---
 
 <one-paragraph hook in Norwegian — what the reader will learn and why it
@@ -46,8 +47,9 @@ matters>
 
 Keep the body tight — readers are technical and dislike fluff. Code blocks are auto-highlighted at build via `rehype-highlight`; use fenced blocks with a language tag (`bash`, `ts`, `tsx`, `nginx`, `yaml`, …). The reading-time estimate excludes fenced code, so don't pad with banks of snippets to look longer.
 
-5. Do NOT run `npm test` or `npm run build` — markdown posts don't affect those checks. If the user wants verification, suggest `npm run dev` to see it rendered.
-6. Remind the user (single short line, only if it applies):
+5. Do NOT run `npm test` or `npm run build` — markdown posts don't affect those checks. If the user wants verification, suggest `npm run dev` to see it rendered (drafts surface there with a red "Utkast" badge).
+6. The post starts as `draft: true` on purpose — it is invisible in production (list, sitemap, RSS, slug routing all skip it) until the author removes the line. Tell the user in one line: "Remove `draft: true` and merge to publish." Don't remove it yourself unless asked.
+7. Remind the user (single short line, only if it applies):
    - If this is the **first** post going public, flip `robots: { index: false }` to `true` in `app/layout.tsx` and submit the sitemap in Google Search Console.
    - Do not list `/kontakt` or status-style utility URLs in the sitemap (they stay `noindex` permanently).
 
