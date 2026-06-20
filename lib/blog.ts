@@ -24,6 +24,7 @@ export function getPostBySlug(slug: string): Post {
     title: data.title ?? slug,
     description: data.description ?? '',
     date: data.date ?? '',
+    updated: data.updated || undefined,
     tags: normalizeTags(data.tags),
     readingMinutes: readingTimeMinutes(content),
     content,

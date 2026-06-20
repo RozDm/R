@@ -1,9 +1,11 @@
 // GET /api/timeseries?metric=view|geo&range=24h|7d|30d
 //
 // Queries the Cloudflare Analytics Engine SQL API and returns a bucketed
-// [{ts, value}] series for the front-end sparkline. When the account id or
+// [{ts, value}] series for the front-page Trends card. When the account id or
 // API token aren't set (deploy without the secrets), we fall back to an empty
-// series so the UI degrades gracefully instead of erroring.
+// series so the UI degrades gracefully instead of erroring. AE-side failures
+// (non-2xx, parse, fetch) log to Worker observability via console.error so an
+// unexpectedly empty chart is diagnosable from the dashboard.
 import { apiJson, cachedApiJson, putCachedApiJson } from '../http'
 import {
   buildSeriesSql,
@@ -25,21 +27,15 @@ export async function handleTimeseries(
   const metric = parseMetric(url.searchParams.get('metric'))
   if (!metric) return apiJson('{"error":"bad metric"}', 400)
   const { key: rangeKey, range } = parseRange(url.searchParams.get('range'))
-  // ?debug=1 bypasses the edge cache and dumps the raw AE response (status +
-  // body) so an empty chart is diagnosable from the browser without poking
-  // around in Worker logs. Safe to expose: AE returns only aggregate rows for
-  // the public metric/range we already serve.
-  const debug = url.searchParams.get('debug') === '1'
 
   // URL-based cache key is enough — the response only depends on metric+range.
   const cache = await cachedApiJson(request)
-  if (!debug && cache.hit) return cache.hit
+  if (cache.hit) return cache.hit
 
   let points: { ts: string; value: number }[] = []
-  let debugInfo: Record<string, unknown> | undefined
   if (env.CF_ACCOUNT_ID && env.AE_API_TOKEN) {
-    const sql = buildSeriesSql(DATASET, metric, range)
     try {
+      const sql = buildSeriesSql(DATASET, metric, range)
       const res = await fetch(
         `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/analytics_engine/sql`,
         {
@@ -64,19 +60,11 @@ export async function handleTimeseries(
         // Account.Analytics:Read, returns 403 with a JSON error envelope).
         console.error('timeseries: AE returned', res.status, text.slice(0, 200))
       }
-      if (debug) debugInfo = { sql, status: res.status, body: text.slice(0, 1000) }
     } catch (err) {
       console.error('timeseries: AE fetch failed', err)
-      if (debug) debugInfo = { sql, error: String(err) }
-    }
-  } else if (debug) {
-    debugInfo = {
-      hasAccountId: Boolean(env.CF_ACCOUNT_ID),
-      hasToken: Boolean(env.AE_API_TOKEN),
     }
   }
 
-  const body = JSON.stringify({ metric, range: rangeKey, points, ...(debugInfo ? { debug: debugInfo } : {}) })
-  if (debug) return apiJson(body, 200, 'no-store')
+  const body = JSON.stringify({ metric, range: rangeKey, points })
   return putCachedApiJson(ctx, cache.key, body, range.ttlSeconds)
 }
