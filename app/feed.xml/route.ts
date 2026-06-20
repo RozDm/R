@@ -34,9 +34,15 @@ export async function GET() {
         post.updated && post.updated > post.date
           ? `\n      <atom:updated>${new Date(post.updated).toISOString()}</atom:updated>`
           : ''
+      // Cross-post tools (Dev.to, Hashnode importers, n8n RSS fanouts) pick
+      // up the canonical link from a rel="canonical" atom:link if it exists.
+      // Without it they tend to omit canonical entirely and the duplicated
+      // article on those platforms can outrank the original. <link> stays as
+      // the permalink, RSS readers ignore the atom:link.
       return `    <item>
       <title>${escapeXml(post.title)}</title>
       <link>${url}</link>
+      <atom:link rel="canonical" href="${url}"/>
       <guid isPermaLink="true">${url}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>${updatedTag}
       <description>${escapeXml(post.description)}</description>

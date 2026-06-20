@@ -113,11 +113,18 @@ code and comments are English.
   greeting, `HISTORY_LIMIT = 149`. Keep the `%USERNAME%` placeholder joke
   literal — it is not a template var.
 - Blog posts: `content/blog/<slug>.md`, frontmatter `title`, `description`,
-  `date` (ISO), `tags`. Tags are normalized/deduped via `lib/tags.ts`
+  `date` (ISO), `tags`, optional `updated` and `draft: true`. Tags are
+  normalized/deduped via `lib/tags.ts`
   (`normalizeTag`/`normalizeTags`/`tagToSlug`); the canonical list and alias
   map live in `data/tags.ts` (data next to `skills.ts`/`certifications.ts`,
   logic in `lib/`). Reading time is computed, not stored. Code blocks are highlighted at build via `rehype-highlight`
-  (theme in `app/globals.css`).
+  (theme in `app/globals.css`). Drafts: `draft: true` keeps a post out of
+  every public surface (list, sitemap, RSS, tag pages, slug routing) at
+  build time — `getPostSlugs`/`getAllPosts` filter on `NODE_ENV !==
+  'production'`, so the slug never reaches `generateStaticParams` and 404s
+  in prod. `npm run dev` renders drafts with a red "Utkast" badge. Remove
+  the `draft: true` line to publish. `/new-post` scaffolds new posts as
+  drafts by default.
 - SEO: canonicals + trailing slash everywhere, OG images via `next/og`,
   JSON-LD (Person + WebSite sitewide, BlogPosting + image + BreadcrumbList per
   post), RSS at `/feed.xml`, prev/next + tag pages. `robots.index: false` in

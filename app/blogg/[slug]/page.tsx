@@ -55,6 +55,13 @@ export default async function BlogPost({ params }: Props) {
     notFound()
   }
 
+  // Belt + braces: a draft can only reach this branch in dev (production
+  // builds drop it from getPostSlugs and the static export never generates
+  // its HTML). If something changes that invariant, 404 instead of
+  // accidentally serving a draft.
+  if (post.draft && process.env.NODE_ENV === 'production') notFound()
+  const isDraft = post.draft === true
+
   const { prev, next } = getAdjacentPosts(slug)
 
   // Honest dateModified for SEO: the optional `updated` frontmatter wins;
@@ -105,6 +112,15 @@ export default async function BlogPost({ params }: Props) {
 
         <article className="mt-8">
           <header className="mb-8">
+            {isDraft && (
+              <p
+                role="note"
+                className="mb-4 inline-flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/5 px-3 py-1 text-[11px] font-mono uppercase tracking-widest text-red-500 dark:text-red-400"
+              >
+                <span aria-hidden>●</span>
+                Utkast — kun synlig lokalt
+              </p>
+            )}
             {post.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {post.tags.map((tag) => (
