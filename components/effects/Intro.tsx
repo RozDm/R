@@ -36,6 +36,16 @@ export default function Intro() {
       return
     }
 
+    // Respect prefers-reduced-motion: visitors who asked the OS to keep
+    // motion calm shouldn't sit through an ~11s cinematic intro. Mark seen
+    // (so the rest of the session matches the no-motion preference) and
+    // hand them straight to the page.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      markSeen()
+      clearPrePaintOverlay()
+      return
+    }
+
     // The intro is gated by sessionStorage that's only readable on the
     // client, so the mount-time check is the only honest place to flip
     // state — set-state-in-effect lint is informational here.

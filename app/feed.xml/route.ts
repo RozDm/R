@@ -30,11 +30,15 @@ export async function GET() {
     posts.map(async (post) => {
       const url = `${SITE_URL}/blogg/${post.slug}/`
       const html = await markdownToHtml(post.content)
+      const updatedTag =
+        post.updated && post.updated > post.date
+          ? `\n      <atom:updated>${new Date(post.updated).toISOString()}</atom:updated>`
+          : ''
       return `    <item>
       <title>${escapeXml(post.title)}</title>
       <link>${url}</link>
       <guid isPermaLink="true">${url}</guid>
-      <pubDate>${new Date(post.date).toUTCString()}</pubDate>
+      <pubDate>${new Date(post.date).toUTCString()}</pubDate>${updatedTag}
       <description>${escapeXml(post.description)}</description>
       <content:encoded><![CDATA[${cdataSafe(html)}]]></content:encoded>
     </item>`
