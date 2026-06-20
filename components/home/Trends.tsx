@@ -83,30 +83,30 @@ export default function Trends() {
     return () => controller.abort()
   }, [metric, range])
 
-  const { linePath, areaPath, yMax, total, tickLabels, markers } = useMemo(() => {
+  const { bars, yMax, total, tickLabels } = useMemo(() => {
     const points = series?.points ?? []
     const max = niceCeil(Math.max(1, ...points.map((p) => p.value)))
-    const step = points.length > 1 ? PLOT_W / (points.length - 1) : 0
-    const coords = points.map((p, i) => {
-      const x = points.length === 1 ? PAD_L + PLOT_W / 2 : PAD_L + i * step
-      const y = PAD_T + PLOT_H - (p.value / max) * PLOT_H
-      return { x, y, ts: p.ts }
+    const n = points.length
+    // Bucketed counts are a histogram, not a continuous signal — draw bars,
+    // one per returned bucket. A flat line across sparse points implied a
+    // constant value and interpolated across empty hours; two visits in two
+    // different hours now read as two separate bars summing to the total.
+    const slotW = n > 0 ? PLOT_W / n : PLOT_W
+    const barW = Math.min(slotW * 0.7, 48)
+    const baseline = PAD_T + PLOT_H
+    const computed = points.map((p, i) => {
+      const cx = PAD_L + (i + 0.5) * slotW
+      // Floor a non-zero count to 2px so a single view is never invisible
+      // against a tall y-axis.
+      const h = Math.max((p.value / max) * PLOT_H, p.value > 0 ? 2 : 0)
+      return { cx, x: cx - barW / 2, w: barW, h, y: baseline - h, ts: p.ts }
     })
-    const line = coords
-      .map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
-      .join(' ')
-    const area =
-      coords.length > 0
-        ? `${line} L${coords[coords.length - 1].x.toFixed(1)} ${(PAD_T + PLOT_H).toFixed(1)} L${coords[0].x.toFixed(1)} ${(PAD_T + PLOT_H).toFixed(1)} Z`
-        : ''
-    const ticks = xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range))
+    const ticks = xTicksFor(computed, (b) => b.cx, (b) => formatTick(b.ts, range))
     return {
-      linePath: line,
-      areaPath: area,
+      bars: computed,
       yMax: max,
       total: points.reduce((sum, p) => sum + p.value, 0),
       tickLabels: ticks,
-      markers: coords,
     }
   }, [series, range])
 
@@ -210,18 +210,19 @@ export default function Trends() {
             )
           })}
 
-          {points.length >= 2 && (
-            <>
-              <path d={areaPath} className="fill-red-500/10" />
-              <path d={linePath} fill="none" className="stroke-red-500" strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
-            </>
-          )}
-
-          {/* A single bucket can't draw a line — mark it with a dot so the
-              chart isn't blank when only one hour/interval has data. */}
-          {points.length === 1 && markers[0] && (
-            <circle cx={markers[0].x} cy={markers[0].y} r="4" className="fill-red-500" />
-          )}
+          {/* One bar per bucket. rx rounds the top slightly; capped at half
+              the bar width so thin 7d/30d bars don't turn into lozenges. */}
+          {bars.map((b, i) => (
+            <rect
+              key={i}
+              x={b.x}
+              y={b.y}
+              width={b.w}
+              height={b.h}
+              rx={Math.min(2, b.w / 2)}
+              className="fill-red-500"
+            />
+          ))}
 
           {tickLabels.map((t, i) => (
             <text
