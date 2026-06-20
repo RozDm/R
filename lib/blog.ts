@@ -7,15 +7,25 @@ import type { Post, PostMeta } from '@/types'
 
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
 
-export function getPostSlugs(): string[] {
-  if (!fs.existsSync(BLOG_DIR)) return []
-  return fs
-    .readdirSync(BLOG_DIR)
-    .filter((file) => file.endsWith('.md'))
-    .map((file) => file.replace(/\.md$/, ''))
+// Drafts surface in dev so the author has live preview, then disappear at
+// build time. NODE_ENV is set by Next: 'development' under `npm run dev`,
+// 'production' under `npm run build`. Centralised so every consumer
+// (slug routing, list, sitemap, RSS, tags, adjacent posts) inherits the
+// same rule via the two getters below.
+const SHOW_DRAFTS = process.env.NODE_ENV !== 'production'
+
+// Pure filter so it can be unit-tested without touching the filesystem.
+// `includeDrafts: false` is the production safety net — exhaustive across
+// every surface that lists posts.
+export function filterPublished<T extends { draft?: boolean }>(
+  posts: T[],
+  { includeDrafts }: { includeDrafts: boolean },
+): T[] {
+  if (includeDrafts) return posts
+  return posts.filter((p) => !p.draft)
 }
 
-export function getPostBySlug(slug: string): Post {
+function readPostFile(slug: string): Post {
   const fullPath = path.join(BLOG_DIR, `${slug}.md`)
   const raw = fs.readFileSync(fullPath, 'utf8')
   const { data, content } = matter(raw)
@@ -25,19 +35,38 @@ export function getPostBySlug(slug: string): Post {
     description: data.description ?? '',
     date: data.date ?? '',
     updated: data.updated || undefined,
+    draft: data.draft === true,
     tags: normalizeTags(data.tags),
     readingMinutes: readingTimeMinutes(content),
     content,
   }
 }
 
+// getPostSlugs is the chokepoint Next uses through generateStaticParams —
+// a draft slug filtered here is never built into the static export, so
+// the URL 404s in production with no extra guard in the page component.
+export function getPostSlugs(): string[] {
+  if (!fs.existsSync(BLOG_DIR)) return []
+  const all = fs
+    .readdirSync(BLOG_DIR)
+    .filter((file) => file.endsWith('.md'))
+    .map((file) => file.replace(/\.md$/, ''))
+  if (SHOW_DRAFTS) return all
+  return all.filter((slug) => !readPostFile(slug).draft)
+}
+
+export function getPostBySlug(slug: string): Post {
+  return readPostFile(slug)
+}
+
 export function getAllPosts(): PostMeta[] {
-  return getPostSlugs()
+  const all = getPostSlugs()
     .map((slug) => {
-      const { content: _content, ...meta } = getPostBySlug(slug)
+      const { content: _content, ...meta } = readPostFile(slug)
       return meta
     })
     .sort((a, b) => (a.date < b.date ? 1 : -1))
+  return filterPublished(all, { includeDrafts: SHOW_DRAFTS })
 }
 
 // All distinct tags across posts, sorted, for static tag pages.
