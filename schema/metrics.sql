@@ -22,3 +22,16 @@ CREATE TABLE IF NOT EXISTS contact (
 );
 CREATE INDEX IF NOT EXISTS contact_ip_at ON contact (ip, at);
 CREATE INDEX IF NOT EXISTS contact_email_at ON contact (email, at);
+
+-- Newsletter signups. Phase 1 is capture-only — we record the email plus
+-- the consent proof GDPR expects (IP + timestamp) and a token that becomes
+-- the unsubscribe / double-opt-in key once the sending side lands. No
+-- confirmation flow is wired yet, so confirmed_at stays NULL.
+CREATE TABLE IF NOT EXISTS subscribers (
+  email        TEXT PRIMARY KEY,
+  at           TEXT NOT NULL,
+  ip           TEXT NOT NULL,
+  token        TEXT NOT NULL,
+  confirmed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS subscribers_ip_at ON subscribers (ip, at);
