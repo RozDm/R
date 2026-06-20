@@ -13,13 +13,13 @@ import { EmailMessage } from 'cloudflare:email'
 import { ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
 import { buildStatusAlertMime } from './contact'
-import { isHumanNavigation } from './metrics'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
-import { handleGeo, recordGeo } from './routes/geo'
+import { handleGeo } from './routes/geo'
 import { handleContact } from './routes/contact'
 import { handleTimeseries } from './routes/timeseries'
 import { handleNewsletter } from './routes/newsletter'
+import { handleVisit } from './routes/visit'
 
 const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
 const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
@@ -135,6 +135,7 @@ export default {
       (await handleStatus(url, request, env, ctx)) ??
       (await handleViews(url, request, env)) ??
       (await handleGeo(url, request, env, ctx)) ??
+      handleVisit(url, request, env, ctx) ??
       (await handleTimeseries(url, request, env, ctx)) ??
       (await handleNewsletter(url, request, env)) ??
       (await handleContact(url, request, env))
@@ -148,10 +149,8 @@ export default {
     )
 
     if ((asset.headers.get('content-type') || '').includes('text/html')) {
-      // Geo stats: only human-looking page navigations count.
-      if (asset.status === 200 && isHumanNavigation(request.headers)) {
-        recordGeo(env, ctx, request.cf?.country)
-      }
+      // Visit + geo are no longer counted here — the client /api/visit beacon
+      // (once per session) records both, so a multi-page visit counts once.
       const html = await readHtml(asset)
       if (html !== null) {
         const hashes = await inlineScriptHashes(html)
