@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { xTicksFor } from '@/lib/trends-axis'
+import { fillBuckets } from '@/lib/timeseries-fill'
 
 interface Point {
   ts: string
@@ -14,13 +15,8 @@ interface Series {
   points: Point[]
 }
 
-type Metric = 'geo' | 'view'
 type Range = '24h' | '7d' | '30d'
 
-const METRICS: { id: Metric; label: string }[] = [
-  { id: 'geo', label: 'Besøk' },
-  { id: 'view', label: 'Sidevisninger' },
-]
 const RANGES: { id: Range; label: string }[] = [
   { id: '24h', label: '24t' },
   { id: '7d', label: '7d' },
@@ -35,6 +31,7 @@ const PAD_T = 12
 const PAD_B = 28
 const PLOT_W = W - PAD_L - PAD_R
 const PLOT_H = H - PAD_T - PAD_B
+const BASELINE = PAD_T + PLOT_H
 
 // Round up to a "nice" number for the y-axis ceiling (1/2/5 * 10^n). Keeps
 // tick labels readable instead of "max=37, axis goes to 37".
@@ -58,20 +55,36 @@ function formatTick(ts: string, range: Range): string {
   return range === '24h' ? dateFmt24.format(d) : dateFmtDay.format(d)
 }
 
+// Smooth wave through the (dense, zero-filled) points using quadratic curves
+// to each segment midpoint. A quadratic stays inside the triangle of its
+// control points, so the curve never overshoots below 0 or above the peak —
+// no fake negative dips from the smoothing.
+function wavePath(pts: { x: number; y: number }[]): string {
+  const n = pts.length
+  if (n === 0) return ''
+  let d = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+  if (n === 1) return d
+  for (let i = 0; i < n - 1; i++) {
+    const xc = (pts[i].x + pts[i + 1].x) / 2
+    const yc = (pts[i].y + pts[i + 1].y) / 2
+    d += ` Q${pts[i].x.toFixed(1)} ${pts[i].y.toFixed(1)} ${xc.toFixed(1)} ${yc.toFixed(1)}`
+  }
+  d += ` L${pts[n - 1].x.toFixed(1)} ${pts[n - 1].y.toFixed(1)}`
+  return d
+}
+
 export default function Trends() {
-  const [metric, setMetric] = useState<Metric>('geo')
   const [range, setRange] = useState<Range>('7d')
   const [series, setSeries] = useState<Series | null>(null)
   const [failed, setFailed] = useState(false)
 
-  // Derived loading state: true while the current series doesn't match the
-  // selected metric/range yet. Avoids setLoading(true) inside the effect
-  // body (react-hooks/set-state-in-effect) by letting the data answer it.
-  const loading = !failed && (!series || series.metric !== metric || series.range !== range)
+  // Derived loading state: true while the loaded series doesn't match the
+  // selected range yet. Avoids setLoading(true) inside the effect body.
+  const loading = !failed && (!series || series.range !== range)
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(`/api/timeseries?metric=${metric}&range=${range}`, {
+    fetch(`/api/timeseries?metric=geo&range=${range}`, {
       signal: controller.signal,
       cache: 'no-store',
     })
@@ -81,43 +94,39 @@ export default function Trends() {
         if ((err as Error).name !== 'AbortError') setFailed(true)
       })
     return () => controller.abort()
-  }, [metric, range])
+  }, [range])
 
-  const { bars, yMax, total, tickLabels } = useMemo(() => {
-    const points = series?.points ?? []
-    const max = niceCeil(Math.max(1, ...points.map((p) => p.value)))
-    const n = points.length
-    // Bucketed counts are a histogram, not a continuous signal — draw bars,
-    // one per returned bucket. A flat line across sparse points implied a
-    // constant value and interpolated across empty hours; two visits in two
-    // different hours now read as two separate bars summing to the total.
-    const slotW = n > 0 ? PLOT_W / n : PLOT_W
-    const barW = Math.min(slotW * 0.7, 48)
-    const baseline = PAD_T + PLOT_H
-    const computed = points.map((p, i) => {
-      const cx = PAD_L + (i + 0.5) * slotW
-      // Floor a non-zero count to 2px so a single view is never invisible
-      // against a tall y-axis.
-      const h = Math.max((p.value / max) * PLOT_H, p.value > 0 ? 2 : 0)
-      return { cx, x: cx - barW / 2, w: barW, h, y: baseline - h, ts: p.ts }
-    })
-    const ticks = xTicksFor(computed, (b) => b.cx, (b) => formatTick(b.ts, range))
+  const { areaPath, linePath, yMax, total, tickLabels } = useMemo(() => {
+    // Zero-fill so empty hours read as real zeros, not a line interpolated
+    // straight across a quiet night.
+    const filled = fillBuckets(series?.points ?? [], range)
+    const max = niceCeil(Math.max(1, ...filled.map((p) => p.value)))
+    const n = filled.length
+    const coords = filled.map((p, i) => ({
+      x: n === 1 ? PAD_L + PLOT_W / 2 : PAD_L + (i / (n - 1)) * PLOT_W,
+      y: BASELINE - (p.value / max) * PLOT_H,
+      ts: p.ts,
+    }))
+    const line = wavePath(coords)
+    const area =
+      coords.length > 0
+        ? `${line} L${coords[coords.length - 1].x.toFixed(1)} ${BASELINE.toFixed(1)} L${coords[0].x.toFixed(1)} ${BASELINE.toFixed(1)} Z`
+        : ''
     return {
-      bars: computed,
+      areaPath: area,
+      linePath: line,
       yMax: max,
-      total: points.reduce((sum, p) => sum + p.value, 0),
-      tickLabels: ticks,
+      total: filled.reduce((sum, p) => sum + p.value, 0),
+      tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range)),
     }
   }, [series, range])
 
   if (failed) return null
 
-  const points = series?.points ?? []
-  const isEmpty = !loading && points.length === 0
-  // Integer, de-duplicated y-ticks: a max of 1 would otherwise label 0/0.5/1
-  // as "0,1,1" after rounding. Collapsing to unique ints keeps it honest.
+  const isEmpty = !loading && total === 0
+  // Integer, de-duplicated y-ticks so a max of 1 doesn't label 0/0.5/1 as
+  // "0,1,1" after rounding.
   const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
-  const metricLabel = METRICS.find((m) => m.id === metric)?.label ?? ''
   const rangeLabel = RANGES.find((r) => r.id === range)?.label ?? ''
 
   return (
@@ -130,27 +139,17 @@ export default function Trends() {
           Trafikk over tid
         </h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-          Sampled tidsserie fra Workers Analytics Engine. Hver
-          sidenavigasjon (Besøk) og hver postvisning (Sidevisninger) er ett
-          datapunkt. Ingen informasjonskapsler.
+          Sampled tidsserie fra Workers Analytics Engine. Ett besøk per økt
+          (sesjon) — samme tall som kartet over, fordelt på tid. Ingen
+          informasjonskapsler, ingen sporing.
         </p>
       </div>
 
       <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div role="tablist" aria-label="Metrikk" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
-            {METRICS.map((m) => (
-              <button
-                key={m.id}
-                role="tab"
-                aria-selected={metric === m.id}
-                onClick={() => setMetric(m.id)}
-                className={`px-3 py-1.5 transition-colors duration-200 ease-out ${metric === m.id ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+            Besøk, siste {rangeLabel}
+          </span>
           <div role="tablist" aria-label="Periode" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
             {RANGES.map((r) => (
               <button
@@ -166,10 +165,7 @@ export default function Trends() {
           </div>
         </div>
 
-        <div className="flex items-baseline justify-between text-xs font-mono text-gray-500 dark:text-gray-400">
-          <span>
-            {metricLabel}, siste {rangeLabel}
-          </span>
+        <div className="flex items-baseline justify-end text-xs font-mono text-gray-500 dark:text-gray-400">
           <span className={`tabular-nums ${loading ? 'opacity-50' : ''}`}>
             <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{total}</span>{' '}
             <span>totalt</span>
@@ -180,12 +176,12 @@ export default function Trends() {
           viewBox={`0 0 ${W} ${H}`}
           className={`w-full h-56 transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
           role="img"
-          aria-label={`${metricLabel} – tidsserie, siste ${rangeLabel}`}
+          aria-label={`Besøk – tidsserie, siste ${rangeLabel}`}
           preserveAspectRatio="none"
         >
           {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
           {yTicks.map((v, i) => {
-            const y = PAD_T + PLOT_H - (v / yMax) * PLOT_H
+            const y = BASELINE - (v / yMax) * PLOT_H
             return (
               <g key={i}>
                 <line
@@ -210,19 +206,19 @@ export default function Trends() {
             )
           })}
 
-          {/* One bar per bucket. rx rounds the top slightly; capped at half
-              the bar width so thin 7d/30d bars don't turn into lozenges. */}
-          {bars.map((b, i) => (
-            <rect
-              key={i}
-              x={b.x}
-              y={b.y}
-              width={b.w}
-              height={b.h}
-              rx={Math.min(2, b.w / 2)}
-              className="fill-red-500"
-            />
-          ))}
+          {!isEmpty && (
+            <>
+              <path d={areaPath} className="fill-red-500/10" />
+              <path
+                d={linePath}
+                fill="none"
+                className="stroke-red-500"
+                strokeWidth="1.75"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            </>
+          )}
 
           {tickLabels.map((t, i) => (
             <text

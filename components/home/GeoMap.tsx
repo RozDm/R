@@ -136,7 +136,7 @@ export default function GeoMap() {
               {countryName(code)} <span className="text-gray-400 dark:text-gray-500">{count}</span>
             </span>
           ))}
-          <span className="ml-auto text-gray-400 dark:text-gray-500">{total} sidevisninger</span>
+          <span className="ml-auto text-gray-400 dark:text-gray-500">{total} besøk</span>
         </div>
       )}
     </div>
