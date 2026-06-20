@@ -3,6 +3,7 @@ import { Intel_One_Mono } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/context/ThemeContext'
+import VisitBeacon from '@/components/effects/VisitBeacon'
 import { SITE_URL, AUTHOR } from '@/lib/site'
 
 const intelOneMono = Intel_One_Mono({
@@ -120,6 +121,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           {children}
+          <VisitBeacon />
         </ThemeProvider>
         <Script
           src="https://static.cloudflareinsights.com/beacon.min.js"
