@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { xTicksFor } from '@/lib/trends-axis'
 
 interface Point {
   ts: string
@@ -98,20 +99,7 @@ export default function Trends() {
       coords.length > 0
         ? `${line} L${coords[coords.length - 1].x.toFixed(1)} ${(PAD_T + PLOT_H).toFixed(1)} L${coords[0].x.toFixed(1)} ${(PAD_T + PLOT_H).toFixed(1)} Z`
         : ''
-    // Three x-axis ticks: first, middle, last point — enough orientation
-    // without crowding the labels into each other on mobile. A lone point
-    // gets a single centred label so it isn't left unlabelled.
-    const ticks: { x: number; label: string }[] = []
-    if (coords.length >= 2) {
-      const mid = Math.floor(coords.length / 2)
-      ticks.push(
-        { x: coords[0].x, label: formatTick(coords[0].ts, range) },
-        { x: coords[mid].x, label: formatTick(coords[mid].ts, range) },
-        { x: coords[coords.length - 1].x, label: formatTick(coords[coords.length - 1].ts, range) },
-      )
-    } else if (coords.length === 1) {
-      ticks.push({ x: coords[0].x, label: formatTick(coords[0].ts, range) })
-    }
+    const ticks = xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range))
     return {
       linePath: line,
       areaPath: area,
