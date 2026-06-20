@@ -3,11 +3,11 @@
 import { apiJson, cachedApiJson, putCachedApiJson } from '../http'
 import { countriesFromRows, isCountableCountry } from '../metrics'
 
-// Aggregate moves slowly (counts tick up by 1 per visit) and the world map
-// asks for it once per page load — cache the rolled-up read at the edge so
-// most page loads cost zero D1 reads. 5 min is short enough that a new
-// country shows up promptly and long enough to absorb traffic bursts.
-const GEO_CACHE_TTL_S = 300
+// Short TTL so a fresh visit shows up on the map within a minute. The
+// underlying D1 query is cheap (single table aggregate) and traffic is
+// low — no need to nurse this with a long cache. Bumping back up to 300s
+// once traffic grows costs ~one config edit.
+const GEO_CACHE_TTL_S = 60
 
 // Atomic upsert — no client-side batching or read-modify-write races, and the
 // D1 free tier allows 100k writes/day vs KV's 1000.
