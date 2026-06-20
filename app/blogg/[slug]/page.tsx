@@ -57,6 +57,10 @@ export default async function BlogPost({ params }: Props) {
 
   const { prev, next } = getAdjacentPosts(slug)
 
+  // Honest dateModified for SEO: the optional `updated` frontmatter wins;
+  // otherwise it equals datePublished (Google accepts that — the field
+  // signals "we have no later revision", not "the post was re-edited today").
+  const updated = post.updated && post.updated > post.date ? post.updated : null
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -64,7 +68,7 @@ export default async function BlogPost({ params }: Props) {
     description: post.description,
     image: `${SITE_URL}/blogg/${slug}/opengraph-image`,
     datePublished: post.date,
-    dateModified: post.date,
+    dateModified: updated ?? post.date,
     inLanguage: 'nb-NO',
     keywords: post.tags.join(', '),
     mainEntityOfPage: `${SITE_URL}/blogg/${slug}/`,
@@ -119,6 +123,15 @@ export default async function BlogPost({ params }: Props) {
             </h1>
             <p className="mt-3 text-sm text-gray-500 dark:text-gray-500">
               <time dateTime={post.date}>{formatDate(post.date)}</time>
+              {updated && (
+                <>
+                  {' · '}
+                  <span className="text-gray-500 dark:text-gray-500">
+                    Oppdatert{' '}
+                    <time dateTime={updated}>{formatDate(updated)}</time>
+                  </span>
+                </>
+              )}
               {' · '}
               {post.readingMinutes} min å lese
               <ViewCounter slug={slug} />
