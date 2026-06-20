@@ -35,8 +35,11 @@ code and comments are English.
 - KV namespace `STATUS` holds only the uptime snapshot (`status` key).
 - D1 database `rozsoshnykh-metrics` (binding `METRICS`, schema in
   `schema/metrics.sql`): `views(slug, count)`, `geo(country, count)`, and
-  `contact(id, at, ip, name, email, message)`. Counters use atomic
-  `INSERT … ON CONFLICT … count = count + 1`.
+  `contact(id, at, ip, name, email, message)`, and `subscribers(email PK,
+  at, ip, token, confirmed_at)` for the newsletter signup. Counters use
+  atomic `INSERT … ON CONFLICT … count = count + 1`; the subscriber insert
+  uses `ON CONFLICT(email) DO NOTHING` and reports `already=true` via
+  `meta.changes`.
 - Analytics Engine dataset `rozsoshnykh_metrics` (binding `METRICS_AE`) holds
   the sampled time-series behind the front-page **Trends** card
   (`components/home/Trends.tsx` — metric `Besøk`/`Sidevisninger` × range
@@ -59,8 +62,9 @@ code and comments are English.
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count —
   same-origin + non-bot only), `/api/geo`,
   `/api/timeseries?metric=view|geo&range=24h|7d|30d` (GET, edge-cached per
-  metric+range; `?debug=1` bypasses the cache and echoes the AE SQL + HTTP
-  status + raw body to diagnose an empty chart), `/api/contact` (POST). Geo is
+  metric+range), `/api/contact` (POST), `/api/newsletter` (POST — Phase 1
+  capture only; same defence stack as contact; D1 table `subscribers` with
+  `confirmed_at` left NULL until Phase 2 wires the confirm e-mail). Geo is
   recorded on the edge from `request.cf.country` for human-looking
   navigations (`Sec-Fetch-Mode: navigate` + non-bot UA).
 - The visitor world map is a build-time artifact: `scripts/build-world-svg.mjs`
