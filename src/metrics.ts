@@ -13,12 +13,13 @@ export function looksLikeBot(userAgent: string | null): boolean {
   return BOT_RE.test(userAgent)
 }
 
-// A real browser opening a page sends Sec-Fetch-Mode: navigate; scanners
-// that fake a Chrome User-Agent almost never bother. New domains get
-// hammered by CT-log scanners, so this gate keeps them out of the stats.
-export function isHumanNavigation(headers: Headers): boolean {
+// Gate for the write endpoints (/api/visit, /api/newsletter, /api/contact,
+// /api/views POST): only count requests that come from our own pages and not
+// from a bot UA. Pure (just header inspection) so it can be unit-tested.
+export function isWriteAllowed(headers: Headers): boolean {
+  if (headers.get('sec-fetch-site') !== 'same-origin') return false
   if (looksLikeBot(headers.get('user-agent'))) return false
-  return headers.get('sec-fetch-mode') === 'navigate'
+  return true
 }
 
 // ISO 3166-1 alpha-2, excluding Cloudflare's reserved pseudo-codes.

@@ -42,15 +42,28 @@ code and comments are English.
   `meta.changes`.
 - Analytics Engine dataset `rozsoshnykh_metrics` (binding `METRICS_AE`) holds
   the sampled time-series behind the front-page **Trends** card
-  (`components/home/Trends.tsx` — metric `Besøk`/`Sidevisninger` × range
-  24t/7d/30d, hand-rolled SVG, single-point dot). Each view-POST and geo upsert
-  also appends an AE point (`blob1` = `view`|`geo`); D1 stays the truth for
-  totals, AE answers "when". Reads need two runtime Worker secrets —
-  `CF_ACCOUNT_ID` + `AE_API_TOKEN` (token scoped `Account Analytics:Read`) —
-  both fed from the `CLOUDFLARE_ACCOUNT_ID` / `AE_API_TOKEN` GitHub secrets by
-  the deploy workflow's `wrangler secret put` loop. Missing either → empty
-  series + "Ingen data ennå" (writes collect before the read token exists). AE
-  is append-only/immutable — it cannot be wiped.
+  (`components/home/Trends.tsx` — single Besøk metric, 24t/7d/30d range,
+  smooth quadratic-curve area chart over a zero-filled bucket grid). Every
+  `recordGeo` call (triggered by the `/api/visit` beacon — see below) also
+  writes an AE point (`blob1='geo'`), so the map and the chart are two
+  views of the same dataset. The `view` AE channel is also written from
+  `/api/views` POSTs for future use, but isn't currently graphed. D1 stays
+  the truth for totals; AE answers "when". Reads need two runtime Worker
+  secrets — `CF_ACCOUNT_ID` + `AE_API_TOKEN` (token scoped `Account
+  Analytics:Read`) — both fed from the `CLOUDFLARE_ACCOUNT_ID` /
+  `AE_API_TOKEN` GitHub secrets by the deploy workflow's `wrangler secret
+  put` loop. Missing either → empty series + "Ingen data ennå" (writes
+  collect before the read token exists). AE is append-only — `METRICS_EPOCH`
+  in `src/timeseries.ts` is a UTC string that filters out anything older
+  client-side (sidesteps any AE-SQL dialect surprise); bump it after every
+  `reset-metrics` run.
+- Visit counting: every page mounts `components/effects/VisitBeacon.tsx`
+  (from `app/layout.tsx`) which fires a single `POST /api/visit` per
+  browser session (sessionStorage flag — set BEFORE the fetch so React
+  StrictMode's dev double-invoke can't double-count). The handler runs
+  `recordGeo(env, ctx, request.cf?.country)` — one beacon writes the D1
+  `geo` row and the AE point. Clicking through several pages still counts
+  as one besøk.
 - Contact form has Turnstile wired in but feature-gated by env: the widget
   renders only when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set at build time,
   and the worker enforces verification only when `TURNSTILE_SECRET` is set
@@ -60,13 +73,14 @@ code and comments are English.
   double-submit (same address + message within 2 min) is deduped in D1 and
   ack'd without a second e-mail — content-keyed, so no schema column is needed.
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count —
-  same-origin + non-bot only), `/api/geo`,
-  `/api/timeseries?metric=view|geo&range=24h|7d|30d` (GET, edge-cached per
-  metric+range), `/api/contact` (POST), `/api/newsletter` (POST — Phase 1
-  capture only; same defence stack as contact; D1 table `subscribers` with
-  `confirmed_at` left NULL until Phase 2 wires the confirm e-mail). Geo is
-  recorded on the edge from `request.cf.country` for human-looking
-  navigations (`Sec-Fetch-Mode: navigate` + non-bot UA).
+  POST gated by `isWriteAllowed` = same-origin + non-bot), `/api/geo`
+  (read-only, edge-cached 60s), `/api/visit` (POST, the single Besøk
+  beacon — see Visit counting above), `/api/timeseries?metric=view|geo&range=24h|7d|30d`
+  (GET, edge-cached per metric+range; `view` channel still served for API
+  compat, only `geo` is graphed), `/api/contact` (POST, full Turnstile
+  challenge), `/api/newsletter` (POST — Phase 1 capture only; no
+  Turnstile yet because no mail is sent; D1 table `subscribers` with
+  `confirmed_at` left NULL until Phase 2 wires the confirm e-mail).
 - The visitor world map is a build-time artifact: `scripts/build-world-svg.mjs`
   (run by `prebuild`) emits `public/world.svg` from `world-map-country-shapes`
   (a devDependency). `GeoMap` fetches that SVG and injects it via
