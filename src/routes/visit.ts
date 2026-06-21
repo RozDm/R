@@ -6,12 +6,11 @@
 // come from this one call, so the map and the chart are two views of the
 // same dataset.
 //
-// Replaces the old per-navigation edge counting, which inflated both numbers
-// and couldn't dedupe without cookies. Same lightweight gate as the other
-// write endpoints: same-origin + non-bot. (Bots rarely run the JS that fires
-// the beacon, so the data skews human for free.)
+// GET is a harmless self-diagnostic (shows the caller's own country and
+// whether it would count; stores nothing) — handy when the map looks empty,
+// e.g. to tell "ad-blocker swallowed the POST" from "edge sees no country".
 import { apiJson } from '../http'
-import { isWriteAllowed } from '../metrics'
+import { isWriteAllowed, isCountableCountry } from '../metrics'
 import { recordGeo } from './geo'
 
 export function handleVisit(
@@ -20,12 +19,28 @@ export function handleVisit(
   env: Env,
   ctx: ExecutionContext,
 ): Response | null {
-  if (url.pathname !== '/api/visit' || request.method !== 'POST') return null
+  if (url.pathname !== '/api/visit') return null
+
+  if (request.method === 'GET') {
+    const c = request.cf?.country
+    return apiJson(
+      JSON.stringify({
+        country: typeof c === 'string' ? c : null,
+        countable: typeof c === 'string' && isCountableCountry(c),
+        note: 'A real visit is recorded by the POST beacon from the page, not this GET.',
+      }),
+    )
+  }
+
+  if (request.method !== 'POST') return null
 
   if (!isWriteAllowed(request.headers)) {
     return apiJson('{"error":"forbidden"}', 403)
   }
 
+  // Visible in Worker observability logs — confirms the beacon reached the
+  // edge and what country it carried, so an empty map is diagnosable.
+  console.log('visit', request.cf?.country)
   recordGeo(env, ctx, request.cf?.country)
   return apiJson('{"ok":true}')
 }
