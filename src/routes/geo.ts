@@ -11,8 +11,8 @@ const GEO_CACHE_TTL_S = 60
 
 // Atomic upsert — no client-side batching or read-modify-write races, and the
 // D1 free tier allows 100k writes/day vs KV's 1000.
-export function recordGeo(env: Env, ctx: ExecutionContext, country: string | undefined): void {
-  if (!isCountableCountry(country)) return
+export function recordGeo(env: Env, ctx: ExecutionContext, country: unknown): void {
+  if (typeof country !== 'string' || !isCountableCountry(country)) return
   ctx.waitUntil(
     env.METRICS.prepare(
       'INSERT INTO geo (country, count) VALUES (?1, 1) ON CONFLICT(country) DO UPDATE SET count = count + 1',

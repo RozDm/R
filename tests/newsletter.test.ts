@@ -7,7 +7,6 @@ describe('validateNewsletter', () => {
     expect(out).toEqual({
       email: 'reader@example.com',
       consent: true,
-      turnstileToken: null,
       website: '',
     })
   })
@@ -17,14 +16,12 @@ describe('validateNewsletter', () => {
     expect(out?.email).toBe('reader@example.com')
   })
 
-  it('preserves a Turnstile token + honeypot value for the route to inspect', () => {
+  it('preserves the honeypot value for the route to inspect', () => {
     const out = validateNewsletter({
       email: 'a@b.co',
       consent: true,
-      turnstileToken: 'tok123',
       website: 'spam',
     })
-    expect(out?.turnstileToken).toBe('tok123')
     expect(out?.website).toBe('spam')
   })
 

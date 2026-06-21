@@ -93,26 +93,31 @@ Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
 
 - **Per-post views**: `GET/POST /api/views/<slug>`. Counted once per browser
   session from the post page; bot UAs and cross-origin POSTs are ignored.
-- **Visitors by country**: the Worker reads `request.cf.country` on
-  human-looking HTML navigations (`Sec-Fetch-Mode: navigate` + non-bot UA) and
-  upserts `geo` in D1. `GET /api/geo` feeds the world map on the front page (a
-  build-time `public/world.svg`, not a JS bundle) and is edge-cached for 5 min.
-  No cookies, no per-visitor tracking. The country legend renders flag emoji
+- **Visitors by country**: every page mounts a tiny `VisitBeacon` that fires
+  a single `POST /api/visit` per browser session (sessionStorage-deduped, so
+  clicking through several pages counts as one besøk). The Worker reads
+  `request.cf.country` on that one POST and upserts `geo` in D1.
+  `GET /api/geo` feeds the world map on the front page (a build-time
+  `public/world.svg`, not a JS bundle) and is edge-cached for 60s. No
+  cookies, no per-visitor tracking. The country legend renders flag emoji
   through a self-hosted Twemoji subset (`public/fonts/`, `@font-face` with a
-  regional-indicator `unicode-range` so it only downloads when a flag is on the
-  page) — Windows/Linux without flag glyphs would otherwise show letter pairs.
+  regional-indicator `unicode-range` so it only downloads when a flag is on
+  the page) — Windows/Linux without flag glyphs would otherwise show letter
+  pairs.
 - **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
-- **Time-series** of views and visits live in a Workers Analytics Engine
-  dataset (`METRICS_AE`, binding `rozsoshnykh_metrics`). Each view-POST and
-  geo upsert appends a sampled data point; `GET /api/timeseries?metric=view|geo&range=24h|7d|30d`
-  reads them back via the AE SQL API and feeds the front-page **Trends** card
-  (metric × range tabs, hand-rolled SVG — `?debug=1` bypasses the edge cache and
-  echoes the raw AE SQL/status/body when a chart looks empty). Free tier: 10M
-  writes/day, sampled reads. Reading needs two runtime secrets (`CF_ACCOUNT_ID`
-  + `AE_API_TOKEN`, the latter with `Account Analytics:Read`); without them the
-  route degrades to an empty series and the Trends card shows "Ingen data ennå".
-  AE is append-only — counters reset via `reset-metrics`, but AE points just age
-  out of the 24h/7d/30d window.
+- **Time-series** of visits lives in a Workers Analytics Engine dataset
+  (`METRICS_AE`, binding `rozsoshnykh_metrics`). The `/api/visit` beacon
+  appends one AE point per session; `GET /api/timeseries?metric=geo&range=24h|7d|30d`
+  reads them back via the AE SQL API and feeds the front-page **Trends**
+  card (smooth wave over a zero-filled bucket grid; only Besøk is graphed
+  even though the API still accepts the `view` channel). Free tier: 10M
+  writes/day, sampled reads. Reading needs two runtime secrets
+  (`CF_ACCOUNT_ID` + `AE_API_TOKEN`, the latter with `Account
+  Analytics:Read`); without them the route degrades to an empty series
+  and the Trends card shows "Ingen data ennå". AE is append-only —
+  counters reset via `reset-metrics` (D1), and `METRICS_EPOCH` in
+  `src/timeseries.ts` filters out pre-relaunch AE points client-side
+  (bump it after every reset run).
 
 ### Contact form (`/kontakt`)
 

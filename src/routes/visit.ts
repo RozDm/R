@@ -11,7 +11,7 @@
 // write endpoints: same-origin + non-bot. (Bots rarely run the JS that fires
 // the beacon, so the data skews human for free.)
 import { apiJson } from '../http'
-import { looksLikeBot } from '../metrics'
+import { isWriteAllowed } from '../metrics'
 import { recordGeo } from './geo'
 
 export function handleVisit(
@@ -22,13 +22,10 @@ export function handleVisit(
 ): Response | null {
   if (url.pathname !== '/api/visit' || request.method !== 'POST') return null
 
-  if (
-    request.headers.get('sec-fetch-site') !== 'same-origin' ||
-    looksLikeBot(request.headers.get('user-agent'))
-  ) {
+  if (!isWriteAllowed(request.headers)) {
     return apiJson('{"error":"forbidden"}', 403)
   }
 
-  recordGeo(env, ctx, request.cf?.country as string | undefined)
+  recordGeo(env, ctx, request.cf?.country)
   return apiJson('{"ok":true}')
 }

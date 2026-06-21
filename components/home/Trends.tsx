@@ -49,8 +49,13 @@ function niceCeil(n: number): number {
 const dateFmt24 = new Intl.DateTimeFormat('nb-NO', { hour: '2-digit', minute: '2-digit' })
 const dateFmtDay = new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short' })
 
+// AE bucket keys are "YYYY-MM-DD HH:MM:SS" in UTC. V8 parses that space form
+// as LOCAL time, which made the axis read in the visitor's timezone shifted
+// by the offset (e.g. "18:00" for a 20:00-Oslo event). Normalise to ISO-Z so
+// Intl.DateTimeFormat then renders it correctly in the visitor's locale.
 function formatTick(ts: string, range: Range): string {
-  const d = new Date(ts)
+  const iso = ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z'
+  const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   return range === '24h' ? dateFmt24.format(d) : dateFmtDay.format(d)
 }

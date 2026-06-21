@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countriesFromRows, isCountableCountry, isHumanNavigation, isValidSlug, looksLikeBot } from '@/src/metrics'
+import { countriesFromRows, isCountableCountry, isValidSlug, looksLikeBot } from '@/src/metrics'
 
 describe('isValidSlug', () => {
   it('accepts normal slugs', () => {
@@ -62,24 +62,5 @@ describe('looksLikeBot', () => {
 
   it('passes normal browsers', () => {
     expect(looksLikeBot('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36')).toBe(false)
-  })
-})
-
-describe('isHumanNavigation', () => {
-  const chrome = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
-
-  it('accepts a browser page load', () => {
-    const h = new Headers({ 'user-agent': chrome, 'sec-fetch-mode': 'navigate' })
-    expect(isHumanNavigation(h)).toBe(true)
-  })
-
-  it('rejects scanners with browser UA but no sec-fetch headers', () => {
-    const h = new Headers({ 'user-agent': chrome })
-    expect(isHumanNavigation(h)).toBe(false)
-  })
-
-  it('rejects subresource/cors fetches and bot UAs', () => {
-    expect(isHumanNavigation(new Headers({ 'user-agent': chrome, 'sec-fetch-mode': 'cors' }))).toBe(false)
-    expect(isHumanNavigation(new Headers({ 'user-agent': 'Googlebot/2.1', 'sec-fetch-mode': 'navigate' }))).toBe(false)
   })
 })
