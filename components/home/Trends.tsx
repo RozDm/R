@@ -82,12 +82,28 @@ export default function Trends() {
   const [range, setRange] = useState<Range>('7d')
   const [series, setSeries] = useState<Series | null>(null)
   const [failed, setFailed] = useState(false)
+  // SSR vs hydration mismatch (React #418): fillBuckets() bakes Date.now()
+  // into every x-axis tick label, so the build-time HTML and the first
+  // client render disagree on those texts. Render a stable, empty chart
+  // until the component has mounted, then swap in the real data — keeps
+  // hydration matched and the visible flicker is the same fade-in the
+  // metric already has on data load.
+  const [mounted, setMounted] = useState(false)
 
   // Derived loading state: true while the loaded series doesn't match the
   // selected range yet. Avoids setLoading(true) inside the effect body.
   const loading = !failed && (!series || series.range !== range)
 
   useEffect(() => {
+    // Standard "did mount" flag — the whole point is to flip state once on
+    // the client to skip the SSR-mismatched paths above. The set-state-in-
+    // effect lint is fine to suppress for this narrow pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
     const controller = new AbortController()
     fetch(`/api/timeseries?metric=geo&range=${range}`, {
       signal: controller.signal,
@@ -99,7 +115,7 @@ export default function Trends() {
         if ((err as Error).name !== 'AbortError') setFailed(true)
       })
     return () => controller.abort()
-  }, [range])
+  }, [mounted, range])
 
   const { areaPath, linePath, yMax, total, tickLabels } = useMemo(() => {
     // Zero-fill so empty hours read as real zeros, not a line interpolated
@@ -171,21 +187,21 @@ export default function Trends() {
         </div>
 
         <div className="flex items-baseline justify-end text-xs font-mono text-gray-500 dark:text-gray-400">
-          <span className={`tabular-nums ${loading ? 'opacity-50' : ''}`}>
-            <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{total}</span>{' '}
+          <span className={`tabular-nums ${loading || !mounted ? 'opacity-50' : ''}`}>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{mounted ? total : 0}</span>{' '}
             <span>totalt</span>
           </span>
         </div>
 
         <svg
           viewBox={`0 0 ${W} ${H}`}
-          className={`w-full h-56 transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
+          className={`w-full h-56 transition-opacity duration-300 ease-out ${loading || !mounted ? 'opacity-50' : ''}`}
           role="img"
           aria-label={`Besøk – tidsserie, siste ${rangeLabel}`}
           preserveAspectRatio="none"
         >
           {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
-          {yTicks.map((v, i) => {
+          {mounted && yTicks.map((v, i) => {
             const y = BASELINE - (v / yMax) * PLOT_H
             return (
               <g key={i}>
@@ -211,7 +227,7 @@ export default function Trends() {
             )
           })}
 
-          {!isEmpty && (
+          {mounted && !isEmpty && (
             <>
               <path d={areaPath} className="fill-red-500/10" />
               <path
@@ -225,7 +241,7 @@ export default function Trends() {
             </>
           )}
 
-          {tickLabels.map((t, i) => (
+          {mounted && tickLabels.map((t, i) => (
             <text
               key={i}
               x={t.x}
@@ -239,7 +255,7 @@ export default function Trends() {
             </text>
           ))}
 
-          {isEmpty && (
+          {mounted && isEmpty && (
             <text
               x={W / 2}
               y={H / 2}
