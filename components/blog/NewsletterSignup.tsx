@@ -15,7 +15,6 @@ export default function NewsletterSignup() {
       email: String(data.email ?? ''),
       consent: data.consent === 'on',
       website: String(data.website ?? ''),
-      turnstileToken: null,
     }
     setState('sending')
     try {

@@ -8,7 +8,6 @@ export const NEWSLETTER_LIMITS = {
 export interface NewsletterPayload {
   email: string
   consent: boolean
-  turnstileToken: string | null
   // Honeypot field — bots fill it, humans never see it. Kept on the payload
   // so the route can drop the submission silently.
   website: string
@@ -19,7 +18,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export function validateNewsletter(input: unknown): NewsletterPayload | null {
   if (typeof input !== 'object' || input === null) return null
-  const { email, consent, turnstileToken, website } = input as Record<string, unknown>
+  const { email, consent, website } = input as Record<string, unknown>
   if (typeof email !== 'string') return null
   // Explicit opt-in: GDPR consent has to be unticked-by-default and opt-in;
   // an absent or falsy flag fails the validation here, not in the UI alone.
@@ -29,8 +28,6 @@ export function validateNewsletter(input: unknown): NewsletterPayload | null {
   return {
     email: e,
     consent: true,
-    turnstileToken:
-      typeof turnstileToken === 'string' && turnstileToken.length > 0 ? turnstileToken : null,
     website: typeof website === 'string' ? website : '',
   }
 }
