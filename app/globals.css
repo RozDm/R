@@ -71,6 +71,10 @@ body {
 
 html {
   scroll-behavior: smooth;
+  /* Offset native anchor scrolls (initial #hash load, /status -> /#status)
+     so the section heading clears the sticky header. HashLink's JS scroll
+     applies the same offset manually. */
+  scroll-padding-top: 72px;
 }
 
 /* Pre-paint cover for the first-visit intro, toggled by an inline script
