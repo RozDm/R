@@ -71,9 +71,11 @@ body {
 
 html {
   scroll-behavior: smooth;
-  /* Offset native anchor scrolls (initial #hash load, /status -> /#status)
-     so the section heading clears the sticky header. HashLink's JS scroll
-     applies the same offset manually. */
+  /* Offset every anchor scroll (initial #hash load, the /status -> /#status
+     redirect, and HashLink's native scrollIntoView) so the section heading
+     clears the sticky header. scroll-behavior must stay `smooth` — HashLink
+     relies on the native smooth scroll, a hand-rolled rAF version fought it
+     and stuttered. */
   scroll-padding-top: 72px;
 }
 
