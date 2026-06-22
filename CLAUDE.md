@@ -75,7 +75,8 @@ code and comments are English.
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count —
   POST gated by `isWriteAllowed` = same-origin + non-bot), `/api/geo`
   (read-only, edge-cached 60s), `/api/visit` (POST, the single Besøk
-  beacon — see Visit counting above), `/api/timeseries?metric=view|geo&range=24h|7d|30d`
+  beacon — see Visit counting above; also answers GET with a harmless
+  self-diagnostic — the caller's own country + whether it counts), `/api/timeseries?metric=view|geo&range=24h|7d|30d`
   (GET, edge-cached per metric+range; `view` channel still served for API
   compat, only `geo` is graphed), `/api/contact` (POST, full Turnstile
   challenge), `/api/newsletter` (POST — Phase 1 capture only; no
@@ -181,6 +182,13 @@ code and comments are English.
   sticky header — and the **home route opts out** (`usePathname() !== '/'`) so
   the intro's z-100 overlay + black pre-paint cover keep a clean stacking
   context. Respects `prefers-reduced-motion`.
+- In-page nav (`components/layout/HashLink.tsx`): on `/` it intercepts
+  `/#x` clicks and calls native `target.scrollIntoView({behavior:'smooth'})`
+  + `history.pushState` (Next's `<Link href="/#x">` otherwise concatenates
+  hashes into `/#main#about`, and setting `location.hash` would instant-jump
+  past the smooth scroll). The header offset is pure CSS (`scroll-padding-top`,
+  above) — don't reintroduce a custom rAF scroll, it fights the global
+  `scroll-behavior: smooth` and stutters. Off the home route, plain `<Link>`.
 - `@cloudflare/vitest-pool-workers` is not yet compatible with Vitest 4, so
   worker routes are covered by `scripts/smoke.sh` in CI, not unit tests.
 - `StatusDashboard` is code-split via `next/dynamic` (`ssr: false`,
