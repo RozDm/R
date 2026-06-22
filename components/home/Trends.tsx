@@ -110,7 +110,10 @@ export default function Trends() {
       cache: 'no-store',
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
-      .then((d: Series) => setSeries(d))
+      .then((d: Series) => {
+        setSeries(d)
+        setFailed(false)
+      })
       .catch((err) => {
         if ((err as Error).name !== 'AbortError') setFailed(true)
       })
@@ -142,9 +145,10 @@ export default function Trends() {
     }
   }, [series, range])
 
-  if (failed) return null
-
-  const isEmpty = !loading && total === 0
+  // Don't unmount the whole section on a fetch hiccup — that nuked the header
+  // and the period tabs, leaving no way to retry without a page reload.
+  // Degrade inside the chart instead; switching range re-runs the fetch.
+  const isEmpty = !loading && !failed && total === 0
   // Integer, de-duplicated y-ticks so a max of 1 doesn't label 0/0.5/1 as
   // "0,1,1" after rounding.
   const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
@@ -255,7 +259,7 @@ export default function Trends() {
             </text>
           ))}
 
-          {mounted && isEmpty && (
+          {mounted && (isEmpty || failed) && (
             <text
               x={W / 2}
               y={H / 2}
@@ -264,7 +268,7 @@ export default function Trends() {
               fontSize="13"
               fontFamily="monospace"
             >
-              Ingen data ennå
+              {failed ? 'Kunne ikke laste — bytt periode for å prøve igjen' : 'Ingen data ennå'}
             </text>
           )}
         </svg>
