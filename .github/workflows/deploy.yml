@@ -40,6 +40,7 @@ jobs:
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           AE_API_TOKEN: ${{ secrets.AE_API_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
@@ -54,6 +55,7 @@ jobs:
           put_secret TURNSTILE_SECRET "$TURNSTILE_SECRET"
           put_secret CF_ACCOUNT_ID    "$CF_ACCOUNT_ID"
           put_secret AE_API_TOKEN     "$AE_API_TOKEN"
+          put_secret RESEND_API_KEY   "$RESEND_API_KEY"
 
       - uses: cloudflare/wrangler-action@v3
         with:

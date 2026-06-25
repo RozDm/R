@@ -1,20 +1,52 @@
-// POST /api/newsletter — Phase 1: capture only. Validates the email,
-// records it with a consent proof (IP + timestamp) and a token that will
-// double as the unsubscribe / double-opt-in key once the sending side
-// lands. No confirmation e-mail is dispatched yet — the row sits with
-// confirmed_at = NULL and waits for Phase 2.
+// /api/newsletter — Phase 2 double-opt-in.
 //
-// Defence in depth: same-origin + bot-UA + honeypot + per-IP rate limit.
-// Turnstile is *not* attached here (Phase 1 doesn't send mail and the
-// abuse surface is just a row in D1); the contact form is the one that
-// kicks off real e-mail and keeps the challenge.
+// POST /api/newsletter       — validate, rate-limit, insert (token), send
+//                              confirmation e-mail via Resend.
+// GET  /api/newsletter/confirm?token=...      — set confirmed_at.
+// GET  /api/newsletter/unsubscribe?token=...  — delete row.
+//
+// Defence in depth on POST: same-origin + bot-UA + honeypot + per-IP rate
+// limit. Mail dispatch is feature-gated on RESEND_API_KEY: deploying the code
+// without the secret keeps Phase-1 behaviour (capture only, no e-mail), so the
+// gate is the dashboard config, not the deploy.
+//
+// Confirm + unsubscribe are GETs so plain e-mail clients can navigate them
+// without JS. Each redirects to /nyhetsbrev/<status>/ — bekreftet, avmeldt or
+// ugyldig — so the user always lands on a themed page instead of a worker-
+// rendered JSON body.
+import { ENFORCED_CSP, HSTS, applyBaseHeaders } from '../csp'
 import { apiJson } from '../http'
 import { looksLikeBot } from '../metrics'
-import { validateNewsletter } from '../newsletter'
+import {
+  buildConfirmEmail,
+  isValidConfirmToken,
+  sendConfirmEmail,
+  validateNewsletter,
+} from '../newsletter'
+
+const SITE_URL = 'https://rozsoshnykh.no'
+const NEWSLETTER_FROM = 'Dmytro Rozsoshnykh <newsletter@rozsoshnykh.no>'
 
 // Max sign-ups per IP per hour. Lower than the contact form — nobody
 // legitimately signs up for the same newsletter many times in a row.
 const NEWSLETTER_IP_LIMIT = 3
+
+// 303 lands the email client on /nyhetsbrev/<status>/ via a fresh GET, no
+// caching, no stale-on-back-button. Result pages are noindex so any crawler
+// that follows the link doesn't pollute the index.
+function redirectToResult(status: 'bekreftet' | 'avmeldt' | 'ugyldig'): Response {
+  const response = new Response(null, {
+    status: 303,
+    headers: {
+      Location: `${SITE_URL}/nyhetsbrev/${status}/`,
+      'Cache-Control': 'no-store',
+    },
+  })
+  applyBaseHeaders(response.headers)
+  response.headers.set('Strict-Transport-Security', HSTS)
+  response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+  return response
+}
 
 export async function handleNewsletter(
   url: URL,
@@ -68,5 +100,68 @@ export async function handleNewsletter(
     .run()
     .catch(() => null)
   const inserted = (result?.meta?.changes ?? 0) > 0
+
+  // Send the confirmation e-mail only on a *fresh* insert and only when the
+  // ESP secret is configured. Re-sending on a repeat sign-up of an unconfirmed
+  // address would otherwise let an attacker spam an unrelated inbox once an
+  // hour by replaying its address. The token returned to a repeat signer is
+  // the original one, so they can ask for a resend out-of-band if needed.
+  if (inserted && env.RESEND_API_KEY) {
+    await sendConfirmEmail({
+      apiKey: env.RESEND_API_KEY,
+      from: NEWSLETTER_FROM,
+      to: payload.email,
+      email: buildConfirmEmail({ siteUrl: SITE_URL, token }),
+    })
+    // Best-effort: a Resend hiccup logs in observability but the row already
+    // sits in D1; the UI still shows success so the user isn't told their
+    // address is/isn't on the list (sender-failure leakage).
+  }
+
   return apiJson(JSON.stringify({ ok: true, already: !inserted }))
+}
+
+export async function handleNewsletterConfirm(
+  url: URL,
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  if (url.pathname !== '/api/newsletter/confirm' || request.method !== 'GET') return null
+
+  const token = url.searchParams.get('token')
+  if (!isValidConfirmToken(token)) return redirectToResult('ugyldig')
+
+  // Idempotent: re-clicking the link from an old e-mail doesn't move the
+  // confirmation timestamp forward (COALESCE keeps the original), but still
+  // resolves to "bekreftet". An unknown token resolves to "ugyldig".
+  const at = new Date().toISOString()
+  const result = await env.METRICS.prepare(
+    'UPDATE subscribers SET confirmed_at = COALESCE(confirmed_at, ?1) WHERE token = ?2',
+  )
+    .bind(at, token)
+    .run()
+    .catch(() => null)
+  if (!result || (result.meta?.changes ?? 0) === 0) return redirectToResult('ugyldig')
+  return redirectToResult('bekreftet')
+}
+
+export async function handleNewsletterUnsubscribe(
+  url: URL,
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  if (url.pathname !== '/api/newsletter/unsubscribe' || request.method !== 'GET') return null
+
+  const token = url.searchParams.get('token')
+  if (!isValidConfirmToken(token)) return redirectToResult('ugyldig')
+
+  // Delete outright — works whether the address was confirmed or not. A
+  // repeated click on a stale link resolves to "ugyldig" (row already gone),
+  // which reads correctly to the user.
+  const result = await env.METRICS.prepare('DELETE FROM subscribers WHERE token = ?1')
+    .bind(token)
+    .run()
+    .catch(() => null)
+  if (!result || (result.meta?.changes ?? 0) === 0) return redirectToResult('ugyldig')
+  return redirectToResult('avmeldt')
 }

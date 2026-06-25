@@ -92,6 +92,9 @@ check "blogg"       "$BASE/blogg/"           200 "Artikler"
 check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
 check "tag"         "$BASE/blogg/tag/velkommen/" 200 "Velkommen"
 check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"
+check "nl-ok"       "$BASE/nyhetsbrev/bekreftet/" 200 "Du står på listen"
+check "nl-out"      "$BASE/nyhetsbrev/avmeldt/"   200 "Adressen er fjernet"
+check "nl-bad"      "$BASE/nyhetsbrev/ugyldig/"   200 "Lenken virker ikke"
 check "404"         "$BASE/finnes-ikke/"     404
 
 echo "== Machine endpoints =="

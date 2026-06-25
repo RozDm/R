@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateNewsletter } from '@/src/newsletter'
+import { buildConfirmEmail, isValidConfirmToken, validateNewsletter } from '@/src/newsletter'
 
 describe('validateNewsletter', () => {
   it('accepts a well-formed email with explicit consent', () => {
@@ -47,5 +47,36 @@ describe('validateNewsletter', () => {
     expect(validateNewsletter(null)).toBeNull()
     expect(validateNewsletter('reader@example.com')).toBeNull()
     expect(validateNewsletter(undefined)).toBeNull()
+  })
+})
+
+describe('isValidConfirmToken', () => {
+  it('accepts a UUID v4 (crypto.randomUUID output shape)', () => {
+    expect(isValidConfirmToken('11111111-2222-4333-8444-555555555555')).toBe(true)
+    expect(isValidConfirmToken('AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE')).toBe(true)
+  })
+
+  it('rejects non-UUID strings, empty, null', () => {
+    expect(isValidConfirmToken(null)).toBe(false)
+    expect(isValidConfirmToken('')).toBe(false)
+    expect(isValidConfirmToken('not-a-uuid')).toBe(false)
+    // Wrong segment lengths.
+    expect(isValidConfirmToken('1111111-2222-4333-8444-555555555555')).toBe(false)
+    // SQL-shaped attempt — must not slip through as a "valid" token.
+    expect(isValidConfirmToken("' OR 1=1 --")).toBe(false)
+  })
+})
+
+describe('buildConfirmEmail', () => {
+  it('embeds both the confirm and unsubscribe URLs with the token', () => {
+    const out = buildConfirmEmail({
+      siteUrl: 'https://rozsoshnykh.no',
+      token: '11111111-2222-4333-8444-555555555555',
+    })
+    expect(out.subject).toMatch(/bekreft/i)
+    expect(out.text).toContain('https://rozsoshnykh.no/api/newsletter/confirm?token=11111111-2222-4333-8444-555555555555')
+    expect(out.text).toContain('https://rozsoshnykh.no/api/newsletter/unsubscribe?token=11111111-2222-4333-8444-555555555555')
+    expect(out.html).toContain('https://rozsoshnykh.no/api/newsletter/confirm?token=11111111-2222-4333-8444-555555555555')
+    expect(out.html).toContain('https://rozsoshnykh.no/api/newsletter/unsubscribe?token=11111111-2222-4333-8444-555555555555')
   })
 })

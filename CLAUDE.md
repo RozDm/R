@@ -79,9 +79,18 @@ code and comments are English.
   self-diagnostic — the caller's own country + whether it counts), `/api/timeseries?metric=view|geo&range=24h|7d|30d`
   (GET, edge-cached per metric+range; `view` channel still served for API
   compat, only `geo` is graphed), `/api/contact` (POST, full Turnstile
-  challenge), `/api/newsletter` (POST — Phase 1 capture only; no
-  Turnstile yet because no mail is sent; D1 table `subscribers` with
-  `confirmed_at` left NULL until Phase 2 wires the confirm e-mail).
+  challenge), `/api/newsletter` (POST — Phase 2 double-opt-in: validate +
+  rate-limit + insert + send the confirmation mail via Resend), and the
+  two bearer-token landing endpoints `/api/newsletter/confirm?token=<uuid>`
+  and `/api/newsletter/unsubscribe?token=<uuid>` (GET, 303-redirect to
+  `/nyhetsbrev/<status>/` where `<status>` is `bekreftet`/`avmeldt`/`ugyldig`).
+  Mail send is feature-gated on `RESEND_API_KEY` — without it the row is
+  captured and the send step is skipped (Phase-1 fallback), so deploying
+  the code never breaks the form. Resend is called only on a *fresh*
+  insert (`meta.changes > 0`) so a replayed sign-up of the same address
+  can't be used to spam an unrelated inbox; send failures fail closed and
+  the API still reports `ok:true` so a misbehaving ESP doesn't leak
+  whether the address is on the list.
 - The visitor world map is a build-time artifact: `scripts/build-world-svg.mjs`
   (run by `prebuild`) emits `public/world.svg` from `world-map-country-shapes`
   (a devDependency). `GeoMap` fetches that SVG and injects it via
@@ -98,6 +107,15 @@ code and comments are English.
   via `src/env.d.ts`; the deploy workflow pushes it with `wrangler secret put`
   from a GitHub secret. `TURNSTILE_SITE_KEY` is a GitHub secret inlined into
   the build as `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
+- `RESEND_API_KEY` is the runtime Worker secret for the newsletter
+  double-opt-in mail (same `src/env.d.ts` + `wrangler secret put` path as
+  the others — fed from a `RESEND_API_KEY` GitHub secret by the deploy
+  workflow's secret-sync loop). The sender domain `rozsoshnykh.no` must be
+  DNS-verified in Resend (SPF/DKIM/Return-Path TXT records alongside
+  Cloudflare Email Routing's — they coexist on different selectors). When
+  the secret is unset, POST `/api/newsletter` keeps Phase-1 behaviour
+  (capture only, no e-mail). The confirm/unsubscribe routes work
+  regardless of the secret — they only touch D1.
 - TypeScript is split: app uses `tsconfig.json` (lib.dom), worker uses
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
   `wrangler.jsonc` change run `npm run cf-typegen` and commit the result.
@@ -193,10 +211,15 @@ code and comments are English.
   `scroll-behavior: smooth` and stutters. Off the home route, plain `<Link>`.
 - `@cloudflare/vitest-pool-workers` is not yet compatible with Vitest 4, so
   worker routes are covered by `scripts/smoke.sh` in CI, not unit tests.
-- `StatusDashboard` is code-split via `next/dynamic` (`ssr: false`,
-  `LazyStatusDashboard.tsx`), so it is NOT in the static HTML — the `Driftsstatus`
-  heading the smoke test greps lives in the server component `Status.tsx`. Keep
-  it there; don't move it into the dashboard or the smoke check breaks.
+- `StatusDashboard`, `GeoMap` and `TrendsChart` are all code-split via
+  `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
+  `LazyGeoMap.tsx` and `LazyTrendsChart.tsx` — none of the three are in
+  the static HTML. The section headings (`Driftsstatus`, `Hvor leserne
+  kommer fra`, `Trafikk over tid`) live in the server components
+  `Status.tsx`, `Visitors.tsx` and `Trends.tsx` so the smoke test can
+  grep them and SEO sees the structure even before the charts hydrate.
+  Keep the headings on the server side — moving a heading into a lazy
+  half drops it from the static HTML and breaks the smoke check.
 - Session branches: work on a `claude/*` branch, PRs are squash-merged, so
   reset the branch onto `origin/main` before starting new work or the next
   PR will conflict with its own squashed history.
