@@ -68,15 +68,24 @@ describe('isValidConfirmToken', () => {
 })
 
 describe('buildConfirmEmail', () => {
-  it('embeds both the confirm and unsubscribe URLs with the token', () => {
+  it('embeds the confirm URL with the token in both text and html', () => {
     const out = buildConfirmEmail({
       siteUrl: 'https://rozsoshnykh.no',
       token: '11111111-2222-4333-8444-555555555555',
     })
     expect(out.subject).toMatch(/bekreft/i)
     expect(out.text).toContain('https://rozsoshnykh.no/api/newsletter/confirm?token=11111111-2222-4333-8444-555555555555')
-    expect(out.text).toContain('https://rozsoshnykh.no/api/newsletter/unsubscribe?token=11111111-2222-4333-8444-555555555555')
     expect(out.html).toContain('https://rozsoshnykh.no/api/newsletter/confirm?token=11111111-2222-4333-8444-555555555555')
-    expect(out.html).toContain('https://rozsoshnykh.no/api/newsletter/unsubscribe?token=11111111-2222-4333-8444-555555555555')
+  })
+
+  it('does NOT embed the unsubscribe/DELETE link in the confirm mail (scanners prefetch links)', () => {
+    const out = buildConfirmEmail({
+      siteUrl: 'https://rozsoshnykh.no',
+      token: '11111111-2222-4333-8444-555555555555',
+    })
+    // A mail-security scanner that GETs every URL in the body must not be able
+    // to delete the just-created row — the confirm mail carries no opt-out link.
+    expect(out.text).not.toContain('/unsubscribe')
+    expect(out.html).not.toContain('/unsubscribe')
   })
 })

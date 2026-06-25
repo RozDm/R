@@ -116,6 +116,18 @@ code and comments are English.
   the secret is unset, POST `/api/newsletter` keeps Phase-1 behaviour
   (capture only, no e-mail). The confirm/unsubscribe routes work
   regardless of the secret — they only touch D1.
+- **Before flipping on `RESEND_API_KEY`** (the double-opt-in is dormant
+  until then) harden the confirm/unsubscribe flow — they are GET routes
+  that mutate D1, which mail link-scanners/prefetchers can auto-trigger.
+  Already mitigated: the confirm mail carries **no** unsubscribe link, so a
+  prefetch can't `DELETE` the row (`buildConfirmEmail` in `src/newsletter.ts`).
+  Still to do before sending at scale: (1) move the mutation behind a `POST`
+  from a static landing page that reads `?token` (a prefetched GET currently
+  pre-confirms without a human click → weak GDPR consent proof); (2) decide a
+  resend policy for stranded-unconfirmed rows — a first signup *reserves* an
+  address, so a later genuine signer gets `already:true` and no mail; (3)
+  prefer a tombstone over a hard `DELETE` on unsubscribe so the consent proof
+  survives and the per-IP cap can't be reset by a signup→unsubscribe loop.
 - TypeScript is split: app uses `tsconfig.json` (lib.dom), worker uses
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
   `wrangler.jsonc` change run `npm run cf-typegen` and commit the result.

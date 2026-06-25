@@ -14,6 +14,14 @@
 // without JS. Each redirects to /nyhetsbrev/<status>/ — bekreftet, avmeldt or
 // ugyldig — so the user always lands on a themed page instead of a worker-
 // rendered JSON body.
+//
+// CAVEAT (harden before enabling RESEND_API_KEY at volume): a GET that mutates
+// D1 is auto-triggerable by mail link-scanners / prefetchers (SafeLinks, AV,
+// chat unfurlers), which can pre-confirm a row without a human click (weak
+// consent proof). The confirm mail intentionally carries no unsubscribe link
+// (so a prefetch can't DELETE the row), but the robust pattern is a static
+// landing page that reads ?token and POSTs the mutation behind a button — see
+// the "Before enabling Resend" note in CLAUDE.md.
 import { ENFORCED_CSP, HSTS, applyBaseHeaders } from '../csp'
 import { apiJson } from '../http'
 import { looksLikeBot } from '../metrics'

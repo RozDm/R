@@ -49,25 +49,25 @@ export interface ConfirmEmail {
 
 // Compose the double-opt-in e-mail. siteUrl is the absolute base (no trailing
 // slash); token is the bearer that proves the recipient owns this address.
-// Both links are absolute so they survive inbox preview / reading-pane proxies
-// that rewrite relative refs. The "ikke meg" link doubles as a one-click
-// unsubscribe so an accidentally-signed-up address can revoke without ever
-// confirming.
+// The confirm link is absolute so it survives inbox preview / reading-pane
+// proxies that rewrite relative refs. We deliberately do NOT embed the
+// unsubscribe (DELETE) link here: mail-security scanners prefetch every URL in
+// a message body, and a prefetched DELETE would wipe the row we just created.
+// An unconfirmed signup needs no opt-out — ignoring the mail leaves it inert.
+// Unsubscribe links belong in actual newsletter issues (Phase 3).
 export function buildConfirmEmail(opts: {
   siteUrl: string
   token: string
 }): ConfirmEmail {
   const confirmUrl = `${opts.siteUrl}/api/newsletter/confirm?token=${opts.token}`
-  const unsubscribeUrl = `${opts.siteUrl}/api/newsletter/unsubscribe?token=${opts.token}`
   const subject = 'Bekreft abonnementet på rozsoshnykh.no'
   const text =
     `Hei,\n\n` +
     `Takk for at du meldte deg på nyhetsbrevet til rozsoshnykh.no.\n` +
     `Bekreft adressen din ved å åpne lenken under:\n\n` +
     `${confirmUrl}\n\n` +
-    `Var det ikke deg? Da kan du ignorere denne meldingen, eller fjerne\n` +
-    `adressen direkte her:\n\n` +
-    `${unsubscribeUrl}\n\n` +
+    `Var det ikke deg? Da kan du bare ignorere denne meldingen — uten\n` +
+    `bekreftelse blir adressen aldri aktivert, og du hører ikke fra meg.\n\n` +
     `— Dmytro\n`
   // Inline styles only — most webmail clients strip <style>/<link>. Layout is
   // table-free flow with safe defaults; the unsubscribe row is muted so it
@@ -85,7 +85,7 @@ export function buildConfirmEmail(opts: {
     `<p style="margin:0 0 8px;font-size:13px;color:#9ca3af">Eller åpne denne lenken direkte:</p>` +
     `<p style="margin:0 0 24px;font-size:13px;color:#9ca3af;word-break:break-all"><a href="${confirmUrl}" style="color:#9ca3af">${confirmUrl}</a></p>` +
     `<hr style="border:none;border-top:1px solid #1f2937;margin:24px 0">` +
-    `<p style="margin:0;font-size:12px;color:#6b7280">Var det ikke deg? Ignorér meldingen, eller <a href="${unsubscribeUrl}" style="color:#9ca3af">fjern adressen</a> nå.</p>` +
+    `<p style="margin:0;font-size:12px;color:#6b7280">Var det ikke deg? Bare ignorér denne meldingen — uten bekreftelse blir adressen aldri aktivert.</p>` +
     `</div></body></html>`
   return { subject, text, html }
 }
