@@ -163,8 +163,10 @@ code and comments are English.
 - `package.json` is NOT `"type": "module"` — adding it breaks the Next 16 /
   turbopack config load. Standalone Node scripts use the `.mjs` extension
   instead (e.g. `scripts/build-world-svg.mjs`).
-- No R2 (it requires a card even on the free tier) — the metrics backup plan
-  is a future GitHub Actions cron, not an R2 bucket.
+- No R2 (it requires a card even on the free tier) — the metrics backup is a
+  GitHub Actions cron instead: `d1-backup.yml` dumps `rozsoshnykh-metrics` to a
+  90-day GHA artifact weekly (`0 4 * * 0`) and on demand. The `subscribers`
+  table is applied to the remote D1 via the manual `subscribers-migrate.yml`.
 - Resetting metrics: the manual `reset-metrics.yml` (`workflow_dispatch`, type
   `RESET` to confirm) wipes the D1 `views` + `geo` counters and prints
   before/after counts; it supersedes the older geo-only `geo-reset.yml`. AE

@@ -2,8 +2,9 @@
 
 Personal site and blog for **Dmytro Rozsoshnykh** — sysadmin / DevOps in Vestland, Norway.
 A static Next.js export served by a Cloudflare Worker that also runs uptime
-monitoring, visitor geo aggregation, per-post view counters and a contact form.
-Site copy is Norwegian (`nb-NO`); code and docs are English.
+monitoring, visitor geo aggregation, per-post view counters, a contact form
+and a newsletter sign-up. Site copy is Norwegian (`nb-NO`); code and docs are
+English.
 
 Live: https://rozsoshnykh.no
 
@@ -13,8 +14,9 @@ Live: https://rozsoshnykh.no
 - Content: markdown posts in `content/blog/` (gray-matter + react-markdown +
   remark-gfm + rehype-highlight for code blocks)
 - Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (`STATUS`),
-  D1 (`METRICS`), Email Routing (`CONTACT_EMAIL`), crons `*/5 * * * *` (uptime)
-  and `0 3 * * *` (daily prune of the contact table, 30-day window)
+  D1 (`METRICS`), Analytics Engine (`METRICS_AE`), Email Routing
+  (`CONTACT_EMAIL`), crons `*/5 * * * *` (uptime) and `0 3 * * *` (daily prune
+  of the contact table, 30-day window)
 - Worker (`src/`) handles canonical host (301 from `www` and `*.workers.dev`),
   strict per-request hash CSP for HTML it can decode, security headers, and the
   `/api/*` endpoints
@@ -27,7 +29,7 @@ Live: https://rozsoshnykh.no
 | `npm run build` | `prebuild` emits `public/world.svg`, then static export to `out/` |
 | `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
 | `npm run typecheck` | `tsc --noEmit` for app **and** worker (`tsconfig.worker.json`) |
-| `npm test` | Vitest — CSP hashing, status history, tags, metrics, contact, reading time |
+| `npm test` | Vitest — CSP hashing, status history, tags, metrics, contact, newsletter, reading time, time-series (SQL / parse / zero-fill / axis), draft filtering, the write-gate |
 | `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` from `wrangler.jsonc` |
 | `npm run deploy` | Manual path: `predeploy` (lint + typecheck + test) → build → `wrangler deploy` |
 
@@ -40,7 +42,8 @@ smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs.
 
 One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 (create the D1 + apply schema), `kv-to-d1-migrate` (legacy data move),
-`reset-metrics` (type `RESET` to wipe the `views` + `geo` counters, prints
+`subscribers-migrate` (apply the newsletter `subscribers` table to the remote
+D1), `reset-metrics` (type `RESET` to wipe the `views` + `geo` counters, prints
 before/after counts — supersedes the older geo-only `geo-reset`). `d1-backup`
 runs weekly (and on-demand) and uploads a SQL dump of `rozsoshnykh-metrics` as
 a 90-day GHA artifact — off-platform backup beyond Cloudflare's built-in 30-day
@@ -54,20 +57,27 @@ reuses `CLOUDFLARE_ACCOUNT_ID`).
 ### Layout
 
 ```
-app/                Next App Router: home, /blogg, /blogg/tag/[slug], /kontakt,
-                    feed.xml, sitemap, robots, manifest, OG images, error
-                    boundaries, template.tsx (opacity route cross-fade)
-components/         React components (Hero, Skills, StatusDashboard, GeoMap,
-                    HalIdle, ContactForm, Turnstile, …)
-content/blog/       Markdown posts (frontmatter: title, description, date, tags)
+app/                Next App Router: home, /blogg, /blogg/[slug],
+                    /blogg/tag/[slug], /kontakt, feed.xml, sitemap, robots,
+                    manifest, OG images, error boundaries, template.tsx
+                    (opacity route cross-fade)
+components/         React components (Hero, Skills, Certifications, Status,
+                    GeoMap, Trends, Visitors, Intro, HalIdle, VisitBeacon,
+                    ContactForm, Turnstile, NewsletterSignup, ViewCounter, …)
+content/blog/       Markdown posts (frontmatter: title, description, date,
+                    tags, optional updated + draft)
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, and tag canon + aliases (tags.ts)
-lib/                blog.ts, tags.ts, reading-time.ts, clipboard.ts, stars.ts, site.ts
-schema/             metrics.sql (views, geo, contact tables)
+lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
+                    stars.ts, site.ts, trends-axis.ts, timeseries-fill.ts
+schema/             metrics.sql (views, geo, contact, subscribers tables)
 scripts/            smoke.sh, build-world-svg.mjs
-src/                Cloudflare Worker (index.ts, csp.ts, status.ts, metrics.ts, contact.ts)
+src/                Cloudflare Worker (index.ts, csp.ts, http.ts, status.ts,
+                    metrics.ts, contact.ts, newsletter.ts, timeseries.ts,
+                    routes/*)
 tests/              Vitest
-wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, CONTACT_EMAIL, cron, routes)
+wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, METRICS_AE,
+                    CONTACT_EMAIL, cron, routes)
 ```
 
 ### Uptime monitoring
@@ -133,6 +143,18 @@ to a 30-day window.
 Turnstile is feature-gated: the widget renders only when `TURNSTILE_SITE_KEY`
 is set, and the worker enforces it only when `TURNSTILE_SECRET` is set, so the
 form keeps working without keys.
+
+### Newsletter (sign-up under `/blogg`)
+
+`POST /api/newsletter` — **Phase 1 capture only**. Validates the e-mail plus an
+explicit, unticked-by-default consent checkbox, then upserts into the D1
+`subscribers` table (`ON CONFLICT(email) DO NOTHING`, so a repeat sign-up is
+idempotent and the UI shows "already subscribed" via `meta.changes`). Stores the
+GDPR consent proof (IP + timestamp) and a token reserved for the Phase 2
+double-opt-in / unsubscribe flow; `confirmed_at` stays NULL until then. Defence:
+same-origin + bot-UA filter + off-screen honeypot + per-IP rate limit (3 / hour).
+No mail is sent yet, so there is no Turnstile on this form. Apply the table to
+the remote D1 with the `subscribers-migrate` workflow.
 
 ### Manual deploy
 
