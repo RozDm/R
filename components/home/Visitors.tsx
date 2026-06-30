@@ -1,4 +1,4 @@
-import GeoMap from './GeoMap'
+import GeoMap from './LazyGeoMap'
 
 export default function Visitors() {
   return (

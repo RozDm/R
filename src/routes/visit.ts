@@ -38,9 +38,6 @@ export function handleVisit(
     return apiJson('{"error":"forbidden"}', 403)
   }
 
-  // Visible in Worker observability logs — confirms the beacon reached the
-  // edge and what country it carried, so an empty map is diagnosable.
-  console.log('visit', request.cf?.country)
   recordGeo(env, ctx, request.cf?.country)
   return apiJson('{"ok":true}')
 }

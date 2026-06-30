@@ -26,7 +26,11 @@ const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
 // Daily prune cron pattern — must match the entry in wrangler.jsonc.
 const PRUNE_CRON = '0 3 * * *'
 
-function redirect301(target: string | null, location: string): Response {
+// `secure` flags whether the incoming request was HTTPS. Per RFC 6797, HSTS
+// must not be emitted on responses to plain-HTTP requests (the client is
+// required to ignore it anyway). Defaults true; the HTTP→HTTPS redirect
+// passes false explicitly.
+function redirect301(target: string | null, location: string, secure = true): Response {
   const response = new Response(target, {
     status: 301,
     headers: location.startsWith('http')
@@ -34,7 +38,7 @@ function redirect301(target: string | null, location: string): Response {
       : { Location: location },
   })
   applyBaseHeaders(response.headers)
-  if (!location.startsWith('http:')) response.headers.set('Strict-Transport-Security', HSTS)
+  if (secure) response.headers.set('Strict-Transport-Security', HSTS)
   response.headers.set('Content-Security-Policy', ENFORCED_CSP)
   return response
 }
@@ -109,13 +113,14 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
-    // Force HTTPS (no HSTS over HTTP, per RFC 6797).
+    // Force HTTPS. Per RFC 6797 the HSTS header on this plain-HTTP response
+    // must be suppressed — clients are required to ignore it anyway.
     if (url.protocol === 'http:') {
       url.protocol = 'https:'
       const target = url.toString()
       const safeTarget = target.replace(/[<>"]/g, '')
       const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Redirecting</title><meta http-equiv="refresh" content="0; url=${safeTarget}"></head><body>Redirecting to <a href="${safeTarget}">${safeTarget}</a></body></html>`
-      return redirect301(body, target)
+      return redirect301(body, target, false)
     }
 
     // Canonical host: collapse www and the workers.dev preview onto the apex
