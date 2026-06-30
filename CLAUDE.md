@@ -110,6 +110,13 @@ code and comments are English.
   (`.github/workflows/deploy.yml`: checks → build → wrangler → `scripts/smoke.sh`
   against the live site). Never `wrangler deploy` from a web sandbox (no
   network); `npm run deploy` works locally and is gated by `predeploy`.
+- The merge gate is **hands-off**: `main` carries a branch-protection rule
+  requiring the `check` status check (the PR-side lint/typecheck/test/build
+  job) with **0 required approvals** — a solo repo, so you cannot approve your
+  own PR. PRs are opened *ready* (not draft) with **squash auto-merge**
+  enabled, so a green `check` merges them automatically and fires the deploy
+  above; a red `check` leaves the PR open with auto-merge pending. To hold a
+  PR for a manual look instead, open it as a draft and don't enable auto-merge.
 - The web sandbox cannot reach the public internet (egress allowlist): verify
   production through the smoke-test step in the deploy run logs, not curl.
 
@@ -200,6 +207,8 @@ code and comments are English.
   grep them and SEO sees the structure even before the charts hydrate.
   Keep the headings on the server side — moving a heading into a lazy
   half drops it from the static HTML and breaks the smoke check.
-- Session branches: work on a `claude/*` branch, PRs are squash-merged, so
-  reset the branch onto `origin/main` before starting new work or the next
-  PR will conflict with its own squashed history.
+- Session branches: work on a `claude/*` branch (one per session), and reset
+  it onto `origin/main` before starting new work or the next PR conflicts with
+  its own squashed history. **Automatically delete head branches** is on, so a
+  *merged* PR's branch is removed by GitHub — no manual cleanup. Only a PR
+  *closed without merging* leaves its branch behind to delete by hand.

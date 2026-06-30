@@ -36,7 +36,15 @@ Live: https://rozsoshnykh.no
 Push to `main` triggers `.github/workflows/deploy.yml`: lint → typecheck → test →
 build → push the Turnstile secret → `wrangler deploy` → **`scripts/smoke.sh`**
 against production (pages, APIs, redirects, security headers, noindex). If the
-smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs.
+smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs as
+the `check` status check.
+
+Merging is **hands-off**: `main` is branch-protected to require `check` with 0
+approvals (solo repo — you can't approve your own PR). PRs go up ready (not
+draft) with **squash auto-merge** enabled, so a green `check` merges them
+automatically — which triggers the deploy above — and GitHub then deletes the
+merged head branch. A failing `check` just leaves the PR open with auto-merge
+pending; open a draft (and skip auto-merge) to hold a change for manual review.
 
 One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 (create the D1 + apply schema), `kv-to-d1-migrate` (legacy data move),
