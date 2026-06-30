@@ -191,10 +191,15 @@ code and comments are English.
   `scroll-behavior: smooth` and stutters. Off the home route, plain `<Link>`.
 - `@cloudflare/vitest-pool-workers` is not yet compatible with Vitest 4, so
   worker routes are covered by `scripts/smoke.sh` in CI, not unit tests.
-- `StatusDashboard` is code-split via `next/dynamic` (`ssr: false`,
-  `LazyStatusDashboard.tsx`), so it is NOT in the static HTML — the `Driftsstatus`
-  heading the smoke test greps lives in the server component `Status.tsx`. Keep
-  it there; don't move it into the dashboard or the smoke check breaks.
+- `StatusDashboard`, `GeoMap` and `TrendsChart` are all code-split via
+  `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
+  `LazyGeoMap.tsx` and `LazyTrendsChart.tsx` — none of the three are in
+  the static HTML. The section headings (`Driftsstatus`, `Hvor leserne
+  kommer fra`, `Trafikk over tid`) live in the server components
+  `Status.tsx`, `Visitors.tsx` and `Trends.tsx` so the smoke test can
+  grep them and SEO sees the structure even before the charts hydrate.
+  Keep the headings on the server side — moving a heading into a lazy
+  half drops it from the static HTML and breaks the smoke check.
 - Session branches: work on a `claude/*` branch, PRs are squash-merged, so
   reset the branch onto `origin/main` before starting new work or the next
   PR will conflict with its own squashed history.
