@@ -1,0 +1,83 @@
+name: Repair D1 (one-shot)
+
+# The metrics D1 hit a Cloudflare-side storage failure around 2026-06-29
+# ("Internal error while starting up D1 DB storage caused object to be
+# reset") — every query fails while the API still lists the database.
+# Drives recovery from Actions since wrangler can't run locally:
+#   info     — Time Travel + probe query, pure diagnosis, changes nothing
+#   restore  — Time Travel restore to `timestamp` (D1 bookmarks the current
+#              state first, so this is reversible)
+#   recreate — LAST RESORT: delete + create + schema. Prints the NEW
+#              database_id, which must then be wired into wrangler.jsonc
+#              (+ `npm run cf-typegen`) and deployed. Requires typing
+#              RECREATE in `confirm`.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'info | restore | recreate'
+        required: true
+        default: 'info'
+      timestamp:
+        description: 'restore mode: UTC ISO timestamp, e.g. 2026-06-29T06:00:00Z'
+        required: false
+        default: ''
+      confirm:
+        description: 'recreate mode: type RECREATE to confirm'
+        required: false
+        default: ''
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DB: rozsoshnykh-metrics
+      MODE: ${{ inputs.mode }}
+      RESTORE_TS: ${{ inputs.timestamp }}
+      CONFIRM: ${{ inputs.confirm }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Always runs, never fails the job: shows whether the control plane
+      # (info/time-travel) responds and whether queries still error.
+      - name: Probe current state
+        run: |
+          npx wrangler d1 info "$DB" || true
+          npx wrangler d1 time-travel info "$DB" || true
+          npx wrangler d1 execute "$DB" --remote --command "SELECT 1" || true
+
+      - name: Time Travel restore
+        if: env.MODE == 'restore'
+        run: |
+          if [ -z "$RESTORE_TS" ]; then
+            echo "::error::restore mode needs the timestamp input"
+            exit 1
+          fi
+          npx wrangler d1 time-travel restore "$DB" --timestamp "$RESTORE_TS"
+          echo "--- verify ---"
+          npx wrangler d1 execute "$DB" --remote --command "SELECT COUNT(*) AS geo_rows FROM geo"
+
+      - name: Recreate database (DESTRUCTIVE)
+        if: env.MODE == 'recreate'
+        run: |
+          if [ "$CONFIRM" != "RECREATE" ]; then
+            echo "::error::recreate mode needs confirm=RECREATE"
+            exit 1
+          fi
+          npx wrangler d1 delete "$DB" --skip-confirmation
+          npx wrangler d1 create "$DB"
+          npx wrangler d1 execute "$DB" --remote --file=schema/metrics.sql
+          echo "=================================================="
+          echo "NEW database_id — update wrangler.jsonc, run"
+          echo "'npm run cf-typegen', commit, and deploy:"
+          echo "=================================================="
+          npx wrangler d1 list --json | python3 -c "import json,sys; [print(d['uuid']) for d in json.load(sys.stdin) if d['name']=='rozsoshnykh-metrics']"
