@@ -18,8 +18,11 @@
   "d1_databases": [
     {
       "binding": "METRICS",
-      "database_name": "rozsoshnykh-metrics",
-      "database_id": "26df4356-17e3-43fb-b96e-c1cdbeb4580b"
+      "database_name": "rozsoshnykh-metrics-v2",
+      // v2: the original database's storage object died on Cloudflare's side
+      // (2026-07-03, internal error 7500 on every operation incl. Time Travel)
+      // and its deleted entry still ghost-locks the old name.
+      "database_id": "4f40b727-fe8f-4dbb-87ab-d6438dfda711"
     }
   ],
   // Time-series sink for view/geo events. Sampled, append-only, 10M writes/day

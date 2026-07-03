@@ -47,10 +47,11 @@ merged head branch. A failing `check` just leaves the PR open with auto-merge
 pending; open a draft (and skip auto-merge) to hold a change for manual review.
 
 One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
-(create the D1 + apply schema), `kv-to-d1-migrate` (legacy data move),
+(create the D1 + apply schema), `d1-repair` (info probe / Time Travel restore
+/ recreate / create — built for the 2026-07-03 D1 storage outage),
 `reset-metrics` (type `RESET` to wipe the `views` + `geo` counters, prints
 before/after counts — supersedes the older geo-only `geo-reset`). `d1-backup`
-runs weekly (and on-demand) and uploads a SQL dump of `rozsoshnykh-metrics` as
+runs weekly (and on-demand) and uploads a SQL dump of `rozsoshnykh-metrics-v2` as
 a 90-day GHA artifact — off-platform backup beyond Cloudflare's built-in 30-day
 Time Travel. The repo is public and artifacts are downloadable by anyone with a
 GitHub account, so the dump (contact + subscribers PII) is gpg-encrypted with
@@ -101,7 +102,7 @@ self-fetches over the public URL). A check counts as up only on a final HTTP
 
 ### Metrics
 
-Counters live in a D1 database (`rozsoshnykh-metrics`, schema in
+Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
 `schema/metrics.sql`) with atomic upserts — no read-modify-write races and a
 100k writes/day free budget. KV holds only the uptime snapshot.
 

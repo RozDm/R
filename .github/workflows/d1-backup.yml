@@ -73,7 +73,7 @@ jobs:
         run: |
           mkdir -p backup
           ts=$(date -u +'%Y%m%dT%H%M%SZ')
-          npx wrangler d1 export rozsoshnykh-metrics --remote --output "backup/metrics-${ts}.sql"
+          npx wrangler d1 export rozsoshnykh-metrics-v2 --remote --output "backup/metrics-${ts}.sql"
           # Passphrase over stdin (not argv) so it never shows in the process
           # list; loopback pinentry is required for batch-mode gpg 2.x.
           printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --symmetric \
