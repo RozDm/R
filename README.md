@@ -52,12 +52,18 @@ One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 before/after counts — supersedes the older geo-only `geo-reset`). `d1-backup`
 runs weekly (and on-demand) and uploads a SQL dump of `rozsoshnykh-metrics` as
 a 90-day GHA artifact — off-platform backup beyond Cloudflare's built-in 30-day
-Time Travel.
+Time Travel. The repo is public and artifacts are downloadable by anyone with a
+GitHub account, so the dump (contact + subscribers PII) is gpg-encrypted with
+the `BACKUP_PASSPHRASE` secret before upload (`metrics-<ts>.sql.gpg`; the
+workflow fails rather than upload plaintext when the secret is missing, and
+purges any legacy plaintext artifact on every run). Decrypt with
+`gpg --decrypt --batch --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE"`.
 
 Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
 `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
 token for the Analytics Engine SQL API; `CF_ACCOUNT_ID` for the same call
-reuses `CLOUDFLARE_ACCOUNT_ID`).
+reuses `CLOUDFLARE_ACCOUNT_ID`), `BACKUP_PASSPHRASE` (symmetric key for the
+weekly D1 backup artifact).
 
 ### Layout
 
