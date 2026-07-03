@@ -23,10 +23,11 @@ CREATE TABLE IF NOT EXISTS contact (
 CREATE INDEX IF NOT EXISTS contact_ip_at ON contact (ip, at);
 CREATE INDEX IF NOT EXISTS contact_email_at ON contact (email, at);
 
--- Newsletter signups. Phase 1 is capture-only — we record the email plus
--- the consent proof GDPR expects (IP + timestamp) and a token that becomes
--- the unsubscribe / double-opt-in key once the sending side lands. No
--- confirmation flow is wired yet, so confirmed_at stays NULL.
+-- DORMANT: the newsletter sign-up (UI + /api/newsletter) was removed before
+-- any mail was ever sent. The table stays because rows may exist in prod
+-- (emails + GDPR consent proof) and dropping data is a separate, deliberate
+-- decision. Nothing reads or writes it; revive or drop when a newsletter
+-- comes back.
 CREATE TABLE IF NOT EXISTS subscribers (
   email        TEXT PRIMARY KEY,
   at           TEXT NOT NULL,

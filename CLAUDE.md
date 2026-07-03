@@ -35,11 +35,10 @@ code and comments are English.
 - KV namespace `STATUS` holds only the uptime snapshot (`status` key).
 - D1 database `rozsoshnykh-metrics` (binding `METRICS`, schema in
   `schema/metrics.sql`): `views(slug, count)`, `geo(country, count)`, and
-  `contact(id, at, ip, name, email, message)`, and `subscribers(email PK,
-  at, ip, token, confirmed_at)` for the newsletter signup. Counters use
-  atomic `INSERT … ON CONFLICT … count = count + 1`; the subscriber insert
-  uses `ON CONFLICT(email) DO NOTHING` and reports `already=true` via
-  `meta.changes`.
+  `contact(id, at, ip, name, email, message)`. Counters use atomic
+  `INSERT … ON CONFLICT … count = count + 1`. A dormant `subscribers` table
+  remains from the removed newsletter sign-up (rows may exist in prod;
+  nothing reads or writes it).
 - Analytics Engine dataset `rozsoshnykh_metrics` (binding `METRICS_AE`) holds
   the sampled time-series behind the front-page **Trends** card
   (`components/home/Trends.tsx` — single Besøk metric, 24t/7d/30d range,
@@ -79,9 +78,7 @@ code and comments are English.
   self-diagnostic — the caller's own country + whether it counts), `/api/timeseries?metric=view|geo&range=24h|7d|30d`
   (GET, edge-cached per metric+range; `view` channel still served for API
   compat, only `geo` is graphed), `/api/contact` (POST, full Turnstile
-  challenge), `/api/newsletter` (POST — Phase 1 capture only; no
-  Turnstile yet because no mail is sent; D1 table `subscribers` with
-  `confirmed_at` left NULL until Phase 2 wires the confirm e-mail).
+  challenge).
 - The visitor world map is a build-time artifact: `scripts/build-world-svg.mjs`
   (run by `prebuild`) emits `public/world.svg` from `world-map-country-shapes`
   (a devDependency). `GeoMap` fetches that SVG and injects it via

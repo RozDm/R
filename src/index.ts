@@ -18,7 +18,6 @@ import { handleViews } from './routes/views'
 import { handleGeo } from './routes/geo'
 import { handleContact } from './routes/contact'
 import { handleTimeseries } from './routes/timeseries'
-import { handleNewsletter } from './routes/newsletter'
 import { handleVisit } from './routes/visit'
 
 const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
@@ -142,7 +141,6 @@ export default {
       (await handleGeo(url, request, env, ctx)) ??
       handleVisit(url, request, env, ctx) ??
       (await handleTimeseries(url, request, env, ctx)) ??
-      (await handleNewsletter(url, request, env)) ??
       (await handleContact(url, request, env))
     if (apiResponse) return apiResponse
 

@@ -3,7 +3,6 @@ import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BlogList from '@/components/blog/BlogList'
-import NewsletterSignup from '@/components/blog/NewsletterSignup'
 import { getAllPosts, formatDate } from '@/lib/blog'
 import { SITE_URL } from '@/lib/site'
 
@@ -45,7 +44,6 @@ export default function BloggIndex() {
         </h1>
 
         <BlogList posts={posts} />
-        <NewsletterSignup />
       </main>
       <Footer />
     </>
