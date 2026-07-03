@@ -11,11 +11,17 @@ name: Repair D1 (one-shot)
 #              database_id, which must then be wired into wrangler.jsonc
 #              (+ `npm run cf-typegen`) and deployed. Requires typing
 #              RECREATE in `confirm`.
+#   create   — create + schema WITHOUT any existence check or delete.
+#              Escape hatch for the ghost-entry state the 2026-07-03 outage
+#              left behind: `d1 list` still returns the deleted database, so
+#              bootstrap's "already exists" grep skips creation while every
+#              call against the listed uuid 7404s. `name` overrides the
+#              database name if the ghost keeps the default locked.
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'info | restore | recreate'
+        description: 'info | restore | recreate | create'
         required: true
         default: 'info'
       timestamp:
@@ -26,6 +32,10 @@ on:
         description: 'recreate mode: type RECREATE to confirm'
         required: false
         default: ''
+      name:
+        description: 'create mode: database name to create'
+        required: false
+        default: 'rozsoshnykh-metrics'
 
 jobs:
   repair:
@@ -37,6 +47,7 @@ jobs:
       MODE: ${{ inputs.mode }}
       RESTORE_TS: ${{ inputs.timestamp }}
       CONFIRM: ${{ inputs.confirm }}
+      CREATE_NAME: ${{ inputs.name }}
     steps:
       - uses: actions/checkout@v5
 
@@ -65,6 +76,21 @@ jobs:
           npx wrangler d1 time-travel restore "$DB" --timestamp "$RESTORE_TS"
           echo "--- verify ---"
           npx wrangler d1 execute "$DB" --remote --command "SELECT COUNT(*) AS geo_rows FROM geo"
+
+      - name: Create fresh database + schema (no existence check)
+        if: env.MODE == 'create'
+        run: |
+          NAME="${CREATE_NAME:-rozsoshnykh-metrics}"
+          npx wrangler d1 create "$NAME"
+          npx wrangler d1 execute "$NAME" --remote --file=schema/metrics.sql
+          echo "--- tables ---"
+          npx wrangler d1 execute "$NAME" --remote \
+            --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+          echo "=================================================="
+          echo "database_id for wrangler.jsonc (name: $NAME):"
+          echo "=================================================="
+          export N="$NAME"
+          npx wrangler d1 list --json | python3 -c "import json,sys,os; [print(d['uuid'], d.get('created_at', '')) for d in json.load(sys.stdin) if d['name']==os.environ['N']]"
 
       - name: Recreate database (DESTRUCTIVE)
         if: env.MODE == 'recreate'
