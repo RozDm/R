@@ -33,7 +33,7 @@ code and comments are English.
     both tsconfigs since tests import it. Every `INTERVAL` literal is quoted
     (`INTERVAL '6' HOUR`) — AE's SQL parser 422s on the bare `INTERVAL 6 HOUR`.
 - KV namespace `STATUS` holds only the uptime snapshot (`status` key).
-- D1 database `rozsoshnykh-metrics` (binding `METRICS`, schema in
+- D1 database `rozsoshnykh-metrics-v2` (binding `METRICS`, schema in
   `schema/metrics.sql`): `views(slug, count)`, `geo(country, count)`, and
   `contact(id, at, ip, name, email, message)`. Counters use atomic
   `INSERT … ON CONFLICT … count = count + 1`. A dormant `subscribers` table

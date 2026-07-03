@@ -35,7 +35,7 @@ on:
       name:
         description: 'create mode: database name to create'
         required: false
-        default: 'rozsoshnykh-metrics'
+        default: 'rozsoshnykh-metrics-v2'
 
 jobs:
   repair:
@@ -43,7 +43,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      DB: rozsoshnykh-metrics
+      DB: rozsoshnykh-metrics-v2
       MODE: ${{ inputs.mode }}
       RESTORE_TS: ${{ inputs.timestamp }}
       CONFIRM: ${{ inputs.confirm }}
@@ -80,7 +80,7 @@ jobs:
       - name: Create fresh database + schema (no existence check)
         if: env.MODE == 'create'
         run: |
-          NAME="${CREATE_NAME:-rozsoshnykh-metrics}"
+          NAME="${CREATE_NAME:-rozsoshnykh-metrics-v2}"
           npx wrangler d1 create "$NAME"
           npx wrangler d1 execute "$NAME" --remote --file=schema/metrics.sql
           echo "--- tables ---"
@@ -106,4 +106,4 @@ jobs:
           echo "NEW database_id — update wrangler.jsonc, run"
           echo "'npm run cf-typegen', commit, and deploy:"
           echo "=================================================="
-          npx wrangler d1 list --json | python3 -c "import json,sys; [print(d['uuid']) for d in json.load(sys.stdin) if d['name']=='rozsoshnykh-metrics']"
+          npx wrangler d1 list --json | python3 -c "import json,sys; [print(d['uuid']) for d in json.load(sys.stdin) if d['name']=='rozsoshnykh-metrics-v2']"
