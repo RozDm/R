@@ -37,7 +37,11 @@ export function parseRange(value: string | null): { key: string; range: SeriesRa
 // floor. Filtering here, not in the AE SQL itself, sidesteps any
 // SQL-dialect surprise (AE rejected toDateTime/CAST patterns we tried).
 // REMINDER: bump this after every `reset-metrics` run.
-export const METRICS_EPOCH = '2026-06-20 17:15:00'
+// 2026-07-03: bumped past the D1 storage outage (~June 29 → July 3) during
+// which geo/views upserts silently failed while AE kept collecting — the
+// Trends card showed visits the map could never have. Both surfaces restart
+// from this moment together.
+export const METRICS_EPOCH = '2026-07-03 17:00:00'
 
 // Build the AE SQL query. Identifiers are fixed strings (dataset, blob index,
 // bucket function from RANGES) — no user input is interpolated. The epoch

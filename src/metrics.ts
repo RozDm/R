@@ -13,9 +13,9 @@ export function looksLikeBot(userAgent: string | null): boolean {
   return BOT_RE.test(userAgent)
 }
 
-// Gate for the write endpoints (/api/visit, /api/newsletter, /api/contact,
-// /api/views POST): only count requests that come from our own pages and not
-// from a bot UA. Pure (just header inspection) so it can be unit-tested.
+// Gate for the write endpoints (/api/visit, /api/contact, /api/views POST):
+// only count requests that come from our own pages and not from a bot UA.
+// Pure (just header inspection) so it can be unit-tested.
 export function isWriteAllowed(headers: Headers): boolean {
   if (headers.get('sec-fetch-site') !== 'same-origin') return false
   if (looksLikeBot(headers.get('user-agent'))) return false
