@@ -24,6 +24,9 @@ code and comments are English.
     redirects (no `unsafe-inline` — nothing executes inline there), and
     `HTML_FALLBACK_CSP` (keeps `unsafe-inline`) only for HTML we couldn't decode
     to hash — effectively unreachable since assets are fetched as identity.
+    All three share `COMMON_DIRECTIVES`, incl. `upgrade-insecure-requests`
+    (belt for a legacy `http://` embed in a future post; HSTS + browser
+    mixed-content auto-upgrade are the suspenders).
   - `status.ts` — uptime cron config + pure KV snapshot logic. `MONITORS` is
     the list of monitored services. `HISTORY_LIMIT = 149` (monolith 1:4:9 —
     intentional, don't "fix" it).

@@ -65,4 +65,9 @@ describe('strictCsp', () => {
     expect(csp).toContain("frame-ancestors 'none'")
     expect(csp).toContain("object-src 'none'")
   })
+
+  it('upgrades insecure subresource requests on real HTML pages', () => {
+    const csp = strictCsp([])
+    expect(csp).toContain('upgrade-insecure-requests')
+  })
 })
