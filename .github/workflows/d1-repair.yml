@@ -17,11 +17,15 @@ name: Repair D1 (one-shot)
 #              bootstrap's "already exists" grep skips creation while every
 #              call against the listed uuid 7404s. `name` overrides the
 #              database name if the ghost keeps the default locked.
+#   sql      — run the single statement from `sql` against the database.
+#              For surgical one-off fixes (e.g. decrementing a counter a
+#              diagnostic probe inflated) where reset-metrics is too blunt.
+#              Dispatch requires write access, same as every mode here.
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'info | restore | recreate | create'
+        description: 'info | restore | recreate | create | sql'
         required: true
         default: 'info'
       timestamp:
@@ -36,6 +40,10 @@ on:
         description: 'create mode: database name to create'
         required: false
         default: 'rozsoshnykh-metrics-v2'
+      sql:
+        description: 'sql mode: single SQL statement to execute'
+        required: false
+        default: ''
 
 jobs:
   repair:
@@ -48,6 +56,7 @@ jobs:
       RESTORE_TS: ${{ inputs.timestamp }}
       CONFIRM: ${{ inputs.confirm }}
       CREATE_NAME: ${{ inputs.name }}
+      SQL_CMD: ${{ inputs.sql }}
     steps:
       - uses: actions/checkout@v5
 
@@ -76,6 +85,15 @@ jobs:
           npx wrangler d1 time-travel restore "$DB" --timestamp "$RESTORE_TS"
           echo "--- verify ---"
           npx wrangler d1 execute "$DB" --remote --command "SELECT COUNT(*) AS geo_rows FROM geo"
+
+      - name: Run one-off SQL
+        if: env.MODE == 'sql'
+        run: |
+          if [ -z "$SQL_CMD" ]; then
+            echo "::error::sql mode needs the sql input"
+            exit 1
+          fi
+          npx wrangler d1 execute "$DB" --remote --command "$SQL_CMD"
 
       - name: Create fresh database + schema (no existence check)
         if: env.MODE == 'create'
