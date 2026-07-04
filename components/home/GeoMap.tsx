@@ -53,7 +53,11 @@ export default function GeoMap() {
     fetch('/api/geo', { signal: controller.signal, cache: 'no-store' })
       .then((r) => r.json())
       .then((d: GeoData) => setData(d))
-      .catch(() => {})
+      // On a failed fetch fall back to an explicit empty set so the legend
+      // shows the real empty-state text instead of loading dots forever.
+      .catch((err) => {
+        if ((err as Error).name !== 'AbortError') setData({ countries: {} })
+      })
     return () => controller.abort()
   }, [])
 
@@ -126,7 +130,11 @@ export default function GeoMap() {
         />
       )}
 
-      {sorted.length === 0 ? (
+      {data === null ? (
+        // Still loading: a same-height placeholder, NOT the empty-state text —
+        // flashing "Ingen besøksdata ennå" on every refresh read as data loss.
+        <p aria-hidden className="text-gray-500 dark:text-gray-400 font-mono text-sm">…</p>
+      ) : sorted.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Ingen besøksdata ennå.</p>
       ) : (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-mono text-gray-500 dark:text-gray-400">

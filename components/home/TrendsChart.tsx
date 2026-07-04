@@ -162,7 +162,9 @@ export default function TrendsChart() {
 
       <div className="flex items-baseline justify-end text-xs font-mono text-gray-500 dark:text-gray-400">
         <span className={`tabular-nums ${loading ? 'opacity-50' : ''}`}>
-          <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{total}</span>{' '}
+          {/* Before the first response lands there is no number to show —
+              a dimmed "0 totalt" on every refresh read as the data vanishing. */}
+          <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{series ? total : '–'}</span>{' '}
           <span>totalt</span>
         </span>
       </div>
