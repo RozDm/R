@@ -22,6 +22,11 @@ const TURNSTILE_HOST = 'https://challenges.cloudflare.com'
 const SCRIPT_TAIL = `https://static.cloudflareinsights.com ${TURNSTILE_HOST}`
 
 // Directives identical across all three policies; only script-src varies.
+// upgrade-insecure-requests lives here so strictCsp — the policy real HTML
+// pages actually get, the only place the directive can do anything — carries
+// it too; it used to sit only on the two constants below, where no document
+// renders. HSTS + modern mixed-content auto-upgrade already cover most of it;
+// this is the belt for a legacy http:// embed in a future markdown post.
 const COMMON_DIRECTIVES = [
   "default-src 'self'",
   "style-src 'self' 'unsafe-inline'",
@@ -33,15 +38,12 @@ const COMMON_DIRECTIVES = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
+  'upgrade-insecure-requests',
 ]
 
 // Fallback for non-HTML assets and redirects: nothing executes inline here, so
 // 'self' alone is enough — no 'unsafe-inline'.
-export const ENFORCED_CSP = [
-  `script-src 'self' ${SCRIPT_TAIL}`,
-  ...COMMON_DIRECTIVES,
-  'upgrade-insecure-requests',
-].join('; ')
+export const ENFORCED_CSP = [`script-src 'self' ${SCRIPT_TAIL}`, ...COMMON_DIRECTIVES].join('; ')
 
 // Last resort for HTML we couldn't decode (e.g. an encoding we can't
 // decompress): keep 'unsafe-inline' so its inline scripts still run. Should be
@@ -49,7 +51,6 @@ export const ENFORCED_CSP = [
 export const HTML_FALLBACK_CSP = [
   `script-src 'self' 'unsafe-inline' ${SCRIPT_TAIL}`,
   ...COMMON_DIRECTIVES,
-  'upgrade-insecure-requests',
 ].join('; ')
 
 export function strictCsp(hashes: string[]): string {
