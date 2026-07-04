@@ -33,6 +33,11 @@ export async function handleTimeseries(
   if (cache.hit) return cache.hit
 
   let points: { ts: string; value: number }[] = []
+  // Tracks whether the empty/filled series is a real answer from AE. Only
+  // real answers get edge-cached: caching a transient AE failure used to pin
+  // an empty chart at the colo for the whole TTL (up to 10 min on 30d), which
+  // looked like the graph "disappearing" on refresh.
+  let aeAnswered = false
   if (env.CF_ACCOUNT_ID && env.AE_API_TOKEN) {
     try {
       const sql = buildSeriesSql(DATASET, metric, range)
@@ -51,6 +56,7 @@ export async function handleTimeseries(
       if (res.ok) {
         try {
           points = parseSeriesResponse(JSON.parse(text))
+          aeAnswered = true
         } catch (err) {
           console.error('timeseries: AE JSON parse failed', err, text.slice(0, 200))
         }
@@ -66,5 +72,7 @@ export async function handleTimeseries(
   }
 
   const body = JSON.stringify({ metric, range: rangeKey, points })
-  return putCachedApiJson(ctx, cache.key, body, range.ttlSeconds)
+  if (aeAnswered) return putCachedApiJson(ctx, cache.key, body, range.ttlSeconds)
+  // Degraded answer (missing secrets or AE failure): serve it, don't pin it.
+  return apiJson(body)
 }
