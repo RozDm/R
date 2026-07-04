@@ -78,9 +78,10 @@ content/blog/       Markdown posts (frontmatter: title, description, date, tags)
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, and tag canon + aliases (tags.ts)
 lib/                blog.ts, tags.ts, reading-time.ts, clipboard.ts, stars.ts, site.ts
-schema/             metrics.sql (views, geo, contact tables)
+schema/             metrics.sql (views, geo, contact + dormant subscribers)
 scripts/            smoke.sh, build-world-svg.mjs
-src/                Cloudflare Worker (index.ts, csp.ts, status.ts, metrics.ts, contact.ts)
+src/                Cloudflare Worker (index.ts, csp.ts, http.ts, status.ts,
+                    metrics.ts, contact.ts, timeseries.ts, routes/*)
 tests/              Vitest
 wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, CONTACT_EMAIL, cron, routes)
 ```

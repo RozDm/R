@@ -114,8 +114,11 @@ code and comments are English.
   enabled, so a green `check` merges them automatically and fires the deploy
   above; a red `check` leaves the PR open with auto-merge pending. To hold a
   PR for a manual look instead, open it as a draft and don't enable auto-merge.
-- The web sandbox cannot reach the public internet (egress allowlist): verify
-  production through the smoke-test step in the deploy run logs, not curl.
+- Sandbox egress varies: older web sandboxes had none; newer remote sessions
+  route HTTPS through an agent proxy, so `curl https://rozsoshnykh.no/...`
+  works for live diagnosis (a browser needs `--ssl-version-max=tls1.2` — the
+  proxy's TLS terminator resets Chromium's TLS 1.3 hello). The deploy gate is
+  still the smoke-test step in the deploy run logs, not ad-hoc curl.
 
 ## Conventions
 
@@ -177,6 +180,16 @@ code and comments are English.
   before/after counts; it supersedes the older geo-only `geo-reset.yml`. AE
   can't be reset (append-only) — its points age out of the 24h/7d/30d windows
   on their own, or add a launch-epoch floor to the SQL for a clean graph sooner.
+- The database is `rozsoshnykh-metrics-v2` because the original died
+  server-side on 2026-07-03 (internal error 7500 on every operation,
+  including Time Travel — no restore possible). Its deleted entry still
+  ghost-locks the old name: `d1 list` shows it, every call against it 7404s,
+  and `d1 create rozsoshnykh-metrics` says "already exists" — don't try to
+  reclaim the old name. `d1-repair.yml` (`workflow_dispatch`) is the D1
+  surgery kit from that incident: `info` (read-only probe), `restore`
+  (Time Travel), `create` (no existence check, for the ghost trap),
+  `recreate` (delete+create, type RECREATE), and `sql` (one statement from
+  the input — for surgical fixes where reset-metrics is too blunt).
 - Country flags in the GeoMap legend use a self-hosted Twemoji subset
   (`public/fonts/TwemojiCountryFlags.woff2`, `@font-face` with
   `unicode-range: U+1F1E6-1F1FF`, class `.font-flag`) — Windows ships no
