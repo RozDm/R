@@ -10,8 +10,10 @@ code and comments are English.
 - `app/`, `components/` — Next App Router, `output: 'export'`, `trailingSlash: true`,
   Tailwind v4 (no config file, `@theme` in `app/globals.css`).
 - Routes: `/` (Hero/Skills/Certifications/Status/Visitors/Trends sections), `/blogg`,
-  `/blogg/[slug]`, `/blogg/tag/[slug]`, `/kontakt`, plus `feed.xml`, `sitemap`,
-  `robots`, `manifest`, OG images. `error.tsx`/`global-error.tsx` are the
+  `/blogg/[slug]`, `/blogg/tag/[slug]`, `/kontakt`, `/personvern` (privacy
+  notice, linked from the footer + `/kontakt`), plus `feed.xml`, `sitemap`,
+  `robots`, `manifest`, OG images, and `/.well-known/security.txt` (RFC 9116,
+  static in `public/` — bump its `Expires` yearly). `error.tsx`/`global-error.tsx` are the
   client error boundaries (HAL-voiced "Systemfeil").
 - `src/` — Cloudflare Worker, runs in front of the static export
   (`run_worker_first`):
@@ -76,7 +78,9 @@ code and comments are English.
   ack'd without a second e-mail — content-keyed, so no schema column is needed.
 - Worker APIs: `/api/status`, `/api/views/<slug>` (GET read, POST count —
   POST gated by `isWriteAllowed` = same-origin + non-bot), `/api/geo`
-  (read-only, edge-cached 60s), `/api/visit` (POST, the single Besøk
+  (read-only, edge-cached 60s; every edge-cached endpoint builds its cache key
+  from the validated params only — `cachedApiJson(canonicalUrl)` — so junk
+  query strings can't fragment the cache and hammer KV/D1/AE), `/api/visit` (POST, the single Besøk
   beacon — see Visit counting above; also answers GET with a harmless
   self-diagnostic — the caller's own country + whether it counts), `/api/timeseries?metric=view|geo&range=24h|7d|30d`
   (GET, edge-cached per metric+range; `view` channel still served for API
@@ -154,8 +158,9 @@ code and comments are English.
   JSON-LD (Person + WebSite sitewide, BlogPosting + image + BreadcrumbList per
   post), RSS at `/feed.xml`, prev/next + tag pages. `robots.index: false` in
   `app/layout.tsx` until launch — flip it only when asked, then submit the
-  sitemap in Search Console. `/kontakt` and `/status`-style utility content
-  stay noindex permanently; the sitemap must not list noindex URLs.
+  sitemap in Search Console. `/kontakt`, `/personvern` and `/status`-style
+  utility content stay noindex permanently; the sitemap must not list noindex
+  URLs.
 
 ## Gotchas
 

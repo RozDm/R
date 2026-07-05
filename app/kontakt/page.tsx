@@ -31,9 +31,19 @@ export default function KontaktPage() {
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Kontaktskjema
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-10 max-w-xl">
+        <p className="text-gray-500 dark:text-gray-400 mb-2 max-w-xl">
           Interessert i samarbeid eller har et spørsmål? Fyll ut skjemaet, så
           havner meldingen rett i innboksen min.
+        </p>
+        <p className="text-sm text-gray-400 dark:text-gray-500 mb-10 max-w-xl">
+          Hvordan meldingen behandles står i{' '}
+          <Link
+            href="/personvern/"
+            className="text-red-500 dark:text-red-400 hover:underline"
+          >
+            personvernerklæringen
+          </Link>
+          .
         </p>
 
         <ContactForm />
