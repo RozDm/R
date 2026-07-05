@@ -1,0 +1,4 @@
+Contact: mailto:contact@rozsoshnykh.no
+Expires: 2027-07-01T00:00:00.000Z
+Preferred-Languages: no, en, uk
+Canonical: https://rozsoshnykh.no/.well-known/security.txt

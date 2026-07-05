@@ -30,12 +30,13 @@ export function recordGeo(env: Env, ctx: ExecutionContext, country: unknown): vo
 
 export async function handleGeo(
   url: URL,
-  request: Request,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response | null> {
   if (url.pathname !== '/api/geo') return null
-  const cache = await cachedApiJson(request)
+  // Canonical key: path only — the response takes no parameters, so any query
+  // string is noise that must not fragment (and thereby bypass) the cache.
+  const cache = await cachedApiJson(`${url.origin}${url.pathname}`)
   if (cache.hit) return cache.hit
 
   const rows = await env.METRICS.prepare('SELECT country, count FROM geo')

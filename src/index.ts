@@ -136,11 +136,11 @@ export default {
 
     // /api/* dispatch — each handler returns null when the path isn't its own.
     const apiResponse =
-      (await handleStatus(url, request, env, ctx)) ??
+      (await handleStatus(url, env, ctx)) ??
       (await handleViews(url, request, env)) ??
-      (await handleGeo(url, request, env, ctx)) ??
+      (await handleGeo(url, env, ctx)) ??
       handleVisit(url, request, env, ctx) ??
-      (await handleTimeseries(url, request, env, ctx)) ??
+      (await handleTimeseries(url, env, ctx)) ??
       (await handleContact(url, request, env))
     if (apiResponse) return apiResponse
 

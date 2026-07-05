@@ -18,7 +18,6 @@ const DATASET = 'rozsoshnykh_metrics'
 
 export async function handleTimeseries(
   url: URL,
-  request: Request,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response | null> {
@@ -28,8 +27,11 @@ export async function handleTimeseries(
   if (!metric) return apiJson('{"error":"bad metric"}', 400)
   const { key: rangeKey, range } = parseRange(url.searchParams.get('range'))
 
-  // URL-based cache key is enough — the response only depends on metric+range.
-  const cache = await cachedApiJson(request)
+  // Canonical key from the validated metric+range only — the raw URL would
+  // let junk query params fragment the cache and hit the AE API per request.
+  const cache = await cachedApiJson(
+    `${url.origin}${url.pathname}?metric=${metric}&range=${rangeKey}`,
+  )
   if (cache.hit) return cache.hit
 
   let points: { ts: string; value: number }[] = []

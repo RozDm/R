@@ -13,18 +13,20 @@ export function apiJson(body: string, status = 200, cacheControl = 'no-store'): 
 }
 
 // Edge-cached read for JSON endpoints whose source-of-truth (KV/D1) changes
-// slowly. The same URL is cached at the colo for `seconds`, so repeat requests
-// cost nothing on the storage side. Public, vary-free, GET-only.
+// slowly. The caller passes a canonical URL — built from the validated
+// parameters only, never the raw request URL — so junk query params
+// (`?x=1`, `?x=2`, …) collapse onto one cache entry instead of each
+// bypassing the cache and hitting D1/AE directly. Public, vary-free, GET-only.
 //
 // Use it as:
-//   const cache = await cachedApiJson(request)
+//   const cache = await cachedApiJson(canonicalUrl)
 //   if (cache.hit) return cache.hit
 //   const body = ...build fresh body...
 //   return putCachedApiJson(ctx, cache.key, body, TTL_SECONDS)
 export async function cachedApiJson(
-  request: Request,
+  canonicalUrl: string,
 ): Promise<{ hit: Response | null; key: Request }> {
-  const key = new Request(request.url, { method: 'GET' })
+  const key = new Request(canonicalUrl, { method: 'GET' })
   const hit = await caches.default.match(key)
   return { hit: hit ?? null, key }
 }

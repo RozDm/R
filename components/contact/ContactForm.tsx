@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import Turnstile from './Turnstile'
 
-type FormState = 'idle' | 'sending' | 'sent' | 'error' | 'ratelimited' | 'challenge'
+type FormState = 'idle' | 'sending' | 'sent' | 'error' | 'ratelimited' | 'challenge' | 'blocked'
 
 // Set at build time from CF Turnstile (Site Key). Empty -> widget is not
 // rendered and the worker also leaves the check off when its secret is
@@ -50,7 +50,19 @@ export default function ContactForm() {
         setTurnstileToken(null)
         setState('sent')
       } else {
-        setState(res.status === 429 ? 'ratelimited' : res.status === 403 ? 'challenge' : 'error')
+        // A 403 without a Turnstile widget on the page means the server-side
+        // filters (Sec-Fetch / UA) refused the request — asking the user to
+        // "confirm you're not a bot" would point at a challenge that doesn't
+        // exist. Send them to e-mail instead.
+        setState(
+          res.status === 429
+            ? 'ratelimited'
+            : res.status === 403
+              ? SITE_KEY
+                ? 'challenge'
+                : 'blocked'
+              : 'error',
+        )
       }
     } catch {
       setState('error')
@@ -151,6 +163,16 @@ export default function ContactForm() {
         {state === 'challenge' && (
           <p className="text-sm text-red-500 dark:text-red-400" role="alert">
             Bekreft at du ikke er en bot, så prøv igjen.
+          </p>
+        )}
+        {state === 'blocked' && (
+          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+            Meldingen ble stanset av sikkerhetsfiltrene. Prøv på nytt, eller send en e-post
+            direkte til{' '}
+            <a href="mailto:contact@rozsoshnykh.no" className="underline hover:no-underline">
+              contact@rozsoshnykh.no
+            </a>
+            .
           </p>
         )}
       </div>

@@ -59,6 +59,13 @@ export default function Footer() {
 
         <p className="text-xs text-gray-400 dark:text-gray-600 pt-8 font-mono">
           &copy; {currentYear} Dmytro Rozsoshnykh
+          {' · '}
+          <Link
+            href="/personvern/"
+            className="hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out"
+          >
+            Personvern
+          </Link>
         </p>
       </div>
     </footer>

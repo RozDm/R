@@ -13,12 +13,13 @@ const STATUS_CACHE_TTL_S = 60
 
 export async function handleStatus(
   url: URL,
-  request: Request,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response | null> {
   if (url.pathname !== '/api/status') return null
-  const cache = await cachedApiJson(request)
+  // Canonical key: path only — no parameters, so junk query strings must not
+  // fragment (and thereby bypass) the cache.
+  const cache = await cachedApiJson(`${url.origin}${url.pathname}`)
   if (cache.hit) return cache.hit
 
   let body = '{"results":[],"history":[]}'
