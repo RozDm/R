@@ -170,6 +170,16 @@ code and comments are English.
 - A Worker cannot fetch its own public URL — monitors pointing at this site
   need `internal: true` (ASSETS binding). Don't monitor the site itself; the
   dashboard is served by it.
+- Static-asset browser caching lives in `cacheControlFor()` (`src/csp.ts`),
+  applied by the Worker's non-HTML branch. The Workers Assets binding tags
+  every file `max-age=0, must-revalidate` and the Worker re-fetches assets
+  without forwarding `If-None-Match`, so without this override a repeat visit
+  re-downloads every chunk in full (no 304). Rule: `/_next/static/*` is
+  content-hashed → `immutable`; `/world.svg` + `/fonts/*` are big and
+  stable → 1-week cache; HTML stays default no-cache (per-request hash-CSP
+  needs a fresh document). Security-neutral — CSP still gates loads; caching
+  only skips re-fetching identical bytes. `smoke.sh` guards the world.svg
+  header as the stable-URL canary.
 - KV free tier: 1000 writes/day total — that's why metrics moved to D1
   (100k writes/day); only the 5-minute cron writes to KV. Don't add KV
   writes lightly.

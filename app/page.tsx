@@ -1,5 +1,5 @@
 import Intro from '@/components/effects/Intro'
-import HalIdle from '@/components/effects/HalIdle'
+import LazyHalIdle from '@/components/effects/LazyHalIdle'
 import Header from '@/components/layout/Header'
 import Hero from '@/components/home/Hero'
 import Skills from '@/components/home/Skills'
@@ -13,7 +13,7 @@ export default function Home() {
   return (
     <>
       <Intro />
-      <HalIdle />
+      <LazyHalIdle />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:text-black">
         Hopp til hovedinnhold
       </a>
