@@ -173,11 +173,12 @@ code and comments are English.
 - `package.json` is NOT `"type": "module"` — adding it breaks the Next 16 /
   turbopack config load. Standalone Node scripts use the `.mjs` extension
   instead (e.g. `scripts/build-world-svg.mjs`).
-- No R2 (it requires a card even on the free tier) — metrics backup is the
-  weekly `d1-backup.yml` GitHub Actions cron (90-day artifact). The repo is
-  public, so the dump is gpg-encrypted with the `BACKUP_PASSPHRASE` secret
-  before upload; the run fails rather than upload plaintext if the secret is
-  missing.
+- No R2 (it requires a card even on the free tier) and no off-platform metrics
+  backup — D1 Time Travel (30 days, Cloudflare-side) is the only restore path,
+  a deliberate accepted risk: `views`/`geo` are cosmetic counters and `contact`
+  rows are secondary copies of submissions already delivered by e-mail. A weekly
+  gpg-encrypted dump workflow (`d1-backup.yml` + `BACKUP_PASSPHRASE` secret)
+  existed briefly and was removed; don't reintroduce it without being asked.
 - Resetting metrics: the manual `reset-metrics.yml` (`workflow_dispatch`, type
   `RESET` to confirm) wipes the D1 `views` + `geo` counters and prints
   before/after counts; it supersedes the older geo-only `geo-reset.yml`. AE
