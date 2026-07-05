@@ -215,6 +215,17 @@ code and comments are English.
   regional-indicator glyphs, so the system fallback renders letter pairs. The
   `unicode-range` keeps the font from downloading unless a flag is on the page;
   `font-src 'self'` already covers it.
+- Body font `Intel One Mono` uses `display: 'optional'` (not `swap`) in
+  `app/layout.tsx` — deliberate. `next/font` ships no metrics for this face, so
+  `adjustFontFallback` can't synthesise a size-adjusted fallback (the build
+  emits no `Intel One Mono Fallback` @font-face); with `swap` the page laid out
+  in system mono then **reflowed** when the web font arrived (a visible
+  text-jerk on first paint). `optional` blocks briefly and, if the font isn't
+  ready, keeps the fallback for that paint and never swaps late → no layout
+  shift. The font is immutably cached, so repeat visits / client navs show the
+  real font with no shift; only a cold first paint may briefly use system mono.
+  Don't switch it back to `swap` without adding a hand-built metric-matched
+  fallback @font-face first.
 - `app/template.tsx` cross-fades route changes (450ms `animate-page-in`;
   templates re-mount per navigation). OPACITY-ONLY on purpose — a transform
   would become a containing block for the `position:fixed` intro overlays /

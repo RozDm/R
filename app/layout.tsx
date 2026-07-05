@@ -12,13 +12,22 @@ const intelOneMono = Intel_One_Mono({
   // 300 dropped — unreferenced in markup and not a typography-plugin default.
   weight: ['400', '500', '600', '700'],
   variable: '--font-intel-mono',
-  display: 'swap',
-  adjustFontFallback: false,
+  // display:optional, not swap. next/font ships no bundled metrics for Intel
+  // One Mono, so adjustFontFallback can't synthesise a size-adjusted fallback
+  // (verified: the build emits no "Intel One Mono Fallback" @font-face). With
+  // display:swap that meant the whole page laid out in the system monospace
+  // and then REFLOWED when the web font arrived — the visible text "jerk" on
+  // first paint. `optional` gives the font a short block window and, if it
+  // isn't ready, keeps the fallback for that paint and never swaps late — so
+  // the layout can't shift. The font is immutably cached (see cacheControlFor),
+  // so repeat visits and client-side navigations render Intel One Mono with no
+  // shift; only a cold first paint may briefly use the system monospace.
+  display: 'optional',
   // The font is applied via a CSS variable (Tailwind --font-sans/--font-mono)
   // rather than the generated className, so Next's automatic <link rel=preload>
   // points at files the browser can't tie to usage in time and logs
-  // "preloaded but not used" warnings. display: swap already avoids FOIT, so
-  // skip preloading and let the font load on demand.
+  // "preloaded but not used" warnings. Skip preloading; the cache does the
+  // heavy lifting after the first visit.
   preload: false,
 })
 
