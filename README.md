@@ -50,21 +50,17 @@ One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 (create the D1 + apply schema), `d1-repair` (info probe / Time Travel restore
 / recreate / create — built for the 2026-07-03 D1 storage outage),
 `reset-metrics` (type `RESET` to wipe the `views` + `geo` counters, prints
-before/after counts — supersedes the older geo-only `geo-reset`). `d1-backup`
-runs weekly (and on-demand) and uploads a SQL dump of `rozsoshnykh-metrics-v2` as
-a 90-day GHA artifact — off-platform backup beyond Cloudflare's built-in 30-day
-Time Travel. The repo is public and artifacts are downloadable by anyone with a
-GitHub account, so the dump (contact + subscribers PII) is gpg-encrypted with
-the `BACKUP_PASSPHRASE` secret before upload (`metrics-<ts>.sql.gpg`; the
-workflow fails rather than upload plaintext when the secret is missing, and
-purges any legacy plaintext artifact on every run). Decrypt with
-`gpg --decrypt --batch --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE"`.
+before/after counts — supersedes the older geo-only `geo-reset`). There is no
+off-platform backup: Cloudflare's built-in 30-day D1 Time Travel is the only
+restore path — an accepted risk, since the counters are cosmetic and contact
+submissions are delivered by e-mail anyway (the D1 row is a secondary copy).
+A weekly encrypted-dump workflow existed briefly and was removed as not worth
+the upkeep.
 
 Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
 `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
 token for the Analytics Engine SQL API; `CF_ACCOUNT_ID` for the same call
-reuses `CLOUDFLARE_ACCOUNT_ID`), `BACKUP_PASSPHRASE` (symmetric key for the
-weekly D1 backup artifact).
+reuses `CLOUDFLARE_ACCOUNT_ID`).
 
 ### Layout
 
