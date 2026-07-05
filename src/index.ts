@@ -10,7 +10,7 @@
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
 
 import { EmailMessage } from 'cloudflare:email'
-import { ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
+import { ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, cacheControlFor, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
 import { buildStatusAlertMime } from './contact'
 import { handleStatus } from './routes/status'
@@ -186,6 +186,12 @@ export default {
     applyBaseHeaders(response.headers)
     response.headers.set('Strict-Transport-Security', HSTS)
     response.headers.set('Content-Security-Policy', ENFORCED_CSP)
+    // Let the browser keep content-hashed build output (and the big, stable
+    // world map / flag font) instead of re-downloading them every visit; the
+    // Assets binding otherwise tags everything must-revalidate. HTML is handled
+    // above and stays fresh.
+    const cacheControl = cacheControlFor(url.pathname)
+    if (cacheControl) response.headers.set('Cache-Control', cacheControl)
     // Next emits OG images as extension-less files (out/opengraph-image), so the
     // static host can't infer the type; force image/png or crawlers ignore them.
     if (url.pathname.includes('opengraph-image')) {

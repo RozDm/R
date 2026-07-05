@@ -115,6 +115,12 @@ check_header "HSTS"       "$BASE/" "^strict-transport-security:"
 check_header "CSP (hash)" "$BASE/" "^content-security-policy:.*sha256-"
 check_header "COOP"       "$BASE/" "^cross-origin-opener-policy: same-origin"
 
+echo "== Caching =="
+# Static assets must carry a real browser cache so repeat visits and
+# client-side navigations don't re-download every chunk. world.svg is the
+# stable-URL canary for the whole cacheControlFor() rule.
+check_header "cache world.svg" "$BASE/world.svg" "^cache-control: public, max-age=604800"
+
 if [ "$FAIL" = "1" ]; then
   echo; echo "Smoke test FAILED"
   exit 1

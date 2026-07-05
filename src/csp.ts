@@ -57,6 +57,31 @@ export function strictCsp(hashes: string[]): string {
   return [`script-src 'self' ${hashes.join(' ')} ${SCRIPT_TAIL}`, ...COMMON_DIRECTIVES].join('; ')
 }
 
+// Browser cache policy for static assets the Worker serves.
+//
+// Cloudflare's Workers Assets binding tags every file `max-age=0,
+// must-revalidate`, and this Worker re-fetches assets without forwarding the
+// client's If-None-Match — so a repeat visit or a client-side navigation never
+// gets a 304 and re-downloads every chunk in full. That's wasteful for the two
+// classes of asset below; HTML deliberately stays no-cache (per-request
+// hash-CSP means every document is built fresh).
+//
+//   /_next/static/*  content-hashed build output (JS, CSS, next/font woff2) —
+//                    the filename changes when the bytes do, so `immutable`
+//                    is always safe and the browser stops revalidating.
+//   /world.svg,      large, rarely-changing client-fetched assets (the 96 kB
+//   /fonts/*         world map and the 78 kB flag font). A week's cache spares
+//                    returning visitors the re-download; both self-heal within
+//                    a week of any change since their URLs are stable.
+//
+// Content-addressed URLs make this security-neutral — CSP still gates what may
+// load; caching only affects whether the browser re-fetches identical bytes.
+export function cacheControlFor(pathname: string): string | null {
+  if (pathname.startsWith('/_next/static/')) return 'public, max-age=31536000, immutable'
+  if (pathname === '/world.svg' || pathname.startsWith('/fonts/')) return 'public, max-age=604800'
+  return null
+}
+
 const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',

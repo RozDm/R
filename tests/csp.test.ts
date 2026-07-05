@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inlineScriptHashes, strictCsp } from '@/src/csp'
+import { cacheControlFor, inlineScriptHashes, strictCsp } from '@/src/csp'
 
 describe('inlineScriptHashes', () => {
   it('hashes a single inline script', async () => {
@@ -69,5 +69,29 @@ describe('strictCsp', () => {
   it('upgrades insecure subresource requests on real HTML pages', () => {
     const csp = strictCsp([])
     expect(csp).toContain('upgrade-insecure-requests')
+  })
+})
+
+describe('cacheControlFor', () => {
+  it('marks content-hashed build output immutable', () => {
+    expect(cacheControlFor('/_next/static/chunks/abc123.js')).toBe(
+      'public, max-age=31536000, immutable',
+    )
+    expect(cacheControlFor('/_next/static/media/intel-one-mono.woff2')).toBe(
+      'public, max-age=31536000, immutable',
+    )
+  })
+
+  it('caches the world map and flag font for a week', () => {
+    expect(cacheControlFor('/world.svg')).toBe('public, max-age=604800')
+    expect(cacheControlFor('/fonts/TwemojiCountryFlags.woff2')).toBe('public, max-age=604800')
+  })
+
+  it('leaves HTML and other assets to the default (no override)', () => {
+    expect(cacheControlFor('/')).toBeNull()
+    expect(cacheControlFor('/blogg/velkommen/')).toBeNull()
+    expect(cacheControlFor('/sitemap.xml')).toBeNull()
+    expect(cacheControlFor('/feed.xml')).toBeNull()
+    expect(cacheControlFor('/robots.txt')).toBeNull()
   })
 })
