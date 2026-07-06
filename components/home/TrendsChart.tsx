@@ -60,21 +60,66 @@ function formatTick(ts: string, range: Range): string {
   return range === '24h' ? dateFmt24.format(d) : dateFmtDay.format(d)
 }
 
-// Smooth wave through the (dense, zero-filled) points using quadratic curves
-// to each segment midpoint. A quadratic stays inside the triangle of its
-// control points, so the curve never overshoots below 0 or above the peak —
-// no fake negative dips from the smoothing.
+// Smooth wave through the (dense, zero-filled) points using a monotone cubic
+// spline (Fritsch–Carlson tangents, emitted as one cubic Bézier per segment).
+// The previous version drew quadratics to each segment MIDPOINT and used the
+// data point only as a control handle — but a quadratic never reaches its
+// control point, so an isolated spike (a lone "1" between zeros, the norm on
+// 24t/7d with sparse traffic) topped out at ~0.75 of its height and never
+// touched the gridline. A monotone cubic passes through every point exactly,
+// so peaks read at their true value, while the monotone tangent clamp keeps
+// it from overshooting between points — so it still never dips below 0.
 function wavePath(pts: { x: number; y: number }[]): string {
   const n = pts.length
   if (n === 0) return ''
-  let d = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
-  if (n === 1) return d
+  if (n === 1) return `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+
+  // Secant slopes between consecutive points.
+  const dx: number[] = []
+  const slope: number[] = []
   for (let i = 0; i < n - 1; i++) {
-    const xc = (pts[i].x + pts[i + 1].x) / 2
-    const yc = (pts[i].y + pts[i + 1].y) / 2
-    d += ` Q${pts[i].x.toFixed(1)} ${pts[i].y.toFixed(1)} ${xc.toFixed(1)} ${yc.toFixed(1)}`
+    const h = pts[i + 1].x - pts[i].x
+    dx.push(h)
+    slope.push(h === 0 ? 0 : (pts[i + 1].y - pts[i].y) / h)
   }
-  d += ` L${pts[n - 1].x.toFixed(1)} ${pts[n - 1].y.toFixed(1)}`
+
+  // Tangents: endpoints take the adjacent secant; interior points the average
+  // of their two secants, flattened to 0 at any local extremum so a peak or
+  // valley stays put instead of the curve sailing past it.
+  const m: number[] = new Array(n)
+  m[0] = slope[0]
+  m[n - 1] = slope[n - 2]
+  for (let i = 1; i < n - 1; i++) {
+    m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2
+  }
+  // Fritsch–Carlson clamp: keep each Hermite segment monotone (no overshoot,
+  // no fake dips below the baseline).
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) {
+      m[i] = 0
+      m[i + 1] = 0
+      continue
+    }
+    const a = m[i] / slope[i]
+    const b = m[i + 1] / slope[i]
+    const s = a * a + b * b
+    if (s > 9) {
+      const t = 3 / Math.sqrt(s)
+      m[i] = t * a * slope[i]
+      m[i + 1] = t * b * slope[i]
+    }
+  }
+
+  // Hermite control points sit a third of the way into each segment along the
+  // endpoint tangents.
+  let d = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+  for (let i = 0; i < n - 1; i++) {
+    const c1x = pts[i].x + dx[i] / 3
+    const c1y = pts[i].y + (m[i] * dx[i]) / 3
+    const c2x = pts[i + 1].x - dx[i] / 3
+    const c2y = pts[i + 1].y - (m[i + 1] * dx[i]) / 3
+    d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${pts[i + 1].x.toFixed(1)} ${pts[i + 1].y.toFixed(1)}`
+  }
   return d
 }
 

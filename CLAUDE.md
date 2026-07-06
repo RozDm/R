@@ -60,7 +60,11 @@ code and comments are English.
   collect before the read token exists). AE is append-only — `METRICS_EPOCH`
   in `src/timeseries.ts` is a UTC string that filters out anything older
   client-side (sidesteps any AE-SQL dialect surprise); bump it after every
-  `reset-metrics` run.
+  `reset-metrics` run. It **must sit on a 6-hour UTC boundary**
+  (`00/06/12/18`) — the filter compares against the bucket-start key and the
+  30d view buckets by 6h, so a mid-bucket epoch drops a straddling bucket's
+  real post-epoch visits and the chart undercounts the map. Round UP to the
+  next boundary when bumping so no pre-reset noise slips in.
 - Visit counting: every page mounts `components/effects/VisitBeacon.tsx`
   (from `app/layout.tsx`) which fires a single `POST /api/visit` per
   browser session (sessionStorage flag — set BEFORE the fetch so React
