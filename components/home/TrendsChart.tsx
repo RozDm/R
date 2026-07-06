@@ -80,12 +80,33 @@ function formatTick(ts: string, range: Range): string {
 // more flowing. Keep it < 0.5 or the handles overshoot the segment in x and
 // the curve folds back on itself.
 const SMOOTH = 0.25
+
+// Per-point handle taper. A smooth curve through an isolated max/min is forced
+// horizontal there, and a long horizontal handle turns that crest into a flat
+// plateau (visible as a straight line whenever a peak lands on the axis top,
+// e.g. every "1" on the 24t range). tangentWeight shortens the handles at a
+// point in proportion to how much it's a local extremum — near-1 on a
+// monotonic slope (keep the flowing S-curve), down to ~0.3 at a symmetric
+// peak/valley (tight, crisp crest) — so slopes stay smooth without plateauing
+// the tops. Anchors are untouched, so the curve still passes through every
+// point (peaks keep their true height).
+function tangentWeight(pts: { x: number; y: number }[], i: number): number {
+  const a = pts[i].y - (pts[i - 1] ?? pts[i]).y
+  const b = (pts[i + 1] ?? pts[i]).y - pts[i].y
+  const denom = Math.abs(a) + Math.abs(b)
+  // |a+b|/(|a|+|b|): 1 when the two secants agree (monotonic), 0 when they
+  // cancel (a symmetric extremum). Floor at 0.3 to keep crests rounded, not sharp.
+  const r = denom < 1e-9 ? 1 : Math.abs(a + b) / denom
+  return 0.3 + 0.7 * r
+}
+
 function wavePath(pts: { x: number; y: number }[]): string {
   const n = pts.length
   if (n === 0) return ''
   if (n === 1) return `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
 
   const clampY = (y: number) => Math.max(PAD_T, Math.min(BASELINE, y))
+  const w = pts.map((_, i) => tangentWeight(pts, i))
   let d = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
   for (let i = 0; i < n - 1; i++) {
     // Endpoints duplicate their neighbour (?? pts[i]) for a natural end tangent.
@@ -93,10 +114,12 @@ function wavePath(pts: { x: number; y: number }[]): string {
     const p1 = pts[i]
     const p2 = pts[i + 1]
     const p3 = pts[i + 2] ?? pts[i + 1]
-    const c1x = p1.x + (p2.x - p0.x) * SMOOTH
-    const c1y = clampY(p1.y + (p2.y - p0.y) * SMOOTH)
-    const c2x = p2.x - (p3.x - p1.x) * SMOOTH
-    const c2y = clampY(p2.y - (p3.y - p1.y) * SMOOTH)
+    const s1 = SMOOTH * w[i]
+    const s2 = SMOOTH * w[i + 1]
+    const c1x = p1.x + (p2.x - p0.x) * s1
+    const c1y = clampY(p1.y + (p2.y - p0.y) * s1)
+    const c2x = p2.x - (p3.x - p1.x) * s2
+    const c2y = clampY(p2.y - (p3.y - p1.y) * s2)
     d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
   }
   return d
