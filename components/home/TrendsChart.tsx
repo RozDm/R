@@ -74,6 +74,12 @@ function formatTick(ts: string, range: Range): string {
 // contained in the convex hull of its four control points, and the two anchors
 // are data points already in band, so a clamped-handle curve can never leave
 // the band — no dips below 0, no spikes past the axis top.
+//
+// SMOOTH is the handle length as a fraction of the (p_{i+1} - p_{i-1}) span.
+// 1/6 (≈0.167) is textbook Catmull-Rom; higher makes the S-curves fuller and
+// more flowing. Keep it < 0.5 or the handles overshoot the segment in x and
+// the curve folds back on itself.
+const SMOOTH = 0.25
 function wavePath(pts: { x: number; y: number }[]): string {
   const n = pts.length
   if (n === 0) return ''
@@ -87,10 +93,10 @@ function wavePath(pts: { x: number; y: number }[]): string {
     const p1 = pts[i]
     const p2 = pts[i + 1]
     const p3 = pts[i + 2] ?? pts[i + 1]
-    const c1x = p1.x + (p2.x - p0.x) / 6
-    const c1y = clampY(p1.y + (p2.y - p0.y) / 6)
-    const c2x = p2.x - (p3.x - p1.x) / 6
-    const c2y = clampY(p2.y - (p3.y - p1.y) / 6)
+    const c1x = p1.x + (p2.x - p0.x) * SMOOTH
+    const c1y = clampY(p1.y + (p2.y - p0.y) * SMOOTH)
+    const c2x = p2.x - (p3.x - p1.x) * SMOOTH
+    const c2y = clampY(p2.y - (p3.y - p1.y) * SMOOTH)
     d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
   }
   return d
