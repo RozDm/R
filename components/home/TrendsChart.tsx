@@ -60,65 +60,38 @@ function formatTick(ts: string, range: Range): string {
   return range === '24h' ? dateFmt24.format(d) : dateFmtDay.format(d)
 }
 
-// Smooth wave through the (dense, zero-filled) points using a monotone cubic
-// spline (Fritsch–Carlson tangents, emitted as one cubic Bézier per segment).
-// The previous version drew quadratics to each segment MIDPOINT and used the
-// data point only as a control handle — but a quadratic never reaches its
-// control point, so an isolated spike (a lone "1" between zeros, the norm on
-// 24t/7d with sparse traffic) topped out at ~0.75 of its height and never
-// touched the gridline. A monotone cubic passes through every point exactly,
-// so peaks read at their true value, while the monotone tangent clamp keeps
-// it from overshooting between points — so it still never dips below 0.
+// Smooth wave through the (dense, zero-filled) points using a Catmull-Rom
+// spline emitted as one cubic Bézier per segment. Catmull-Rom passes through
+// every point exactly (so isolated spikes still read at their true value —
+// the earlier quadratic-through-midpoints version topped an isolated "1" out
+// at ~0.75 and never touched the gridline) but with softer, S-shaped tangents
+// than a monotone fit, so the wave reads as flowing rather than tight.
+//
+// The bucket grid is evenly spaced, so uniform Catmull-Rom is well-behaved (no
+// loops). Its one hazard is overshoot — a valley handle can dip below 0 and
+// smear the area fill under the baseline. We neutralise that by clamping each
+// control handle's y into the plot band [PAD_T, BASELINE]: a cubic Bézier is
+// contained in the convex hull of its four control points, and the two anchors
+// are data points already in band, so a clamped-handle curve can never leave
+// the band — no dips below 0, no spikes past the axis top.
 function wavePath(pts: { x: number; y: number }[]): string {
   const n = pts.length
   if (n === 0) return ''
   if (n === 1) return `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
 
-  // Secant slopes between consecutive points.
-  const dx: number[] = []
-  const slope: number[] = []
-  for (let i = 0; i < n - 1; i++) {
-    const h = pts[i + 1].x - pts[i].x
-    dx.push(h)
-    slope.push(h === 0 ? 0 : (pts[i + 1].y - pts[i].y) / h)
-  }
-
-  // Tangents: endpoints take the adjacent secant; interior points the average
-  // of their two secants, flattened to 0 at any local extremum so a peak or
-  // valley stays put instead of the curve sailing past it.
-  const m: number[] = new Array(n)
-  m[0] = slope[0]
-  m[n - 1] = slope[n - 2]
-  for (let i = 1; i < n - 1; i++) {
-    m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2
-  }
-  // Fritsch–Carlson clamp: keep each Hermite segment monotone (no overshoot,
-  // no fake dips below the baseline).
-  for (let i = 0; i < n - 1; i++) {
-    if (slope[i] === 0) {
-      m[i] = 0
-      m[i + 1] = 0
-      continue
-    }
-    const a = m[i] / slope[i]
-    const b = m[i + 1] / slope[i]
-    const s = a * a + b * b
-    if (s > 9) {
-      const t = 3 / Math.sqrt(s)
-      m[i] = t * a * slope[i]
-      m[i + 1] = t * b * slope[i]
-    }
-  }
-
-  // Hermite control points sit a third of the way into each segment along the
-  // endpoint tangents.
+  const clampY = (y: number) => Math.max(PAD_T, Math.min(BASELINE, y))
   let d = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
   for (let i = 0; i < n - 1; i++) {
-    const c1x = pts[i].x + dx[i] / 3
-    const c1y = pts[i].y + (m[i] * dx[i]) / 3
-    const c2x = pts[i + 1].x - dx[i] / 3
-    const c2y = pts[i + 1].y - (m[i + 1] * dx[i]) / 3
-    d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${pts[i + 1].x.toFixed(1)} ${pts[i + 1].y.toFixed(1)}`
+    // Endpoints duplicate their neighbour (?? pts[i]) for a natural end tangent.
+    const p0 = pts[i - 1] ?? pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? pts[i + 1]
+    const c1x = p1.x + (p2.x - p0.x) / 6
+    const c1y = clampY(p1.y + (p2.y - p0.y) / 6)
+    const c2x = p2.x - (p3.x - p1.x) / 6
+    const c2y = clampY(p2.y - (p3.y - p1.y) / 6)
+    d += ` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
   }
   return d
 }
