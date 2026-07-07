@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { xTicksFor } from '@/lib/trends-axis'
 import { fillBuckets } from '@/lib/timeseries-fill'
+import { kdeSmooth, sigmaForBuckets } from '@/lib/trends-smooth'
 
 interface Point {
   ts: string
@@ -32,19 +33,6 @@ const PAD_B = 28
 const PLOT_W = W - PAD_L - PAD_R
 const PLOT_H = H - PAD_T - PAD_B
 const BASELINE = PAD_T + PLOT_H
-
-// Round up to a "nice" number for the y-axis ceiling (1/2/5 * 10^n). Keeps
-// tick labels readable instead of "max=37, axis goes to 37".
-function niceCeil(n: number): number {
-  if (n <= 1) return 1
-  const exp = Math.floor(Math.log10(n))
-  const base = Math.pow(10, exp)
-  const norm = n / base
-  if (norm <= 1) return base
-  if (norm <= 2) return 2 * base
-  if (norm <= 5) return 5 * base
-  return 10 * base
-}
 
 const dateFmt24 = new Intl.DateTimeFormat('nb-NO', { hour: '2-digit', minute: '2-digit' })
 const dateFmtDay = new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short' })
@@ -152,15 +140,23 @@ export default function TrendsChart() {
     return () => controller.abort()
   }, [range])
 
-  const { areaPath, linePath, yMax, total, tickLabels } = useMemo(() => {
+  const { areaPath, linePath, total, tickLabels } = useMemo(() => {
     // Zero-fill so empty hours read as real zeros, not a line interpolated
     // straight across a quiet night.
     const filled = fillBuckets(series?.points ?? [], range)
-    const max = niceCeil(Math.max(1, ...filled.map((p) => p.value)))
+    // Smooth the sparse visits-per-bucket series into a traffic-density curve
+    // (see lib/trends-smooth): a low-traffic window is mostly empty buckets, so
+    // the raw line is a spike-forest. KDE turns each visit into a soft hill, so
+    // the curve flows even for a single visitor. `total` stays the exact raw
+    // sum — the density only shapes the line, it doesn't change the count.
+    const density = kdeSmooth(filled.map((p) => p.value), sigmaForBuckets(filled.length))
+    // Normalise to the window's own peak so the busiest period fills the card
+    // regardless of absolute volume; the exact number lives in "totalt".
+    const peak = Math.max(...density, 1e-9)
     const n = filled.length
     const coords = filled.map((p, i) => ({
       x: n === 1 ? PAD_L + PLOT_W / 2 : PAD_L + (i / (n - 1)) * PLOT_W,
-      y: BASELINE - (p.value / max) * PLOT_H,
+      y: BASELINE - (density[i] / peak) * PLOT_H,
       ts: p.ts,
     }))
     const line = wavePath(coords)
@@ -171,7 +167,6 @@ export default function TrendsChart() {
     return {
       areaPath: area,
       linePath: line,
-      yMax: max,
       total: filled.reduce((sum, p) => sum + p.value, 0),
       tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range)),
     }
@@ -181,9 +176,6 @@ export default function TrendsChart() {
   // and the period tabs, leaving no way to retry without a page reload.
   // Degrade inside the chart instead; switching range re-runs the fetch.
   const isEmpty = !loading && !failed && total === 0
-  // Integer, de-duplicated y-ticks so a max of 1 doesn't label 0/0.5/1 as
-  // "0,1,1" after rounding.
-  const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
   const rangeLabel = RANGES.find((r) => r.id === range)?.label ?? ''
 
   return (
@@ -223,32 +215,21 @@ export default function TrendsChart() {
         aria-label={`Besøk – tidsserie, siste ${rangeLabel}`}
         preserveAspectRatio="none"
       >
-        {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
-        {yTicks.map((v, i) => {
-          const y = BASELINE - (v / yMax) * PLOT_H
-          return (
-            <g key={i}>
-              <line
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={y}
-                y2={y}
-                className="stroke-gray-200 dark:stroke-gray-800"
-                strokeWidth="1"
-              />
-              <text
-                x={PAD_L - 6}
-                y={y + 4}
-                textAnchor="end"
-                className="fill-gray-400 dark:fill-gray-500"
-                fontSize="11"
-                fontFamily="monospace"
-              >
-                {Math.round(v)}
-              </text>
-            </g>
-          )
-        })}
+        {/* Faint top + baseline gridlines to frame the plot. The curve is a
+            normalised traffic-density trend, not a per-bucket count, so there
+            are no numeric y-labels to read off — the exact figure is the
+            "totalt" headline above. */}
+        {[PAD_T, BASELINE].map((y, i) => (
+          <line
+            key={i}
+            x1={PAD_L}
+            x2={W - PAD_R}
+            y1={y}
+            y2={y}
+            className="stroke-gray-200 dark:stroke-gray-800"
+            strokeWidth="1"
+          />
+        ))}
 
         {!isEmpty && (
           <>
