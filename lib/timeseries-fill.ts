@@ -6,7 +6,12 @@
 // AE returns one row per bucket that actually had events (GROUP BY ts), with
 // the bucket start as a UTC string like "2026-06-19 18:00:00". We regenerate
 // the full set of bucket keys for the window and merge by exact string key —
-// no Date parsing, so the local-vs-UTC ambiguity never bites the merge.
+// no Date parsing, so the local-vs-UTC ambiguity never bites the merge. The
+// incoming keys are run through normalizeBucketKey first so an AE-side format
+// drift (ISO 'T', trailing 'Z', fractional seconds) can't silently miss every
+// key and blank the chart — the merge, not just the endpoint, is defended.
+
+import { METRICS_EPOCH, normalizeBucketKey } from '@/src/timeseries'
 
 export interface SeriesPoint {
   ts: string
@@ -19,6 +24,23 @@ const RANGE_BUCKETS: Record<string, { stepMs: number; count: number }> = {
   '24h': { stepMs: 3_600_000, count: 25 },
   '7d': { stepMs: 3_600_000, count: 169 },
   '30d': { stepMs: 6 * 3_600_000, count: 121 },
+}
+
+// `all` grows with the site: its bucket count spans METRICS_EPOCH → now (6h
+// buckets, matching the 30d SQL), so the wave starts short and lengthens over
+// time instead of padding 90 days of empty grid on day one. Capped so an old
+// site can't blow past AE's retention or a drawable point count; when the epoch
+// is disabled (empty string) we fall back to the cap.
+const ALL_STEP_MS = 6 * 3_600_000
+const ALL_MAX_BUCKETS = 361 // ~90 days at 6h — near AE retention
+
+function allBuckets(now: number): { stepMs: number; count: number } {
+  const end = Math.floor(now / ALL_STEP_MS) * ALL_STEP_MS
+  const epochMs = METRICS_EPOCH ? Date.parse(METRICS_EPOCH.replace(' ', 'T') + 'Z') : NaN
+  const span = Number.isFinite(epochMs)
+    ? Math.floor((end - Math.floor(epochMs / ALL_STEP_MS) * ALL_STEP_MS) / ALL_STEP_MS) + 1
+    : ALL_MAX_BUCKETS
+  return { stepMs: ALL_STEP_MS, count: Math.max(1, Math.min(span, ALL_MAX_BUCKETS)) }
 }
 
 function pad(n: number): string {
@@ -40,8 +62,8 @@ export function fillBuckets(
   range: string,
   now: number = Date.now(),
 ): SeriesPoint[] {
-  const cfg = RANGE_BUCKETS[range] ?? RANGE_BUCKETS['7d']
-  const byKey = new Map(points.map((p) => [p.ts, p.value]))
+  const cfg = range === 'all' ? allBuckets(now) : RANGE_BUCKETS[range] ?? RANGE_BUCKETS['7d']
+  const byKey = new Map(points.map((p) => [normalizeBucketKey(p.ts), p.value]))
   // Align the right edge to a bucket boundary (also where AE's buckets land,
   // since both 1h and 6h divide evenly from the epoch).
   const end = Math.floor(now / cfg.stepMs) * cfg.stepMs

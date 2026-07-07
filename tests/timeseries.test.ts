@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildSeriesSql, parseMetric, parseRange, parseSeriesResponse } from '@/src/timeseries'
+import {
+  buildSeriesSql,
+  normalizeBucketKey,
+  parseMetric,
+  parseRange,
+  parseSeriesResponse,
+} from '@/src/timeseries'
 
 describe('parseMetric', () => {
   it('accepts the two supported metrics', () => {
@@ -20,6 +26,7 @@ describe('parseRange', () => {
     expect(parseRange('24h').key).toBe('24h')
     expect(parseRange('7d').key).toBe('7d')
     expect(parseRange('30d').key).toBe('30d')
+    expect(parseRange('all').key).toBe('all')
   })
 
   it('falls back to 7d on unknown or missing input', () => {
@@ -40,6 +47,11 @@ describe('buildSeriesSql', () => {
   it('uses different bucket sizes per range', () => {
     expect(buildSeriesSql('ds', 'geo', parseRange('24h').range)).toContain('toStartOfHour')
     expect(buildSeriesSql('ds', 'geo', parseRange('30d').range)).toContain('toStartOfInterval')
+    // `all` reuses the 30d 6h bucket (aligns with the 6h epoch) over a wide,
+    // retention-bounded window.
+    const allSql = buildSeriesSql('ds', 'geo', parseRange('all').range)
+    expect(allSql).toContain("toStartOfInterval(timestamp, INTERVAL '6' HOUR)")
+    expect(allSql).toContain("INTERVAL '90' DAY")
   })
 
   it('does not embed an epoch floor in the SQL itself (filter is client-side, see parseSeriesResponse)', () => {
@@ -53,7 +65,7 @@ describe('buildSeriesSql', () => {
   // chart silently went blank with a 422 from AE. Pin the quoted form for
   // every range so a future tweak can't drop the quotes again.
   it("quotes every INTERVAL literal (AE rejects bare INTERVAL N UNIT)", () => {
-    for (const key of ['24h', '7d', '30d'] as const) {
+    for (const key of ['24h', '7d', '30d', 'all'] as const) {
       const sql = buildSeriesSql('ds', 'geo', parseRange(key).range)
       expect(sql).not.toMatch(/INTERVAL\s+\d/)
       expect(sql).toMatch(/INTERVAL\s+'\d+'/)
@@ -61,8 +73,28 @@ describe('buildSeriesSql', () => {
   })
 })
 
+describe('normalizeBucketKey', () => {
+  it('leaves AEs current space form untouched', () => {
+    expect(normalizeBucketKey('2026-06-19 18:00:00')).toBe('2026-06-19 18:00:00')
+  })
+
+  it('canonicalises ISO drift variants to the space form (T / Z / offset / fractional)', () => {
+    expect(normalizeBucketKey('2026-06-19T18:00:00Z')).toBe('2026-06-19 18:00:00')
+    expect(normalizeBucketKey('2026-06-19T18:00:00')).toBe('2026-06-19 18:00:00')
+    expect(normalizeBucketKey('2026-06-19T18:00:00.000Z')).toBe('2026-06-19 18:00:00')
+    expect(normalizeBucketKey('2026-06-19 18:00:00+00:00')).toBe('2026-06-19 18:00:00')
+  })
+
+  it('returns non-datetime strings unchanged (defensive)', () => {
+    expect(normalizeBucketKey('not-a-date')).toBe('not-a-date')
+    expect(normalizeBucketKey('')).toBe('')
+  })
+})
+
 describe('parseSeriesResponse', () => {
-  it('extracts the [{ts, value}] points', () => {
+  it('extracts the [{ts, value}] points, canonicalising the bucket key', () => {
+    // AE emits the space form today; feeding the ISO 'T'/'Z' drift shape proves
+    // the output is normalised so the downstream string-key merge still hits.
     const payload = {
       data: [
         { ts: '2026-06-19T00:00:00Z', value: 3 },
@@ -70,9 +102,19 @@ describe('parseSeriesResponse', () => {
       ],
     }
     expect(parseSeriesResponse(payload, '')).toEqual([
-      { ts: '2026-06-19T00:00:00Z', value: 3 },
-      { ts: '2026-06-19T01:00:00Z', value: 7 },
+      { ts: '2026-06-19 00:00:00', value: 3 },
+      { ts: '2026-06-19 01:00:00', value: 7 },
     ])
+  })
+
+  it('applies the epoch floor against the normalised key, not the raw string', () => {
+    // A 'T'-form row at 18:00:00 must clear an 18:00:00 space-form epoch — the
+    // raw 'T' (0x54) would otherwise sort after the space (0x20) and mis-filter.
+    const out = parseSeriesResponse(
+      { data: [{ ts: '2026-07-03T18:00:00Z', value: 4 }] },
+      '2026-07-03 18:00:00',
+    )
+    expect(out).toEqual([{ ts: '2026-07-03 18:00:00', value: 4 }])
   })
 
   it('coerces stringy numbers (AE sometimes serialises SUMs as strings)', () => {

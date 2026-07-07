@@ -11,7 +11,14 @@ export function parseMetric(value: string | null): SeriesMetric | null {
 
 // Range options aligned to common dashboard windows. Each maps to a SQL
 // INTERVAL and a bucket size that keeps the resulting series under ~200 points
-// — small enough to draw as an inline SVG sparkline.
+// — small enough to draw as an inline SVG sparkline. `all` is the exception:
+// its wave spans up to ~90 days (6h buckets → up to ~360 grid slots, but only
+// non-empty buckets get a dot, so it stays cheap). The 90-day interval is a
+// generous bound near AE's retention ceiling; `all`'s HEADLINE total comes
+// from D1 (exact, forever), so the wave aging past retention never desyncs the
+// number from the map. 6h buckets (not daily) keep `all` aligned to the
+// 6-hour METRICS_EPOCH boundary — a daily bucket would straddle the 18:00
+// epoch and drop the relaunch-day slot from the shape.
 export interface SeriesRange {
   intervalSql: string
   bucketSql: string
@@ -22,6 +29,7 @@ const RANGES: Record<string, SeriesRange> = {
   '24h': { intervalSql: "INTERVAL '24' HOUR", bucketSql: 'toStartOfHour(timestamp)', ttlSeconds: 60 },
   '7d':  { intervalSql: "INTERVAL '7' DAY",   bucketSql: 'toStartOfHour(timestamp)', ttlSeconds: 300 },
   '30d': { intervalSql: "INTERVAL '30' DAY",  bucketSql: "toStartOfInterval(timestamp, INTERVAL '6' HOUR)", ttlSeconds: 600 },
+  'all': { intervalSql: "INTERVAL '90' DAY",  bucketSql: "toStartOfInterval(timestamp, INTERVAL '6' HOUR)", ttlSeconds: 900 },
 }
 
 export function parseRange(value: string | null): { key: string; range: SeriesRange } {
@@ -74,11 +82,26 @@ export interface SeriesPoint {
   value: number
 }
 
+// Canonicalise a bucket key to the fixed-width UTC form "YYYY-MM-DD HH:MM:SS"
+// that both the epoch compare (below) and the client-side merge
+// (lib/timeseries-fill.ts `utcBucketKey`) assume. AE currently emits exactly
+// that, so today this is a no-op — but the whole pipeline hangs on a raw
+// string equality, and an AE-side format drift (ISO 'T' separator, a trailing
+// 'Z'/offset, fractional seconds) would silently zero-fill the whole chart
+// while the D1-backed map kept working. Normalising here (and again at the
+// merge) makes such a drift harmless instead of an invisible outage. A string
+// that doesn't look like a datetime (defensive) is returned untouched.
+export function normalizeBucketKey(ts: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/.exec(ts)
+  return m ? `${m[1]} ${m[2]}` : ts
+}
+
 // Normalise an AE SQL API JSON response into [{ts, value}]. AE returns a
 // `{ data: [...] }` envelope with row objects whose keys are the SELECT
 // aliases. Drop anything that doesn't parse to a finite, non-negative number.
 // `epoch` (UTC bucket key) drops rows older than that — used to hide
-// pre-relaunch points that AE can't delete.
+// pre-relaunch points that AE can't delete. `ts` is canonicalised first so the
+// epoch compare and the downstream merge are immune to AE format drift.
 export function parseSeriesResponse(payload: unknown, epoch: string = METRICS_EPOCH): SeriesPoint[] {
   if (typeof payload !== 'object' || payload === null) return []
   const data = (payload as { data?: unknown }).data
@@ -88,10 +111,11 @@ export function parseSeriesResponse(payload: unknown, epoch: string = METRICS_EP
     if (typeof row !== 'object' || row === null) continue
     const { ts, value } = row as { ts?: unknown; value?: unknown }
     if (typeof ts !== 'string') continue
-    if (epoch && ts < epoch) continue
+    const key = normalizeBucketKey(ts)
+    if (epoch && key < epoch) continue
     const n = typeof value === 'number' ? value : Number(value)
     if (!Number.isFinite(n) || n < 0) continue
-    points.push({ ts, value: n })
+    points.push({ ts: key, value: n })
   }
   return points
 }

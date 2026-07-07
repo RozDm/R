@@ -15,12 +15,13 @@ interface Series {
   points: Point[]
 }
 
-type Range = '24h' | '7d' | '30d'
+type Range = '24h' | '7d' | '30d' | 'all'
 
 const RANGES: { id: Range; label: string }[] = [
   { id: '24h', label: '24t' },
   { id: '7d', label: '7d' },
   { id: '30d', label: '30d' },
+  { id: 'all', label: 'Alt' },
 ]
 
 const W = 800
@@ -71,6 +72,12 @@ export default function TrendsChart() {
   const [range, setRange] = useState<Range>('7d')
   const [series, setSeries] = useState<Series | null>(null)
   const [failed, setFailed] = useState(false)
+  // Exact all-time total, straight from D1 via /api/geo — the same source and
+  // number as the map above. Shown as the headline ONLY on the `Alt` (all
+  // time) tab, where it must match the map exactly rather than inherit AE's
+  // sampling. The windowed tabs show their own AE count (see displayTotal).
+  // Doesn't depend on `range`.
+  const [geoTotal, setGeoTotal] = useState<number | null>(null)
   // The chart only renders client-side (dynamic import with ssr:false), so
   // there's no SSR-vs-hydration mismatch concern left and we can render the
   // real data immediately on mount.
@@ -94,7 +101,21 @@ export default function TrendsChart() {
     return () => controller.abort()
   }, [range])
 
-  const { dots, yMax, total, tickLabels } = useMemo(() => {
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/geo', { signal: controller.signal, cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+      .then((d: { countries?: Record<string, number> }) => {
+        const sum = Object.values(d.countries ?? {}).reduce((a, b) => a + b, 0)
+        setGeoTotal(sum)
+      })
+      // Leave geoTotal null on failure so the headline shows '–', not a
+      // misleading 0 — the map handles its own empty-state separately.
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
+
+  const { dots, yMax, waveTotal, tickLabels } = useMemo(() => {
     // Zero-fill so the x-axis spans the whole window and quiet stretches read
     // as real gaps. We plot a point per bucket that actually had visits; empty
     // buckets contribute no dot (just a gap).
@@ -110,7 +131,11 @@ export default function TrendsChart() {
     return {
       dots: coords.filter((c) => c.value > 0),
       yMax: max,
-      total: filled.reduce((sum, p) => sum + p.value, 0),
+      // AE's (sampled) sum over the visible window. It's the headline count on
+      // the windowed tabs (24t/7d/30d — "visits in this period") and, on the
+      // `Alt` tab, only the empty-window vs. empty-dataset signal — there the
+      // headline switches to the exact D1 total.
+      waveTotal: filled.reduce((sum, p) => sum + p.value, 0),
       // X ticks come from the full grid so labels span the window even though
       // only non-empty buckets get a dot.
       tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range)),
@@ -120,17 +145,27 @@ export default function TrendsChart() {
   // Don't unmount the whole section on a fetch hiccup — that nuked the header
   // and the period tabs, leaving no way to retry without a page reload.
   // Degrade inside the chart instead; switching range re-runs the fetch.
-  const isEmpty = !loading && !failed && total === 0
+  const isEmpty = !loading && !failed && waveTotal === 0
+  // A quiet window (visits exist, just none in this range) reads differently
+  // from a genuinely empty dataset — say which so a non-zero total below
+  // doesn't sit next to a bare "Ingen data ennå".
+  const emptyMsg = geoTotal && geoTotal > 0 ? 'Ingen besøk i denne perioden' : 'Ingen data ennå'
   // Integer, de-duplicated y-ticks so a max of 1 doesn't label 0/0.5/1 as
   // "0,1,1" after rounding.
   const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
   const rangeLabel = RANGES.find((r) => r.id === range)?.label ?? ''
+  // Headline number: exact D1 all-time (= the map) on `Alt`, else the AE count
+  // for the selected window. Label follows suit: "totalt" only when it truly is
+  // the grand total, "siste 7d" etc. for a windowed count.
+  const isAll = range === 'all'
+  const displayTotal = isAll ? geoTotal : series ? waveTotal : null
+  const totalLabel = isAll ? 'totalt' : `siste ${rangeLabel}`
 
   return (
     <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-          Besøk, siste {rangeLabel}
+          Besøk over tid
         </span>
         <div role="tablist" aria-label="Periode" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
           {RANGES.map((r) => (
@@ -149,10 +184,11 @@ export default function TrendsChart() {
 
       <div className="flex items-baseline justify-end text-xs font-mono text-gray-500 dark:text-gray-400">
         <span className={`tabular-nums ${loading ? 'opacity-50' : ''}`}>
-          {/* Before the first response lands there is no number to show —
-              a dimmed "0 totalt" on every refresh read as the data vanishing. */}
-          <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{series ? total : '–'}</span>{' '}
-          <span>totalt</span>
+          {/* On `Alt`: the exact D1 total (same number as the map). On the
+              windowed tabs: the AE count for that window. '–' until the
+              backing data lands — a dimmed "0" read as the data vanishing. */}
+          <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{displayTotal !== null ? displayTotal : '–'}</span>{' '}
+          <span>{totalLabel}</span>
         </span>
       </div>
 
@@ -162,7 +198,7 @@ export default function TrendsChart() {
         viewBox={`0 0 ${W} ${H}`}
         className={`w-full h-auto transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
         role="img"
-        aria-label={`Besøk per tidsrom, siste ${rangeLabel}`}
+        aria-label={isAll ? 'Besøk per tidsrom, hele perioden' : `Besøk per tidsrom, siste ${rangeLabel}`}
       >
         {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
         {yTicks.map((v, i) => {
@@ -221,7 +257,7 @@ export default function TrendsChart() {
             fontSize="13"
             fontFamily="monospace"
           >
-            {failed ? 'Kunne ikke laste — bytt periode for å prøve igjen' : 'Ingen data ennå'}
+            {failed ? 'Kunne ikke laste — bytt periode for å prøve igjen' : emptyMsg}
           </text>
         )}
       </svg>
