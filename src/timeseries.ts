@@ -11,7 +11,14 @@ export function parseMetric(value: string | null): SeriesMetric | null {
 
 // Range options aligned to common dashboard windows. Each maps to a SQL
 // INTERVAL and a bucket size that keeps the resulting series under ~200 points
-// — small enough to draw as an inline SVG sparkline.
+// — small enough to draw as an inline SVG sparkline. `all` is the exception:
+// its wave spans up to ~90 days (6h buckets → up to ~360 grid slots, but only
+// non-empty buckets get a dot, so it stays cheap). The 90-day interval is a
+// generous bound near AE's retention ceiling; `all`'s HEADLINE total comes
+// from D1 (exact, forever), so the wave aging past retention never desyncs the
+// number from the map. 6h buckets (not daily) keep `all` aligned to the
+// 6-hour METRICS_EPOCH boundary — a daily bucket would straddle the 18:00
+// epoch and drop the relaunch-day slot from the shape.
 export interface SeriesRange {
   intervalSql: string
   bucketSql: string
@@ -22,6 +29,7 @@ const RANGES: Record<string, SeriesRange> = {
   '24h': { intervalSql: "INTERVAL '24' HOUR", bucketSql: 'toStartOfHour(timestamp)', ttlSeconds: 60 },
   '7d':  { intervalSql: "INTERVAL '7' DAY",   bucketSql: 'toStartOfHour(timestamp)', ttlSeconds: 300 },
   '30d': { intervalSql: "INTERVAL '30' DAY",  bucketSql: "toStartOfInterval(timestamp, INTERVAL '6' HOUR)", ttlSeconds: 600 },
+  'all': { intervalSql: "INTERVAL '90' DAY",  bucketSql: "toStartOfInterval(timestamp, INTERVAL '6' HOUR)", ttlSeconds: 900 },
 }
 
 export function parseRange(value: string | null): { key: string; range: SeriesRange } {

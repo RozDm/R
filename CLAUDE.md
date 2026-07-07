@@ -46,15 +46,20 @@ code and comments are English.
   nothing reads or writes it).
 - Analytics Engine dataset `rozsoshnykh_metrics` (binding `METRICS_AE`) holds
   the sampled time-series behind the front-page **Trends** card
-  (`components/home/Trends.tsx` — single Besøk metric, 24t/7d/30d range,
-  dot plot over a zero-filled bucket grid). The card's headline «totalt»
-  is NOT the AE sum — it's the exact D1 all-time count fetched from
-  `/api/geo` (the same number as the map), so it never inherits AE's
-  sampling and doesn't shift with the range tabs; AE drives only the dots'
-  shape and the "quiet window vs. no data" empty-state. Every `recordGeo`
-  call (triggered by the `/api/visit` beacon — see below) also writes an AE
-  point (`blob1='geo'`), so the map and the chart are two views of the same
-  dataset. The `view` AE channel is also written from
+  (`components/home/Trends.tsx` — single Besøk metric, 24t/7d/30d/**Alt**
+  range, dot plot over a zero-filled bucket grid). The headline number is
+  per-tab: on the windowed tabs (24t/7d/30d) it's the AE (sampled) count
+  for that window («siste 7d» …); on the **Alt** (all-time) tab it's the
+  exact D1 count fetched from `/api/geo` — the same number as the map — so
+  the one tab that promises a grand total can't drift from the map under
+  AE sampling. `Alt`'s wave is 6h-bucketed like 30d (keeps it aligned to
+  the 6h `METRICS_EPOCH` boundary) and spans epoch→now, capped at ~90 days
+  (near AE retention) in `fillBuckets`; since its total is D1, the wave
+  aging past retention never desyncs the number from the map. AE drives the
+  dots' shape and the "quiet window vs. no data" empty-state. Every
+  `recordGeo` call (triggered by the `/api/visit` beacon — see below) also
+  writes an AE point (`blob1='geo'`), so the map and the chart are two
+  views of the same dataset. The `view` AE channel is also written from
   `/api/views` POSTs for future use, but isn't currently graphed. D1 stays
   the truth for totals; AE answers "when". Reads need two runtime Worker
   secrets — `CF_ACCOUNT_ID` + `AE_API_TOKEN` (token scoped `Account

@@ -15,12 +15,13 @@ interface Series {
   points: Point[]
 }
 
-type Range = '24h' | '7d' | '30d'
+type Range = '24h' | '7d' | '30d' | 'all'
 
 const RANGES: { id: Range; label: string }[] = [
   { id: '24h', label: '24t' },
   { id: '7d', label: '7d' },
   { id: '30d', label: '30d' },
+  { id: 'all', label: 'Alt' },
 ]
 
 const W = 800
@@ -72,10 +73,10 @@ export default function TrendsChart() {
   const [series, setSeries] = useState<Series | null>(null)
   const [failed, setFailed] = useState(false)
   // Exact all-time total, straight from D1 via /api/geo — the same source and
-  // number as the map above. AE's sampled series drives only the wave's shape;
-  // the headline count must not inherit AE's sampling (at higher traffic
-  // SUM(_sample_interval) approximates, and the windowed AE sum would also
-  // diverge from the map's all-time figure). Doesn't depend on `range`.
+  // number as the map above. Shown as the headline ONLY on the `Alt` (all
+  // time) tab, where it must match the map exactly rather than inherit AE's
+  // sampling. The windowed tabs show their own AE count (see displayTotal).
+  // Doesn't depend on `range`.
   const [geoTotal, setGeoTotal] = useState<number | null>(null)
   // The chart only renders client-side (dynamic import with ssr:false), so
   // there's no SSR-vs-hydration mismatch concern left and we can render the
@@ -130,8 +131,10 @@ export default function TrendsChart() {
     return {
       dots: coords.filter((c) => c.value > 0),
       yMax: max,
-      // AE's sampled sum over the visible window — used only to tell an empty
-      // window apart from a truly empty dataset, never as the headline count.
+      // AE's (sampled) sum over the visible window. It's the headline count on
+      // the windowed tabs (24t/7d/30d — "visits in this period") and, on the
+      // `Alt` tab, only the empty-window vs. empty-dataset signal — there the
+      // headline switches to the exact D1 total.
       waveTotal: filled.reduce((sum, p) => sum + p.value, 0),
       // X ticks come from the full grid so labels span the window even though
       // only non-empty buckets get a dot.
@@ -151,6 +154,12 @@ export default function TrendsChart() {
   // "0,1,1" after rounding.
   const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
   const rangeLabel = RANGES.find((r) => r.id === range)?.label ?? ''
+  // Headline number: exact D1 all-time (= the map) on `Alt`, else the AE count
+  // for the selected window. Label follows suit: "totalt" only when it truly is
+  // the grand total, "siste 7d" etc. for a windowed count.
+  const isAll = range === 'all'
+  const displayTotal = isAll ? geoTotal : series ? waveTotal : null
+  const totalLabel = isAll ? 'totalt' : `siste ${rangeLabel}`
 
   return (
     <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
@@ -174,13 +183,12 @@ export default function TrendsChart() {
       </div>
 
       <div className="flex items-baseline justify-end text-xs font-mono text-gray-500 dark:text-gray-400">
-        <span className="tabular-nums">
-          {/* Exact all-time total from D1 (same number as the map), so it
-              never inherits AE's sampling and doesn't shift with the range
-              tabs. '–' until the first /api/geo response lands — a dimmed "0"
-              read as the data vanishing. */}
-          <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{geoTotal !== null ? geoTotal : '–'}</span>{' '}
-          <span>totalt</span>
+        <span className={`tabular-nums ${loading ? 'opacity-50' : ''}`}>
+          {/* On `Alt`: the exact D1 total (same number as the map). On the
+              windowed tabs: the AE count for that window. '–' until the
+              backing data lands — a dimmed "0" read as the data vanishing. */}
+          <span className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{displayTotal !== null ? displayTotal : '–'}</span>{' '}
+          <span>{totalLabel}</span>
         </span>
       </div>
 
@@ -190,7 +198,7 @@ export default function TrendsChart() {
         viewBox={`0 0 ${W} ${H}`}
         className={`w-full h-auto transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
         role="img"
-        aria-label={`Besøk per tidsrom, siste ${rangeLabel}`}
+        aria-label={isAll ? 'Besøk per tidsrom, hele perioden' : `Besøk per tidsrom, siste ${rangeLabel}`}
       >
         {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
         {yTicks.map((v, i) => {

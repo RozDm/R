@@ -26,6 +26,7 @@ describe('parseRange', () => {
     expect(parseRange('24h').key).toBe('24h')
     expect(parseRange('7d').key).toBe('7d')
     expect(parseRange('30d').key).toBe('30d')
+    expect(parseRange('all').key).toBe('all')
   })
 
   it('falls back to 7d on unknown or missing input', () => {
@@ -46,6 +47,11 @@ describe('buildSeriesSql', () => {
   it('uses different bucket sizes per range', () => {
     expect(buildSeriesSql('ds', 'geo', parseRange('24h').range)).toContain('toStartOfHour')
     expect(buildSeriesSql('ds', 'geo', parseRange('30d').range)).toContain('toStartOfInterval')
+    // `all` reuses the 30d 6h bucket (aligns with the 6h epoch) over a wide,
+    // retention-bounded window.
+    const allSql = buildSeriesSql('ds', 'geo', parseRange('all').range)
+    expect(allSql).toContain("toStartOfInterval(timestamp, INTERVAL '6' HOUR)")
+    expect(allSql).toContain("INTERVAL '90' DAY")
   })
 
   it('does not embed an epoch floor in the SQL itself (filter is client-side, see parseSeriesResponse)', () => {
@@ -59,7 +65,7 @@ describe('buildSeriesSql', () => {
   // chart silently went blank with a 422 from AE. Pin the quoted form for
   // every range so a future tweak can't drop the quotes again.
   it("quotes every INTERVAL literal (AE rejects bare INTERVAL N UNIT)", () => {
-    for (const key of ['24h', '7d', '30d'] as const) {
+    for (const key of ['24h', '7d', '30d', 'all'] as const) {
       const sql = buildSeriesSql('ds', 'geo', parseRange(key).range)
       expect(sql).not.toMatch(/INTERVAL\s+\d/)
       expect(sql).toMatch(/INTERVAL\s+'\d+'/)
