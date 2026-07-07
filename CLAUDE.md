@@ -71,7 +71,7 @@ code and comments are English.
   client-side (sidesteps any AE-SQL dialect surprise); bump it after every
   `reset-metrics` run. It **must sit on a 6-hour UTC boundary**
   (`00/06/12/18`) — the filter compares against the bucket-start key and the
-  30d view buckets by 6h, so a mid-bucket epoch drops a straddling bucket's
+  30d/Alt views bucket by 6h, so a mid-bucket epoch drops a straddling bucket's
   real post-epoch visits and the chart undercounts the map. Round UP to the
   next boundary when bumping so no pre-reset noise slips in.
 - Visit counting: every page mounts `components/effects/VisitBeacon.tsx`
@@ -95,10 +95,10 @@ code and comments are English.
   from the validated params only — `cachedApiJson(canonicalUrl)` — so junk
   query strings can't fragment the cache and hammer KV/D1/AE), `/api/visit` (POST, the single Besøk
   beacon — see Visit counting above; also answers GET with a harmless
-  self-diagnostic — the caller's own country + whether it counts), `/api/timeseries?metric=view|geo&range=24h|7d|30d`
+  self-diagnostic — the caller's own country + whether it counts), `/api/timeseries?metric=view|geo&range=24h|7d|30d|all`
   (GET, edge-cached per metric+range; `view` channel still served for API
-  compat, only `geo` is graphed), `/api/contact` (POST, full Turnstile
-  challenge).
+  compat, only `geo` is graphed; `all` spans ~90 days at 6h buckets — see
+  the Trends card above), `/api/contact` (POST, full Turnstile challenge).
 - The visitor world map is a build-time artifact: `scripts/build-world-svg.mjs`
   (run by `prebuild`) emits `public/world.svg` from `world-map-country-shapes`
   (a devDependency). `GeoMap` fetches that SVG and injects it via
@@ -210,8 +210,9 @@ code and comments are English.
 - Resetting metrics: the manual `reset-metrics.yml` (`workflow_dispatch`, type
   `RESET` to confirm) wipes the D1 `views` + `geo` counters and prints
   before/after counts; it supersedes the older geo-only `geo-reset.yml`. AE
-  can't be reset (append-only) — its points age out of the 24h/7d/30d windows
-  on their own, or add a launch-epoch floor to the SQL for a clean graph sooner.
+  can't be reset (append-only) — its points age out of the 24h/7d/30d/all
+  windows on their own (the `all` tab is itself capped at ~90 days, near AE
+  retention), or add a launch-epoch floor to the SQL for a clean graph sooner.
 - The database is `rozsoshnykh-metrics-v2` because the original died
   server-side on 2026-07-03 (internal error 7500 on every operation,
   including Time Travel — no restore possible). Its deleted entry still

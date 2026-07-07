@@ -119,10 +119,13 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
 - **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
 - **Time-series** of visits lives in a Workers Analytics Engine dataset
   (`METRICS_AE`, binding `rozsoshnykh_metrics`). The `/api/visit` beacon
-  appends one AE point per session; `GET /api/timeseries?metric=geo&range=24h|7d|30d`
+  appends one AE point per session; `GET /api/timeseries?metric=geo&range=24h|7d|30d|all`
   reads them back via the AE SQL API and feeds the front-page **Trends**
-  card (smooth wave over a zero-filled bucket grid; only Besøk is graphed
-  even though the API still accepts the `view` channel). Free tier: 10M
+  card (dot plot over a zero-filled bucket grid). The windowed tabs
+  (24t/7d/30d) show the AE count for their window; the **Alt** (all-time)
+  tab shows the exact D1 total — the same number as the map — so the grand
+  total never drifts from the map under AE sampling. Only Besøk is graphed
+  even though the API still accepts the `view` channel. Free tier: 10M
   writes/day, sampled reads. Reading needs two runtime secrets
   (`CF_ACCOUNT_ID` + `AE_API_TOKEN`, the latter with `Account
   Analytics:Read`); without them the route degrades to an empty series
