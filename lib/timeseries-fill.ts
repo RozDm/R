@@ -6,7 +6,12 @@
 // AE returns one row per bucket that actually had events (GROUP BY ts), with
 // the bucket start as a UTC string like "2026-06-19 18:00:00". We regenerate
 // the full set of bucket keys for the window and merge by exact string key —
-// no Date parsing, so the local-vs-UTC ambiguity never bites the merge.
+// no Date parsing, so the local-vs-UTC ambiguity never bites the merge. The
+// incoming keys are run through normalizeBucketKey first so an AE-side format
+// drift (ISO 'T', trailing 'Z', fractional seconds) can't silently miss every
+// key and blank the chart — the merge, not just the endpoint, is defended.
+
+import { normalizeBucketKey } from '@/src/timeseries'
 
 export interface SeriesPoint {
   ts: string
@@ -41,7 +46,7 @@ export function fillBuckets(
   now: number = Date.now(),
 ): SeriesPoint[] {
   const cfg = RANGE_BUCKETS[range] ?? RANGE_BUCKETS['7d']
-  const byKey = new Map(points.map((p) => [p.ts, p.value]))
+  const byKey = new Map(points.map((p) => [normalizeBucketKey(p.ts), p.value]))
   // Align the right edge to a bucket boundary (also where AE's buckets land,
   // since both 1h and 6h divide evenly from the epoch).
   const end = Math.floor(now / cfg.stepMs) * cfg.stepMs

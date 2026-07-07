@@ -45,6 +45,20 @@ describe('fillBuckets', () => {
     expect(fillBuckets([], 'garbage', NOW)).toHaveLength(169)
   })
 
+  it('normalises AE keys before merging so an ISO-format drift still hits', () => {
+    // If AE ever switched from "2026-06-20 10:00:00" to the ISO 'T'/'Z' shape,
+    // a raw string merge would miss every bucket and blank the chart. The
+    // normalising merge must still land these on the space-form grid keys.
+    const points = [
+      { ts: '2026-06-20T10:00:00Z', value: 3 },
+      { ts: '2026-06-20T12:00:00.000Z', value: 5 },
+    ]
+    const out = fillBuckets(points, '24h', NOW)
+    expect(out.find((p) => p.ts === '2026-06-20 10:00:00')?.value).toBe(3)
+    expect(out.find((p) => p.ts === '2026-06-20 12:00:00')?.value).toBe(5)
+    expect(out.reduce((s, p) => s + p.value, 0)).toBe(8)
+  })
+
   it('ignores stray AE buckets outside the generated window', () => {
     const out = fillBuckets([{ ts: '2020-01-01 00:00:00', value: 99 }], '24h', NOW)
     expect(out.some((p) => p.value === 99)).toBe(false)

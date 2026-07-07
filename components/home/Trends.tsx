@@ -11,9 +11,10 @@ export default function Trends() {
           Trafikk over tid
         </h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-          Sampled tidsserie fra Workers Analytics Engine. Hvert punkt er antall
-          besøk i et tidsrom; «totalt» er samme tall som kartet over. Ingen
-          informasjonskapsler, ingen sporing.
+          Formen er en sampled tidsserie fra Workers Analytics Engine — hvert
+          punkt er antall besøk i et tidsrom. «Totalt» er det eksakte tallet
+          fra D1, det samme som kartet over. Ingen informasjonskapsler, ingen
+          sporing.
         </p>
       </div>
       <TrendsChart />

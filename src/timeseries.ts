@@ -74,11 +74,26 @@ export interface SeriesPoint {
   value: number
 }
 
+// Canonicalise a bucket key to the fixed-width UTC form "YYYY-MM-DD HH:MM:SS"
+// that both the epoch compare (below) and the client-side merge
+// (lib/timeseries-fill.ts `utcBucketKey`) assume. AE currently emits exactly
+// that, so today this is a no-op — but the whole pipeline hangs on a raw
+// string equality, and an AE-side format drift (ISO 'T' separator, a trailing
+// 'Z'/offset, fractional seconds) would silently zero-fill the whole chart
+// while the D1-backed map kept working. Normalising here (and again at the
+// merge) makes such a drift harmless instead of an invisible outage. A string
+// that doesn't look like a datetime (defensive) is returned untouched.
+export function normalizeBucketKey(ts: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/.exec(ts)
+  return m ? `${m[1]} ${m[2]}` : ts
+}
+
 // Normalise an AE SQL API JSON response into [{ts, value}]. AE returns a
 // `{ data: [...] }` envelope with row objects whose keys are the SELECT
 // aliases. Drop anything that doesn't parse to a finite, non-negative number.
 // `epoch` (UTC bucket key) drops rows older than that — used to hide
-// pre-relaunch points that AE can't delete.
+// pre-relaunch points that AE can't delete. `ts` is canonicalised first so the
+// epoch compare and the downstream merge are immune to AE format drift.
 export function parseSeriesResponse(payload: unknown, epoch: string = METRICS_EPOCH): SeriesPoint[] {
   if (typeof payload !== 'object' || payload === null) return []
   const data = (payload as { data?: unknown }).data
@@ -88,10 +103,11 @@ export function parseSeriesResponse(payload: unknown, epoch: string = METRICS_EP
     if (typeof row !== 'object' || row === null) continue
     const { ts, value } = row as { ts?: unknown; value?: unknown }
     if (typeof ts !== 'string') continue
-    if (epoch && ts < epoch) continue
+    const key = normalizeBucketKey(ts)
+    if (epoch && key < epoch) continue
     const n = typeof value === 'number' ? value : Number(value)
     if (!Number.isFinite(n) || n < 0) continue
-    points.push({ ts, value: n })
+    points.push({ ts: key, value: n })
   }
   return points
 }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildSeriesSql, parseMetric, parseRange, parseSeriesResponse } from '@/src/timeseries'
+import {
+  buildSeriesSql,
+  normalizeBucketKey,
+  parseMetric,
+  parseRange,
+  parseSeriesResponse,
+} from '@/src/timeseries'
 
 describe('parseMetric', () => {
   it('accepts the two supported metrics', () => {
@@ -61,8 +67,28 @@ describe('buildSeriesSql', () => {
   })
 })
 
+describe('normalizeBucketKey', () => {
+  it('leaves AEs current space form untouched', () => {
+    expect(normalizeBucketKey('2026-06-19 18:00:00')).toBe('2026-06-19 18:00:00')
+  })
+
+  it('canonicalises ISO drift variants to the space form (T / Z / offset / fractional)', () => {
+    expect(normalizeBucketKey('2026-06-19T18:00:00Z')).toBe('2026-06-19 18:00:00')
+    expect(normalizeBucketKey('2026-06-19T18:00:00')).toBe('2026-06-19 18:00:00')
+    expect(normalizeBucketKey('2026-06-19T18:00:00.000Z')).toBe('2026-06-19 18:00:00')
+    expect(normalizeBucketKey('2026-06-19 18:00:00+00:00')).toBe('2026-06-19 18:00:00')
+  })
+
+  it('returns non-datetime strings unchanged (defensive)', () => {
+    expect(normalizeBucketKey('not-a-date')).toBe('not-a-date')
+    expect(normalizeBucketKey('')).toBe('')
+  })
+})
+
 describe('parseSeriesResponse', () => {
-  it('extracts the [{ts, value}] points', () => {
+  it('extracts the [{ts, value}] points, canonicalising the bucket key', () => {
+    // AE emits the space form today; feeding the ISO 'T'/'Z' drift shape proves
+    // the output is normalised so the downstream string-key merge still hits.
     const payload = {
       data: [
         { ts: '2026-06-19T00:00:00Z', value: 3 },
@@ -70,9 +96,19 @@ describe('parseSeriesResponse', () => {
       ],
     }
     expect(parseSeriesResponse(payload, '')).toEqual([
-      { ts: '2026-06-19T00:00:00Z', value: 3 },
-      { ts: '2026-06-19T01:00:00Z', value: 7 },
+      { ts: '2026-06-19 00:00:00', value: 3 },
+      { ts: '2026-06-19 01:00:00', value: 7 },
     ])
+  })
+
+  it('applies the epoch floor against the normalised key, not the raw string', () => {
+    // A 'T'-form row at 18:00:00 must clear an 18:00:00 space-form epoch — the
+    // raw 'T' (0x54) would otherwise sort after the space (0x20) and mis-filter.
+    const out = parseSeriesResponse(
+      { data: [{ ts: '2026-07-03T18:00:00Z', value: 4 }] },
+      '2026-07-03 18:00:00',
+    )
+    expect(out).toEqual([{ ts: '2026-07-03 18:00:00', value: 4 }])
   })
 
   it('coerces stringy numbers (AE sometimes serialises SUMs as strings)', () => {

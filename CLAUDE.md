@@ -47,10 +47,14 @@ code and comments are English.
 - Analytics Engine dataset `rozsoshnykh_metrics` (binding `METRICS_AE`) holds
   the sampled time-series behind the front-page **Trends** card
   (`components/home/Trends.tsx` — single Besøk metric, 24t/7d/30d range,
-  smooth quadratic-curve area chart over a zero-filled bucket grid). Every
-  `recordGeo` call (triggered by the `/api/visit` beacon — see below) also
-  writes an AE point (`blob1='geo'`), so the map and the chart are two
-  views of the same dataset. The `view` AE channel is also written from
+  dot plot over a zero-filled bucket grid). The card's headline «totalt»
+  is NOT the AE sum — it's the exact D1 all-time count fetched from
+  `/api/geo` (the same number as the map), so it never inherits AE's
+  sampling and doesn't shift with the range tabs; AE drives only the dots'
+  shape and the "quiet window vs. no data" empty-state. Every `recordGeo`
+  call (triggered by the `/api/visit` beacon — see below) also writes an AE
+  point (`blob1='geo'`), so the map and the chart are two views of the same
+  dataset. The `view` AE channel is also written from
   `/api/views` POSTs for future use, but isn't currently graphed. D1 stays
   the truth for totals; AE answers "when". Reads need two runtime Worker
   secrets — `CF_ACCOUNT_ID` + `AE_API_TOKEN` (token scoped `Account
