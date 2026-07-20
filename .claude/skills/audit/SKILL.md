@@ -11,9 +11,9 @@ Produce a focused, opinionated improvement list for `rozsoshnykh.no`. The output
 
 Audit everything that ships:
 - App: `app/`, `components/`, `lib/`, `data/`, `content/`, `public/`, `app/globals.css`.
-- Worker: `src/` (`index.ts`, `csp.ts`, `status.ts`, `metrics.ts`, `contact.ts`, `routes/*`).
+- Worker: `src/` (`index.ts`, `csp.ts`, `http.ts`, `status.ts`, `metrics.ts`, `contact.ts`, `timeseries.ts`, `routes/*`).
 - Build/deploy: `package.json`, `next.config.js`, `wrangler.jsonc`, `.github/workflows/*`, `scripts/*`, `tsconfig*.json`.
-- Docs: `CLAUDE.md`, `README.md`.
+- Docs: `CLAUDE.md`, `src/CLAUDE.md`, `README.md`, `docs/history.md` (drift against code is a finding; narrative belongs in history.md, rules in the CLAUDE.md files).
 - Tests: `tests/*.ts`.
 
 Look for:
@@ -28,7 +28,7 @@ Look for:
 
 - **Free Cloudflare tier only.** R2 requires a payment card on file — never recommend it. KV writes are scarce — never add a KV write per request.
 - **DNSSEC stays on.** Never recommend disabling it without first removing DS at the registrar (would cause global SERVFAIL).
-- **Sandbox has no egress.** Don't propose verification methods that need to curl production from the dev environment.
+- **Sandbox egress varies.** Newer remote sessions can `curl` production through the agent proxy (use it to verify findings live); older web sandboxes have no egress. Never make a recommendation *depend* on being able to reach production from the dev environment — the deploy gate is `scripts/smoke.sh` in CI, not ad-hoc curl.
 - **`package.json` is not `type: module`.** Don't propose making it one — it breaks Next 16 / turbopack config load.
 - **ESLint stays on 9.** `eslint-plugin-react` via `eslint-config-next` is not ESLint-10-compatible. Don't propose a bump.
 - **`workers_dev: true` stays in `wrangler.jsonc`.** Setting it false silently breaks 301s.

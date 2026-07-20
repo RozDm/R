@@ -27,7 +27,7 @@ Live: https://rozsoshnykh.no
 | `npm run build` | `prebuild` emits `public/world.svg`, then static export to `out/` |
 | `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
 | `npm run typecheck` | `tsc --noEmit` for app **and** worker (`tsconfig.worker.json`) |
-| `npm test` | Vitest — CSP hashing, status history, tags, metrics, contact, reading time |
+| `npm test` | Vitest — CSP hashing, status history + alert damping, tags, metrics, contact, reading time, time-series (epoch boundary, AE parsing, bucket fill) |
 | `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` from `wrangler.jsonc` |
 | `npm run deploy` | Manual path: `predeploy` (lint + typecheck + test) → build → `wrangler deploy` |
 
@@ -48,7 +48,8 @@ pending; open a draft (and skip auto-merge) to hold a change for manual review.
 
 One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 (create the D1 + apply schema), `d1-repair` (info probe / Time Travel restore
-/ recreate / create — built for the 2026-07-03 D1 storage outage),
+/ recreate / create / one-off `sql` statement — built for the 2026-07-03 D1
+storage outage),
 `reset-metrics` (type `RESET` to wipe the `views` + `geo` counters, prints
 before/after counts — supersedes the older geo-only `geo-reset`). There is no
 off-platform backup: Cloudflare's built-in 30-day D1 Time Travel is the only
@@ -65,6 +66,8 @@ reuses `CLOUDFLARE_ACCOUNT_ID`).
 ### Layout
 
 ```
+.claude/            Claude Code project config: skills (audit, new-post),
+                    session-start hook, permissions allowlist
 app/                Next App Router: home, /blogg, /blogg/tag/[slug], /kontakt,
                     feed.xml, sitemap, robots, manifest, OG images, error
                     boundaries, template.tsx (opacity route cross-fade)
@@ -73,6 +76,8 @@ components/         React components (Hero, Skills, StatusDashboard, GeoMap,
 content/blog/       Markdown posts (frontmatter: title, description, date, tags)
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, and tag canon + aliases (tags.ts)
+docs/               history.md — incident history, the "why" behind CLAUDE.md's
+                    hard rules (agent docs: CLAUDE.md sitewide, src/CLAUDE.md worker)
 lib/                blog.ts, tags.ts, reading-time.ts, clipboard.ts, stars.ts, site.ts
 schema/             metrics.sql (views, geo, contact + dormant subscribers)
 scripts/            smoke.sh, build-world-svg.mjs
