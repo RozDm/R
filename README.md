@@ -97,6 +97,10 @@ point at this site itself (the ASSETS binding is required — Workers block
 self-fetches over the public URL). A check counts as up only on a final HTTP
 200 (redirects followed).
 
+State-change alerts go out by e-mail and are flap-damped: «nede» is sent only
+after two consecutive failed probes (a single 5-minute blip stays silent),
+«oppe igjen» on the first success after an alerted outage.
+
 ### Metrics
 
 Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
@@ -104,7 +108,10 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
 100k writes/day free budget. KV holds only the uptime snapshot.
 
 - **Per-post views**: `GET/POST /api/views/<slug>`. Counted once per browser
-  session from the post page; bot UAs and cross-origin POSTs are ignored.
+  session from the post page; bot UAs and cross-origin POSTs are ignored, and
+  a POST only counts if the slug resolves to a published post page (checked
+  against the static export via the ASSETS binding), so spoofed headers can't
+  mint junk rows in D1.
 - **Visitors by country**: every page mounts a tiny `VisitBeacon` that fires
   a single `POST /api/visit` per browser session (sessionStorage-deduped, so
   clicking through several pages counts as one besøk). The Worker reads

@@ -2,7 +2,19 @@
 // page's own same-origin fetch() counts, so crawlers and external spam can't
 // inflate it.
 import { apiJson } from '../http'
-import { isValidSlug, looksLikeBot } from '../metrics'
+import { isValidSlug, isWriteAllowed } from '../metrics'
+
+// The header gates are spoofable (any client can send Sec-Fetch-Site and a
+// browser UA), so a POST must also prove the slug is a real published post
+// before it may mint a D1 row — otherwise junk slugs accumulate in `views`
+// forever. The static export is the source of truth: the post page exists
+// iff the slug is live (drafts never reach the export). Checked via the
+// ASSETS binding — a Worker can't fetch its own public URL.
+async function isPublishedPost(url: URL, env: Env, slug: string): Promise<boolean> {
+  const page = await env.ASSETS.fetch(new Request(`${url.origin}/blogg/${slug}/`))
+  await page.body?.cancel()
+  return page.status === 200
+}
 
 export async function handleViews(url: URL, request: Request, env: Env): Promise<Response | null> {
   const match = url.pathname.match(/^\/api\/views\/([^/]+)$/)
@@ -13,8 +25,8 @@ export async function handleViews(url: URL, request: Request, env: Env): Promise
 
   if (
     request.method === 'POST' &&
-    request.headers.get('sec-fetch-site') === 'same-origin' &&
-    !looksLikeBot(request.headers.get('user-agent'))
+    isWriteAllowed(request.headers) &&
+    (await isPublishedPost(url, env, slug))
   ) {
     const row = await env.METRICS.prepare(
       'INSERT INTO views (slug, count) VALUES (?1, 1) ON CONFLICT(slug) DO UPDATE SET count = count + 1 RETURNING count',

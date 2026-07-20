@@ -83,43 +83,71 @@ describe('parseHistory', () => {
 })
 
 describe('detectTransitions', () => {
+  // Shorthand: history entries where A's probe results are the given booleans.
+  const historyOf = (...probes: boolean[]): HistoryEntry[] =>
+    probes.map((up, i) => ({ at: `2026-01-01T00:${String(i * 5).padStart(2, '0')}:00Z`, up: { A: up } }))
+
   it('emits nothing on a first-ever run (no previous history)', () => {
     expect(detectTransitions([], [result('A', true), result('A', false)])).toEqual([])
   })
 
-  it('emits nothing for a new monitor missing from the previous tick', () => {
-    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: true } }]
+  it('emits nothing for a new monitor missing from all previous ticks', () => {
+    const prev = historyOf(true)
     expect(detectTransitions(prev, [result('A', true), result('B', false)]).map((r) => r.name)).toEqual([])
   })
 
-  it('emits nothing when state is unchanged', () => {
-    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: true, B: false } }]
+  it('emits nothing when the alerted state is unchanged', () => {
+    // A steadily up, B already alerted down (two failed probes in history).
+    const prev: HistoryEntry[] = [
+      { at: '2026-01-01T00:00:00Z', up: { A: true, B: false } },
+      { at: '2026-01-01T00:05:00Z', up: { A: true, B: false } },
+    ]
     expect(detectTransitions(prev, [result('A', true), result('B', false)])).toEqual([])
   })
 
-  it('emits a down -> up recovery', () => {
-    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: false } }]
-    const out = detectTransitions(prev, [result('A', true)])
-    expect(out).toHaveLength(1)
-    expect(out[0]).toMatchObject({ name: 'A', ok: true })
+  it('damps a single failed probe (no down alert yet)', () => {
+    expect(detectTransitions(historyOf(true), [result('A', false)])).toEqual([])
   })
 
-  it('emits an up -> down incident', () => {
-    const prev: HistoryEntry[] = [{ at: '2026-01-01T00:00:00Z', up: { A: true } }]
-    const out = detectTransitions(prev, [result('A', false)])
+  it('alerts down on the second consecutive failed probe', () => {
+    const out = detectTransitions(historyOf(true, false), [result('A', false)])
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({ name: 'A', ok: false })
   })
 
-  it('only compares against the most recent entry', () => {
-    // Two ticks ago A was down, last tick it was up — only "last tick" counts,
-    // so a current down-state is a fresh transition.
+  it('does not repeat the down alert while the outage continues', () => {
+    expect(detectTransitions(historyOf(true, false, false), [result('A', false)])).toEqual([])
+  })
+
+  it('stays silent when a blip recovers within one tick', () => {
+    // Down for one probe, up again: neither «nede» nor «oppe igjen» fired.
+    expect(detectTransitions(historyOf(true, false), [result('A', true)])).toEqual([])
+  })
+
+  it('alerts recovery on the first success after an alerted outage', () => {
+    const out = detectTransitions(historyOf(true, false, false), [result('A', true)])
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ name: 'A', ok: true })
+  })
+
+  it('needs two fresh consecutive fails after a recovery', () => {
+    // An old outage followed by an up tick resets the damping window.
+    expect(detectTransitions(historyOf(false, false, true), [result('A', false)])).toEqual([])
+    const out = detectTransitions(historyOf(false, false, true, false), [result('A', false)])
+    expect(out).toHaveLength(1)
+    expect(out[0].ok).toBe(false)
+  })
+
+  it('ignores entries that lack the monitor when building its series', () => {
+    // A's series across the gap is [true, false]; the B-only tick between
+    // them must not reset A's damping window.
     const prev: HistoryEntry[] = [
-      { at: '2026-01-01T00:00:00Z', up: { A: false } },
-      { at: '2026-01-01T00:05:00Z', up: { A: true } },
+      { at: '2026-01-01T00:00:00Z', up: { A: true } },
+      { at: '2026-01-01T00:05:00Z', up: { B: true } },
+      { at: '2026-01-01T00:10:00Z', up: { A: false, B: true } },
     ]
     const out = detectTransitions(prev, [result('A', false)])
     expect(out).toHaveLength(1)
-    expect(out[0].ok).toBe(false)
+    expect(out[0]).toMatchObject({ name: 'A', ok: false })
   })
 })
