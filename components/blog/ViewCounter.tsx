@@ -11,8 +11,12 @@ export default function ViewCounter({ slug }: { slug: string }) {
     const controller = new AbortController()
     const flag = `viewed:${slug}`
     let counted = false
+    // Set the flag BEFORE the fetch (same rule as VisitBeacon) so StrictMode's
+    // dev double-invoke and remount races see "already counted" and fall back
+    // to GET. A failed POST loses one view at most; counting twice is worse.
     try {
       counted = !!sessionStorage.getItem(flag)
+      if (!counted) sessionStorage.setItem(flag, '1')
     } catch {}
 
     fetch(`/api/views/${slug}`, {
@@ -23,11 +27,6 @@ export default function ViewCounter({ slug }: { slug: string }) {
       .then((r) => r.json())
       .then((d: { views?: number }) => {
         if (typeof d.views === 'number') setViews(d.views)
-        if (!counted) {
-          try {
-            sessionStorage.setItem(flag, '1')
-          } catch {}
-        }
       })
       .catch(() => {})
     return () => controller.abort()

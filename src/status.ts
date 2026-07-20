@@ -71,18 +71,38 @@ export function buildStatusData(raw: string | null, results: MonitorResult[], up
   return { updatedAt, results, history }
 }
 
-// Per-monitor up/down transitions vs. the previous tick. First-ever runs and
-// newly-added monitors emit nothing — no prior boolean to compare against, so
-// we don't fire a misleading "down" alert on deploy. A single missed cron
-// tick simply delays detection by 5 minutes, never invents one.
+// Flap damping for the down edge: a monitor is alerted as down only once this
+// many probes in a row have failed, so a single colo blip (one failed probe
+// that recovers by the next tick) sends no mail at all.
+export const CONSECUTIVE_FAILS_TO_ALERT = 2
+
+// Consecutive failed probes at the tail of a monitor's observed series.
+function trailingFails(series: boolean[]): number {
+  let n = 0
+  for (let i = series.length - 1; i >= 0 && !series[i]; i--) n++
+  return n
+}
+
+// Per-monitor transitions of the *alerted* (effective) state, not the raw
+// probe: «nede» fires only when the current failure is the
+// CONSECUTIVE_FAILS_TO_ALERT-th in a row; «oppe igjen» fires on the first
+// success after an alerted outage — so a blip that self-heals within one tick
+// never mails in either direction. First-ever runs and newly-added monitors
+// emit nothing (no prior probes to judge against, so no misleading "down"
+// alert on deploy). A missed cron tick delays detection by 5 minutes, never
+// invents a transition.
 export function detectTransitions(
   previousHistory: HistoryEntry[],
   results: MonitorResult[],
 ): MonitorResult[] {
-  if (previousHistory.length === 0) return []
-  const last = previousHistory[previousHistory.length - 1].up
   return results.filter((r) => {
-    const wasUp = last[r.name]
-    return typeof wasUp === 'boolean' && wasUp !== r.ok
+    const series = previousHistory
+      .map((entry) => entry.up[r.name])
+      .filter((up): up is boolean => typeof up === 'boolean')
+    if (series.length === 0) return false
+    const fails = trailingFails(series)
+    const wasUp = fails < CONSECUTIVE_FAILS_TO_ALERT
+    const isUp = r.ok || fails + 1 < CONSECUTIVE_FAILS_TO_ALERT
+    return wasUp !== isUp
   })
 }
