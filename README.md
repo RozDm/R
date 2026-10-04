@@ -28,7 +28,7 @@ Live: https://rozsoshnykh.no
 | `npm run build` | `prebuild` emits `public/world.svg`, then static export to `out/` |
 | `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
 | `npm run typecheck` | `tsc --noEmit` for app **and** worker (`tsconfig.worker.json`) |
-| `npm test` | Vitest — CSP hashing, status history + alert damping + staleness, tags, metrics, contact, reading time, page metadata, map buckets, time-series (epoch boundary, AE parsing, bucket fill) |
+| `npm test` | Vitest — CSP hashing + violation-report parsing, status history + alert damping + staleness, tags, metrics, contact, reading time, page metadata, map buckets, time-series (epoch boundary, AE parsing, bucket fill), and the Worker route handlers (`tests/worker/`, D1 as real SQLite) |
 | `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` from `wrangler.jsonc` |
 | `npm run deploy` | Manual path: `predeploy` (lint + typecheck + test) → build → `wrangler deploy` |
 
@@ -48,6 +48,11 @@ draft) with **squash auto-merge** enabled, so a green `check` merges them
 automatically — which triggers the deploy above — and GitHub then deletes the
 merged head branch. A failing `check` just leaves the PR open with auto-merge
 pending; open a draft (and skip auto-merge) to hold a change for manual review.
+
+Monitoring workflows: `status-watchdog` (hourly; fails — and GitHub e-mails
+— when the site is down or the status snapshot is older than 20 minutes) and
+`analytics-report` (manual; Analytics Engine breakdown of visits by network
+and country, plus browser-reported CSP violations, in the run summary).
 
 One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 (create the D1 + apply schema), `d1-repair` (info probe / Time Travel restore
@@ -164,7 +169,8 @@ the sender). Defence in depth: Turnstile + same-origin check + bot-UA filter +
 off-screen honeypot + per-IP rate limit (3 / 10 min) + per-email rate limit
 (2 / hour, catches IP-rotating spammers reusing a throwaway address) + short-
 window dedup (identical address + message within 2 min is ack'd without a
-second mail). Both rate-limit windows query D1; a daily cron prunes the table
+second mail). All windows are exact: ISO cutoffs against the ISO `at`
+column. Both rate-limit windows query D1; a daily cron prunes the table
 to a 30-day window. If the mail leg fails, the row is deleted again and the
 form reports the error with its text intact, so a retry is a fresh
 submission (not a silently ack'd duplicate). Turnstile tokens are

@@ -73,6 +73,24 @@ Two prod incidents shaped the GeoMap rules:
    cascade, so the theme vars and `data-v` intensity rules still win — don't
    strip either half.
 
+## 2026-10-04 — the contact form's time windows were really "today"
+
+`contact.at` is written as an ISO string (`2026-10-04T18:00:00.000Z`), but
+the rate-limit, duplicate and prune queries compared it with SQLite's
+`datetime('now', '-10 minutes')`, which yields `2026-10-04 17:50:00`. As
+TEXT the two agree up to the date, then `'T'` (0x54) sorts after the space
+(0x20) — so every row from the current UTC day counted as "recent":
+
+- the 2-minute duplicate check matched a same-day resend of the same
+  message and answered `{"ok":true}` without mailing it;
+- "3 per IP per 10 minutes" and "2 per address per hour" were per-day caps.
+
+It survived because the route had no tests and the bug only shows with
+real SQL. Fix: windows are ISO cutoffs computed in JS (`CONTACT_WINDOWS_MS`,
+`isoCutoff`) and bound as parameters. The route tests in `tests/worker/`
+run against real SQLite with the production schema, and three of them fail
+on the old queries.
+
 ## Removed features that must not quietly return
 
 - **Newsletter sign-up** — removed. Its leftover `subscribers` table was

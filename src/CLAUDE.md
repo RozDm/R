@@ -17,10 +17,11 @@ root `CLAUDE.md`; incident background in `docs/history.md`.
   by the cron, none configured today). Don't
   monitor the site itself — the dashboard is served by it.
 - Route handlers (`src/routes/*`) take the parsed `URL` and return `null` when
-  the path isn't theirs; `index.ts` chains them with `??`. Worker routes have
-  no unit tests yet (`@cloudflare/vitest-pool-workers` ≥ 0.22 now supports
-  Vitest 4 but isn't set up) — new endpoints get a `scripts/smoke.sh` check;
-  pure logic goes in a top-level `src/*.ts` module where Vitest can import it.
+  the path isn't theirs; `index.ts` chains them with `??`. Route handlers are
+  tested in `tests/worker/` with in-process fakes (real SQLite for D1 —
+  see the root CLAUDE.md Gotchas); new endpoints get a test there AND a
+  `scripts/smoke.sh` check. Pure logic still goes in a top-level `src/*.ts`
+  module.
 - The write gates (`isWriteAllowed`: Sec-Fetch-Site + UA filter) are bot
   hygiene, NOT security — the headers are trivially spoofable. Anything with
   real consequences needs its own defence: contact has Turnstile + rate
@@ -46,4 +47,11 @@ root `CLAUDE.md`; incident background in `docs/history.md`.
   snapshot (`PublicMonitorResult`). Don't put them back — one monitor is an
   admin login page. Alerts get the URL from the cron's own probe results.
 - Contact: a failed mail send must delete its D1 row (the 2-minute content
-  dedup would otherwise ack the visitor's retry without mailing it).
+  dedup would otherwise ack the visitor's retry without mailing it). Time
+  windows over `contact.at` (ISO strings) are ISO cutoffs from
+  `isoCutoff()` bound as parameters — never `datetime('now', …)`, whose
+  "YYYY-MM-DD HH:MM:SS" form mis-compares with ISO as TEXT.
+- Failures that are swallowed for availability (D1 upserts, mail sends,
+  prune) still `console.error` — Workers Logs is the only place they show.
+- `/api/csp-report` writes AE only and always answers 204 to POST; it must
+  never touch D1/KV (anyone can POST to it).

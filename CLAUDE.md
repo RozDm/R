@@ -17,7 +17,8 @@ code and comments are English.
   `src/CLAUDE.md` for worker internals) in the same PR.
 - Worker-specific rules live in `src/CLAUDE.md` (picked up automatically when
   working under `src/`). The "why" behind the hard rules — incident history
-  (the D1 death, the font reflow, the all-black map) — lives in
+  (the D1 death, the font reflow, the all-black map, the per-day contact
+  windows) — lives in
   `docs/history.md`; read it only when a rule seems wrong or you are tempted
   to undo one.
 
@@ -48,11 +49,14 @@ code and comments are English.
     per-request **hash-based CSP** for HTML it can decode, cron dispatch
     (5-min health checks + daily contact prune) and the status-alert mail.
   - `routes/` — one handler per endpoint: `status.ts`, `views.ts`, `geo.ts`,
-    `visit.ts`, `timeseries.ts`, `contact.ts`. Each returns `null` when the
-    path isn't its own; `index.ts` chains them with `??`.
+    `visit.ts`, `timeseries.ts`, `contact.ts`, `csp-report.ts`. Each returns
+    `null` when the path isn't its own; `index.ts` chains them with `??`.
+    Covered by `tests/worker/*` (see Gotchas).
   - `http.ts` — `apiJson()` (JSON + security headers) and the edge-cache pair
     `cachedApiJson()`/`putCachedApiJson()`; cache keys are built from
     validated params only so junk query strings can't fragment the cache.
+    On a hit it re-sets the stored TTL (`withStoredTtl`) because the zone's
+    Browser Cache TTL rewrites `max-age` on cache hits (see Gotchas).
   - `csp.ts` — security headers/CSP helpers + `cacheControlFor()`
     (DOM-compatible APIs only; type-checked under BOTH tsconfigs because
     tests import it). Three policies: `strictCsp(hashes)` for readable HTML,
@@ -60,7 +64,11 @@ code and comments are English.
     nothing executes inline there), and `HTML_FALLBACK_CSP` (keeps
     `unsafe-inline`) only for HTML we couldn't decode to hash — effectively
     unreachable since assets are fetched as identity. All three share
-    `COMMON_DIRECTIVES`, incl. `upgrade-insecure-requests`.
+    `COMMON_DIRECTIVES`, incl. `upgrade-insecure-requests`. `strictCsp` also
+    carries `report-uri`/`report-to` (+ a `Reporting-Endpoints` header on
+    HTML): browsers POST violations to `/api/csp-report`, which keeps
+    own-origin reports only (`parseCspReports`: origin + path, no query, UA
+    or IP) and writes one AE point each (`blob1='csp'`).
   - `status.ts` — uptime cron config + pure KV snapshot/alert logic.
     `MONITORS` is the list of monitored services. `HISTORY_LIMIT = 149`
     (monolith 1:4:9 — intentional, don't "fix" it). `detectTransitions` is
@@ -71,7 +79,12 @@ code and comments are English.
     alert mails. `isStale`/`STALE_AFTER_MS` (15 min) turn the dashboard
     banner and the footer dot grey when the cron itself stops writing.
   - `contact.ts` — pure contact/alert mail logic: validation limits,
-    Turnstile verify, MIME building (DOM-compatible; tests import it).
+    Turnstile verify, MIME building, and the time windows over the
+    `contact` table (`CONTACT_WINDOWS_MS` + `isoCutoff`). `at` is stored as
+    an ISO string, so every window is an ISO cutoff bound as a parameter —
+    NEVER compare `at` with SQLite's `datetime('now', …)`: the 'T' vs space
+    mismatch makes every same-day row look recent (it did, until
+    2026-10-04: docs/history.md). DOM-compatible; tests import it.
   - `metrics.ts` — pure logic for view/geo counters: slug/country
     validation, bot filter, the `isWriteAllowed` header gate.
   - `timeseries.ts` — pure helpers for the AE-backed time-series endpoint
@@ -142,7 +155,9 @@ code and comments are English.
   mint D1 rows forever), `/api/geo` (read-only, edge-cached 60s),
   `/api/visit` (POST, the single Besøk beacon — see Visit counting above;
   GET is a harmless self-diagnostic: the caller's own country + whether it
-  counts), `/api/timeseries?metric=view|geo&range=24h|7d|30d|all` (GET,
+  counts), `/api/csp-report` (POST from browsers → 204, AE only, never
+  D1/KV; GET → 405 for the smoke check),
+  `/api/timeseries?metric=view|geo&range=24h|7d|30d|all` (GET,
   edge-cached per metric+range; `view` still served for API compat, only
   `geo` is graphed; `all` spans ~90 days at 6h buckets — see the Trends card
   above), `/api/contact` (POST, full Turnstile challenge). Every edge-cached
@@ -195,13 +210,18 @@ code and comments are English.
   proxy's TLS terminator resets Chromium's TLS 1.3 hello). The deploy gate is
   still the smoke-test step in the deploy run logs, not ad-hoc curl.
 - Browser checks of a change before it ships: `npm run build`, serve `out/`
-  (`python3 -m http.server 8765 --directory out`, restart it after every
-  rebuild — it keeps serving the deleted old `out/`), drive it with Playwright
+  (`python3 -m http.server 8765 --directory out` — it serves by path, so
+  rebuilds are picked up without a restart), drive it with Playwright
   (`executablePath: '/opt/pw-browsers/chromium'`) WITHOUT the agent proxy
-  (it answers plain-HTTP localhost with 405). There is no Worker locally, so
-  stub `/api/*` with `page.route` (the LAST registered matching route wins)
-  and stub `window.turnstile` via `addInitScript` — the real widget can't
-  load from the sandbox.
+  (it answers plain-HTTP localhost with 405). Stub `/api/*` with
+  `page.route` (the LAST registered matching route wins) and
+  `window.turnstile` via `addInitScript` — the real widget can't load from
+  the sandbox. To run the real Worker (CSP hashing, headers, routes) use
+  `npx wrangler dev --local-protocol https` (plain http just 301s to https;
+  Chromium needs `ignoreHTTPSErrors`). axe-core (cdnjs) injected per page
+  is the a11y check — it currently reports zero violations in both themes.
+  Stop background servers by PID: `pkill -f <pattern>` in the same shell
+  command matches its own command line and kills that shell.
 
 ## Conventions
 
@@ -209,7 +229,11 @@ code and comments are English.
   (`text-red-500 … tracking-widest uppercase`) + bold h2 + cards
   (`bg-white dark:bg-gray-900/50 rounded-xl border … hover:border-red-500/30`),
   staggered `animate-fade-in` delays (0/150/300/450/600/750ms).
-- Accent is red-500/red-400; font is Intel One Mono via CSS variable.
+- Accent TEXT is red-600 in light mode / red-400 in dark; red-500 is for
+  decoration only (dots, borders, selection, chart dots) — red-500 text on
+  the light background is 3.6:1 and fails WCAG AA. In-text links are
+  underlined (colour alone was 1.3:1 against body text). Font is Intel One
+  Mono via CSS variable.
 - 2001: A Space Odyssey theme is deliberate and load-bearing: intro
   (`HEI %USERNAME%` → stars → monolith → HAL eye), 404, `error.tsx`,
   `HalIdle` screensaver (idle 75s on the front page, never while `#status` is
@@ -311,16 +335,29 @@ code and comments are English.
   Plain page links (no `#`) set `aria-current` — `page` on an exact match,
   `true` on a parent (Blogg while reading a post) — which the header and
   mobile menu style via `[&[aria-current]]:`.
-- Worker routes (`src/routes/*`) have no unit tests yet — only
-  `scripts/smoke.sh` after deploy. `@cloudflare/vitest-pool-workers` ≥ 0.22
-  supports Vitest ^4.1 (checked 2026-10-04), so route tests are now possible
-  but not set up; until they are, keep route logic thin and push decisions
-  into the pure `src/*.ts` modules that Vitest already covers.
+- Worker route tests live in `tests/worker/`: the handlers run under plain
+  Vitest with in-process bindings from `tests/worker/fakes.ts` — D1 is REAL
+  SQLite (`node:sqlite`, Node ≥ 22.5) loaded with `schema/metrics.sql`, so
+  SQL semantics match production; AE, Email Routing and ASSETS are fakes,
+  and `cloudflare:email` is aliased to a stub in `vitest.config.ts`. They
+  type-check under `tsconfig.worker.json` (Node bits in `node-shims.d.ts`)
+  and are excluded from the app tsconfig. New route logic gets a test there
+  plus a `smoke.sh` line. Not `@cloudflare/vitest-pool-workers`: 0.22 pins
+  its own wrangler 4.124 and an alpha miniflare.
 - Cloudflare's zone-level **Browser Cache TTL** (4 h, the default) rewrites
   `max-age` on edge-cache HITs of the `/api/*` responses (`max-age=60` →
-  `max-age=14400`; `s-maxage` is untouched). The front end is immune because
-  every client fetch of `/api/*` uses `cache: 'no-store'` — keep it that way,
-  or set Browser Cache TTL to "Respect Existing Headers" in the dashboard.
+  `max-age=14400`; `s-maxage` is untouched). `withStoredTtl` (`http.ts`)
+  re-sets it; every client fetch of `/api/*` also uses `cache: 'no-store'`
+  — keep both. The dashboard-side fix is Browser Cache TTL → "Respect
+  Existing Headers".
+- Monitoring outside Cloudflare: `status-watchdog.yml` runs hourly and fails
+  (→ GitHub e-mails the owner) when the site is down or `/api/status` is
+  older than 20 min — the one failure the Worker can't report about itself.
+  GitHub disables scheduled workflows after 60 days without repo activity;
+  re-enable it from the Actions tab. `analytics-report.yml` (manual, `days`
+  1–90) prints AE breakdowns to the run summary: Besøk by ASN/operator and
+  country, and the CSP violations browsers reported. Swallowed D1/mail
+  failures are `console.error`-logged, visible in Workers Logs.
 - `StatusDashboard`, `GeoMap` and `TrendsChart` are all code-split via
   `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
   `LazyGeoMap.tsx` and `LazyTrendsChart.tsx` — none of the three are in
