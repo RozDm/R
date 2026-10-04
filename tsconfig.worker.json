@@ -10,5 +10,7 @@
     "isolatedModules": true,
     "types": []
   },
-  "include": ["worker-configuration.d.ts", "src/**/*.ts", "src/**/*.d.ts"]
+  // tests/worker/* exercise the route handlers with fake bindings, so they
+  // type-check against the Workers types too (Node bits: node-shims.d.ts).
+  "include": ["worker-configuration.d.ts", "src/**/*.ts", "src/**/*.d.ts", "tests/worker/**/*.ts"]
 }

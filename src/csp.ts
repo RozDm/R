@@ -53,8 +53,15 @@ export const HTML_FALLBACK_CSP = [
   ...COMMON_DIRECTIVES,
 ].join('; ')
 
+// Only real HTML pages report violations (see CSP_REPORT_PATH below): that
+// is where a missed inline-script hash would break the site.
 export function strictCsp(hashes: string[]): string {
-  return [`script-src 'self' ${hashes.join(' ')} ${SCRIPT_TAIL}`, ...COMMON_DIRECTIVES].join('; ')
+  return [
+    `script-src 'self' ${hashes.join(' ')} ${SCRIPT_TAIL}`,
+    ...COMMON_DIRECTIVES,
+    `report-uri ${CSP_REPORT_PATH}`,
+    `report-to ${CSP_REPORT_GROUP}`,
+  ].join('; ')
 }
 
 // Browser cache policy for static assets the Worker serves.
@@ -70,15 +77,18 @@ export function strictCsp(hashes: string[]): string {
 //                    the filename changes when the bytes do, so `immutable`
 //                    is always safe and the browser stops revalidating.
 //   /world.svg,      large, rarely-changing client-fetched assets (the 96 kB
-//   /fonts/*         world map and the 78 kB flag font). A week's cache spares
-//                    returning visitors the re-download; both self-heal within
-//                    a week of any change since their URLs are stable.
+//   /fonts/*,        world map, the 78 kB flag font, the PNG app icons). A
+//   /icons/*         week's cache spares returning visitors the re-download;
+//                    all self-heal within a week of any change since their
+//                    URLs are stable.
 //
 // Content-addressed URLs make this security-neutral — CSP still gates what may
 // load; caching only affects whether the browser re-fetches identical bytes.
 export function cacheControlFor(pathname: string): string | null {
   if (pathname.startsWith('/_next/static/')) return 'public, max-age=31536000, immutable'
-  if (pathname === '/world.svg' || pathname.startsWith('/fonts/')) return 'public, max-age=604800'
+  if (pathname === '/world.svg' || pathname.startsWith('/fonts/') || pathname.startsWith('/icons/')) {
+    return 'public, max-age=604800'
+  }
   return null
 }
 
@@ -126,4 +136,85 @@ export async function inlineScriptHashes(html: string): Promise<string[]> {
     hashes.add(`'sha256-${btoa(binary)}'`)
   }
   return [...hashes]
+}
+
+// --- CSP violation reports --------------------------------------------------
+//
+// The hash-based policy above is strict: if a build ever ships an inline
+// script the Worker fails to hash, or a page pulls a resource from a new
+// origin, the browser silently blocks it and nobody finds out. strictCsp()
+// therefore asks browsers to report violations (report-uri for Firefox/Safari,
+// report-to + the Reporting-Endpoints header for Chromium) to
+// /api/csp-report, which logs one Analytics Engine point per violation.
+
+export const CSP_REPORT_PATH = '/api/csp-report'
+export const CSP_REPORT_GROUP = 'csp-endpoint'
+
+export interface CspViolation {
+  directive: string // e.g. script-src-elem
+  blocked: string // an origin, or a keyword: inline / eval / data / blob
+  page: string // pathname of the document that was blocked
+}
+
+// Browser extensions inject scripts and styles the policy rightly blocks;
+// those reports say nothing about the site, so they are dropped.
+const EXTENSION_RE = /^(chrome|moz|safari(-web)?|ms-browser)-extension:/i
+
+function blockedKey(raw: string): string {
+  if (!raw) return 'unknown'
+  if (/^[a-z-]+$/i.test(raw)) return raw.toLowerCase().slice(0, 32) // inline, eval, self…
+  try {
+    const u = new URL(raw)
+    if (u.protocol === 'data:' || u.protocol === 'blob:') return u.protocol.slice(0, -1)
+    return u.origin.slice(0, 96)
+  } catch {
+    return raw.slice(0, 64)
+  }
+}
+
+// Normalise both report formats into a short, PII-free list: the legacy
+// report-uri body ({"csp-report": {...}}) and the Reporting API batch
+// ([{type: "csp-violation", body: {...}}]). Only reports about documents on
+// `origin` are kept — anything else is someone POSTing junk at the endpoint.
+// Origins and paths only: no query strings, no full URLs, no user agent.
+export function parseCspReports(payload: unknown, origin: string, max = 10): CspViolation[] {
+  const raw: { doc?: unknown; blocked?: unknown; directive?: unknown }[] = []
+  if (Array.isArray(payload)) {
+    for (const r of payload) {
+      if (typeof r !== 'object' || r === null) continue
+      const { type, body } = r as { type?: unknown; body?: unknown }
+      if (type !== 'csp-violation' || typeof body !== 'object' || body === null) continue
+      const b = body as Record<string, unknown>
+      raw.push({ doc: b.documentURL, blocked: b.blockedURL, directive: b.effectiveDirective })
+    }
+  } else if (typeof payload === 'object' && payload !== null) {
+    const b = (payload as Record<string, unknown>)['csp-report']
+    if (typeof b === 'object' && b !== null) {
+      const r = b as Record<string, unknown>
+      raw.push({
+        doc: r['document-uri'],
+        blocked: r['blocked-uri'],
+        directive: r['effective-directive'] ?? r['violated-directive'],
+      })
+    }
+  }
+
+  const out: CspViolation[] = []
+  for (const r of raw) {
+    if (out.length >= max) break
+    if (typeof r.doc !== 'string') continue
+    let doc: URL
+    try {
+      doc = new URL(r.doc)
+    } catch {
+      continue
+    }
+    if (doc.origin !== origin) continue
+    const blockedRaw = typeof r.blocked === 'string' ? r.blocked : ''
+    if (EXTENSION_RE.test(blockedRaw)) continue
+    const directive =
+      typeof r.directive === 'string' ? (r.directive.split(/\s+/)[0] || 'unknown').slice(0, 48) : 'unknown'
+    out.push({ directive, blocked: blockedKey(blockedRaw), page: doc.pathname.slice(0, 128) })
+  }
+  return out
 }

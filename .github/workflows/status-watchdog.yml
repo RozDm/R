@@ -1,0 +1,56 @@
+name: Status watchdog
+
+# Watches the watcher. The Worker's 5-minute cron probes the monitored
+# services and mails on outages — but if the cron itself stops (or KV writes
+# start failing), nothing mails anyone: the site just greys out its status
+# card (isStale). This runs outside Cloudflare, hourly, and FAILS when the
+# snapshot is stale or the site is down; GitHub then e-mails the failure to
+# whoever last changed this schedule. Free: public-repo Actions minutes.
+#
+# Note: GitHub disables scheduled workflows after 60 days without repository
+# activity — re-enable it from the Actions tab if that ever happens.
+on:
+  schedule:
+    - cron: '17 * * * *' # hourly, off the top of the hour
+  workflow_dispatch:
+
+# Read-only GITHUB_TOKEN: nothing here writes to the repo.
+permissions:
+  contents: read
+
+concurrency:
+  group: status-watchdog
+  cancel-in-progress: true
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Site answers
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 --retry 2 --retry-delay 10 \
+            -A 'status-watchdog/1.0 (+https://github.com/RozDm/R)' https://rozsoshnykh.no/)
+          echo "GET / -> $code"
+          [ "$code" = "200" ] || { echo "::error::rozsoshnykh.no answered $code"; exit 1; }
+
+      # 20 min = the Worker's 15-minute STALE_AFTER_MS plus slack for the
+      # 60 s edge cache and a late cron tick.
+      - name: Status snapshot is fresh
+        run: |
+          body=$(curl -sf --max-time 20 --retry 2 --retry-delay 10 \
+            -A 'status-watchdog/1.0 (+https://github.com/RozDm/R)' https://rozsoshnykh.no/api/status)
+          printf '%s' "$body" | python3 -c '
+          import json, sys, datetime as dt
+          d = json.load(sys.stdin)
+          at = d.get("updatedAt")
+          if not at:
+              print("::error::/api/status has no updatedAt — the cron has never written a snapshot")
+              sys.exit(1)
+          age = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(at.replace("Z", "+00:00"))).total_seconds() / 60
+          down = ", ".join(r["name"] for r in d.get("results", []) if not r.get("ok")) or "none"
+          print(f"snapshot age: {age:.1f} min; monitors down: {down}")
+          if age > 20:
+              print(f"::error::status snapshot is {age:.0f} min old — the 5-minute cron (or its KV write) has stopped")
+              sys.exit(1)
+          '

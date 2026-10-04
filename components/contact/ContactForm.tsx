@@ -93,7 +93,7 @@ export default function ContactForm() {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Jeg svarer som regel innen en dag eller to.</p>
         <button
           onClick={() => setState('idle')}
-          className="mt-4 text-sm font-mono text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors duration-200 ease-out"
+          className="mt-4 text-sm font-mono text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
         >
           Send en til &rarr;
         </button>
@@ -172,7 +172,7 @@ export default function ContactForm() {
           {state === 'sending' ? 'Sender…' : 'Send melding'}
         </button>
         {state === 'error' && (
-          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
             Meldingen ble ikke sendt. Prøv igjen, eller send en e-post direkte til{' '}
             <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
               {CONTACT_EMAIL}
@@ -181,22 +181,22 @@ export default function ContactForm() {
           </p>
         )}
         {state === 'invalid' && (
-          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
             Sjekk feltene: en gyldig e-postadresse og minst 10 tegn i meldingen.
           </p>
         )}
         {state === 'ratelimited' && (
-          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
             For mange meldinger på kort tid — prøv igjen om noen minutter.
           </p>
         )}
         {state === 'challenge' && (
-          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
             Bekreft at du ikke er en bot, så prøv igjen.
           </p>
         )}
         {state === 'blocked' && (
-          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
             Meldingen ble stanset av sikkerhetsfiltrene. Prøv på nytt, eller send en e-post
             direkte til{' '}
             <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">

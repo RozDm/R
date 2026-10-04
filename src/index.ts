@@ -10,15 +10,16 @@
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
 
 import { EmailMessage } from 'cloudflare:email'
-import { ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, cacheControlFor, inlineScriptHashes, readHtml, strictCsp } from './csp'
+import { CSP_REPORT_GROUP, CSP_REPORT_PATH, ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, cacheControlFor, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
-import { buildStatusAlertMime } from './contact'
+import { CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
 import { handleGeo } from './routes/geo'
 import { handleContact } from './routes/contact'
 import { handleTimeseries } from './routes/timeseries'
 import { handleVisit } from './routes/visit'
+import { handleCspReport } from './routes/csp-report'
 
 const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
 const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
@@ -83,9 +84,11 @@ async function runHealthChecks(env: Env): Promise<void> {
     try {
       const mime = buildStatusAlertMime(STATUS_ALERT_FROM, STATUS_ALERT_TO, t, updatedAt)
       await env.CONTACT_EMAIL.send(new EmailMessage(STATUS_ALERT_FROM, STATUS_ALERT_TO, mime))
-    } catch {
+    } catch (err) {
       // Alerting is best-effort: a send failure must not stop the status
-      // snapshot from being written or block subsequent transitions.
+      // snapshot from being written or block subsequent transitions — but
+      // it must show up in Workers Logs, or a dead alert path goes unnoticed.
+      console.error('status: alert mail failed', t.name, err)
     }
   }
 }
@@ -93,11 +96,12 @@ async function runHealthChecks(env: Env): Promise<void> {
 // Daily prune of the contact table. Rate-limit windows are 10 min and 1 hour,
 // so anything older is backup-only; 30 days bounds the table without losing
 // recent data. Best-effort: a failed prune just delays the next attempt by
-// 24 hours.
+// 24 hours. The cutoff is an ISO string like `at` (see CONTACT_WINDOWS_MS).
 async function pruneContactRows(env: Env): Promise<void> {
-  await env.METRICS.prepare("DELETE FROM contact WHERE at < datetime('now', '-30 days')")
+  await env.METRICS.prepare('DELETE FROM contact WHERE at < ?1')
+    .bind(isoCutoff(Date.now(), CONTACT_WINDOWS_MS.retention))
     .run()
-    .catch(() => {})
+    .catch((err) => console.error('prune: contact delete failed', err))
 }
 
 export default {
@@ -141,7 +145,8 @@ export default {
       (await handleGeo(url, env, ctx)) ??
       handleVisit(url, request, env, ctx) ??
       (await handleTimeseries(url, env, ctx)) ??
-      (await handleContact(url, request, env))
+      (await handleContact(url, request, env)) ??
+      (await handleCspReport(url, request, env))
     if (apiResponse) return apiResponse
 
     // Fetch the asset with a clean request: no conditional headers (they make
@@ -169,6 +174,8 @@ export default {
         response.headers.set('Strict-Transport-Security', HSTS)
         // Strict hash-based CSP for HTML we can read — no 'unsafe-inline'.
         response.headers.set('Content-Security-Policy', strictCsp(hashes))
+        // Where the policy's report-to group delivers (Reporting API).
+        response.headers.set('Reporting-Endpoints', `${CSP_REPORT_GROUP}="${url.origin}${CSP_REPORT_PATH}"`)
         return response
       }
       // HTML we couldn't decode to hash (e.g. brotli): serve the bytes as-is

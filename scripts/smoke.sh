@@ -102,6 +102,9 @@ check "api/geo"     "$BASE/api/geo"          200 '"countries"'
 check "api/ts/geo"  "$BASE/api/timeseries?metric=geo&range=7d" 200 '"points"'
 check "api/ts/all"  "$BASE/api/timeseries?metric=geo&range=all" 200 '"points"'
 check "api/ts/view" "$BASE/api/timeseries?metric=view&range=7d" 200 '"points"'
+# GET is refused on purpose (reports are POSTed by browsers): 405 proves the
+# route is wired without writing a junk AE point on every deploy.
+check "csp-report"  "$BASE/api/csp-report"   405 '"method not allowed"'
 check "robots.txt"  "$BASE/robots.txt"       200 "Sitemap: $BASE/sitemap.xml" "Disallow: /api/"
 check "sitemap"     "$BASE/sitemap.xml"      200 "<loc>$BASE/blogg/"
 check "rss"         "$BASE/feed.xml"         200 "<rss"
@@ -118,6 +121,7 @@ echo "== Security headers =="
 check_header "HSTS"       "$BASE/" "^strict-transport-security:"
 check_header "CSP (hash)" "$BASE/" "^content-security-policy:.*sha256-"
 check_header "COOP"       "$BASE/" "^cross-origin-opener-policy: same-origin"
+check_header "CSP report" "$BASE/" "^reporting-endpoints: csp-endpoint="
 
 echo "== Caching =="
 # Static assets must carry a real browser cache so repeat visits and

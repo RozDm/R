@@ -4,7 +4,7 @@ export default function Visitors() {
   return (
     <section id="besok" className="flex flex-col gap-8 animate-fade-in [animation-delay:600ms]">
       <div>
-        <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
+        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
           Besøk
         </p>
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">

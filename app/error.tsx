@@ -26,7 +26,7 @@ export default function Error({
         <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
       </div>
 
-      <p className="font-mono text-sm tracking-widest text-red-500 dark:text-red-400 uppercase mb-4">
+      <p className="font-mono text-sm tracking-widest text-red-600 dark:text-red-400 uppercase mb-4">
         Systemfeil
       </p>
       <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white max-w-2xl leading-tight">

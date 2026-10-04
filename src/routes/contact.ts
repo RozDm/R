@@ -4,7 +4,7 @@
 import { EmailMessage } from 'cloudflare:email'
 import { apiJson } from '../http'
 import { looksLikeBot } from '../metrics'
-import { buildContactMime, validateContact, verifyTurnstile } from '../contact'
+import { CONTACT_WINDOWS_MS, buildContactMime, isoCutoff, validateContact, verifyTurnstile } from '../contact'
 
 const CONTACT_FROM = 'contact@rozsoshnykh.no'
 const CONTACT_TO = 'd.rossoshnyh@gmail.com'
@@ -51,17 +51,16 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     if (!ok) return apiJson('{"error":"challenge failed"}', 403)
   }
 
+  // Cutoffs are ISO strings like `at` itself — see CONTACT_WINDOWS_MS for
+  // why comparing against SQLite's datetime('now', …) was wrong.
+  const now = Date.now()
   const [recentByIp, recentByEmail] = await Promise.all([
-    env.METRICS.prepare(
-      "SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > datetime('now', '-10 minutes')",
-    )
-      .bind(ip)
+    env.METRICS.prepare('SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > ?2')
+      .bind(ip, isoCutoff(now, CONTACT_WINDOWS_MS.perIp))
       .first<{ n: number }>()
       .catch(() => null),
-    env.METRICS.prepare(
-      "SELECT COUNT(*) AS n FROM contact WHERE email = ?1 AND at > datetime('now', '-1 hour')",
-    )
-      .bind(payload.email)
+    env.METRICS.prepare('SELECT COUNT(*) AS n FROM contact WHERE email = ?1 AND at > ?2')
+      .bind(payload.email, isoCutoff(now, CONTACT_WINDOWS_MS.perEmail))
       .first<{ n: number }>()
       .catch(() => null),
   ])
@@ -75,25 +74,31 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   // than a client token so it needs no schema change and survives a client
   // that forgets to send a key.
   const duplicate = await env.METRICS.prepare(
-    "SELECT 1 AS n FROM contact WHERE email = ?1 AND message = ?2 AND at > datetime('now', '-2 minutes') LIMIT 1",
+    'SELECT 1 AS n FROM contact WHERE email = ?1 AND message = ?2 AND at > ?3 LIMIT 1',
   )
-    .bind(payload.email, payload.message)
+    .bind(payload.email, payload.message, isoCutoff(now, CONTACT_WINDOWS_MS.duplicate))
     .first<{ n: number }>()
     .catch(() => null)
   if (duplicate) return apiJson('{"ok":true}')
 
-  const at = new Date().toISOString()
+  const at = new Date(now).toISOString()
   const row = await env.METRICS.prepare(
     'INSERT INTO contact (at, ip, name, email, message) VALUES (?1, ?2, ?3, ?4, ?5) RETURNING id',
   )
     .bind(at, ip, payload.name, payload.email, payload.message)
     .first<{ id: number }>()
-    .catch(() => null)
+    .catch((err) => {
+      console.error('contact: D1 insert failed', err)
+      return null
+    })
 
   try {
     const mime = buildContactMime(CONTACT_FROM, CONTACT_TO, payload, at)
     await env.CONTACT_EMAIL.send(new EmailMessage(CONTACT_FROM, CONTACT_TO, mime))
-  } catch {
+  } catch (err) {
+    // No address or message in the log line — the visitor's data stays out
+    // of Workers Logs; the error itself is what needs noticing.
+    console.error('contact: mail send failed', err)
     // Un-store the row: a stored-but-unsent row would make the visitor's retry
     // look like a duplicate (the dedup above would ack it with ok:true and never
     // mail it) and would eat into their rate limit. The form keeps its text on

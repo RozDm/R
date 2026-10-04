@@ -21,12 +21,12 @@ export default function BloggIndex() {
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20 min-h-[70vh]">
         <Link
           href="/"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors mb-8"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mb-8"
         >
           &larr; Tilbake til forsiden
         </Link>
 
-        <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
+        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
           Blogg
         </p>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-10">

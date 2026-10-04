@@ -8,6 +8,25 @@ export const CONTACT_LIMITS = {
   messageMin: 10,
 } as const
 
+// Time windows over the contact table, applied as ISO cutoffs bound into SQL.
+// `at` is stored as an ISO-8601 string ("2026-10-04T18:00:00.000Z") while
+// SQLite's datetime('now', …) yields "2026-10-04 17:50:00". Compared as TEXT
+// the 'T' sorts after the space, so EVERY row from the current UTC day read
+// as "newer than 10 minutes": the 10-min / 1-h rate limits were really
+// per-day caps, and the 2-minute duplicate check silently swallowed a
+// same-day resend of the same message (ack'd, never mailed). ISO against ISO
+// keeps the windows exact and the (ip, at) / (email, at) indexes usable.
+export const CONTACT_WINDOWS_MS = {
+  perIp: 10 * 60_000,
+  perEmail: 60 * 60_000,
+  duplicate: 2 * 60_000,
+  retention: 30 * 86_400_000,
+} as const
+
+export function isoCutoff(nowMs: number, windowMs: number): string {
+  return new Date(nowMs - windowMs).toISOString()
+}
+
 export interface ContactPayload {
   name: string
   email: string

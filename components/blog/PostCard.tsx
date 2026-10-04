@@ -29,7 +29,7 @@ export default function PostCard({ post }: { post: PostMeta }) {
             <Link
               key={tag}
               href={`/blogg/tag/${tagToSlug(tag)}/`}
-              className="text-[11px] px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-500/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              className="text-[11px] px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             >
               {tag}
             </Link>
