@@ -12,7 +12,7 @@
 import { EmailMessage } from 'cloudflare:email'
 import { CSP_REPORT_GROUP, CSP_REPORT_PATH, ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, cacheControlFor, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
-import { buildStatusAlertMime } from './contact'
+import { CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
 import { handleGeo } from './routes/geo'
@@ -96,9 +96,10 @@ async function runHealthChecks(env: Env): Promise<void> {
 // Daily prune of the contact table. Rate-limit windows are 10 min and 1 hour,
 // so anything older is backup-only; 30 days bounds the table without losing
 // recent data. Best-effort: a failed prune just delays the next attempt by
-// 24 hours.
+// 24 hours. The cutoff is an ISO string like `at` (see CONTACT_WINDOWS_MS).
 async function pruneContactRows(env: Env): Promise<void> {
-  await env.METRICS.prepare("DELETE FROM contact WHERE at < datetime('now', '-30 days')")
+  await env.METRICS.prepare('DELETE FROM contact WHERE at < ?1')
+    .bind(isoCutoff(Date.now(), CONTACT_WINDOWS_MS.retention))
     .run()
     .catch((err) => console.error('prune: contact delete failed', err))
 }
