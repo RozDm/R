@@ -7,17 +7,20 @@ root `CLAUDE.md`; incident background in `docs/history.md`.
   runtime types from the generated `worker-configuration.d.ts` — regenerate
   with `npm run cf-typegen` after any `wrangler.jsonc` change and commit it).
   BUT `csp.ts`, `contact.ts`, `status.ts`, `metrics.ts` and `timeseries.ts`
-  are ALSO checked under the app tsconfig because tests import them —
-  DOM-compatible APIs only in those five files, no Workers-only globals.
+  are ALSO checked under the app tsconfig because tests import them — and
+  the app itself imports `status.ts` (`isStale`, `HISTORY_LIMIT`) and
+  `timeseries.ts` (`METRICS_EPOCH`, `normalizeBucketKey`). DOM-compatible
+  APIs only in those five files, no Workers-only globals.
 - A Worker cannot fetch its own public URL (Cloudflare blocks the loop).
   Anything that needs the site itself goes through the ASSETS binding: the
-  `internal: true` monitors and the `/api/views` slug-existence check. Don't
+  `/api/views` slug-existence check, and `internal: true` monitors (supported
+  by the cron, none configured today). Don't
   monitor the site itself — the dashboard is served by it.
 - Route handlers (`src/routes/*`) take the parsed `URL` and return `null` when
   the path isn't theirs; `index.ts` chains them with `??`. Worker routes have
-  no unit tests (`@cloudflare/vitest-pool-workers` isn't Vitest-4 compatible)
-  — new endpoints get a `scripts/smoke.sh` check instead; pure logic goes in
-  a top-level `src/*.ts` module where Vitest can import it.
+  no unit tests yet (`@cloudflare/vitest-pool-workers` ≥ 0.22 now supports
+  Vitest 4 but isn't set up) — new endpoints get a `scripts/smoke.sh` check;
+  pure logic goes in a top-level `src/*.ts` module where Vitest can import it.
 - The write gates (`isWriteAllowed`: Sec-Fetch-Site + UA filter) are bot
   hygiene, NOT security — the headers are trivially spoofable. Anything with
   real consequences needs its own defence: contact has Turnstile + rate

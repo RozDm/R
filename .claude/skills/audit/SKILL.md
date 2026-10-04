@@ -34,7 +34,7 @@ Look for:
 - **`workers_dev: true` stays in `wrangler.jsonc`.** Setting it false silently breaks 301s.
 - **`HISTORY_LIMIT = 149` is intentional** (monolith 1:4:9 — the 2001 theme is load-bearing). Don't propose "fixing" it.
 - **`%USERNAME%` in the intro is a literal joke**, not a template variable.
-- **`/kontakt` and `/status` stay `noindex`** permanently; never propose adding them to the sitemap.
+- **`/kontakt`, `/personvern` and `/status` stay `noindex`** permanently; never propose adding them to the sitemap.
 - **`StatusDashboard` is code-split** (`LazyStatusDashboard.tsx`), so the smoke-checked `Driftsstatus` heading must stay in the server component `Status.tsx`.
 
 ## Workflow
