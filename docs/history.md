@@ -81,7 +81,8 @@ Two prod incidents shaped the GeoMap rules:
   (with a `BACKUP_PASSPHRASE` secret) existed briefly and was removed as not
   worth the upkeep. D1 Time Travel (30 days, Cloudflare-side) is the only
   restore path — an accepted risk, since `views`/`geo` are cosmetic and
-  `contact` rows are secondary copies of e-mails already delivered. Don't
+  `contact` rows are secondary copies of e-mails already delivered (a send
+  that fails deletes its row, so every stored row was mailed). Don't
   reintroduce a backup without being asked.
 - **`geo-reset.yml`** — superseded by `reset-metrics.yml` (wipes `views` +
   `geo`, prints before/after counts).

@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og'
+import { AUTHOR } from '@/lib/site'
 
 export const dynamic = 'force-static'
-export const alt = 'Dmytro Rozsoshnykh — Systemadministrator & DevOps'
+export const alt = `${AUTHOR.name} — ${AUTHOR.roles.join(' / ')}`
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -37,10 +38,10 @@ export default function Image() {
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ color: '#f87171', fontSize: 26, letterSpacing: 4 }}>
-            SYSTEMADMINISTRATOR / DEVOPS / UTVIKLER
+            {AUTHOR.roles.join(' / ').toUpperCase()}
           </div>
           <div style={{ color: '#ffffff', fontSize: 84, fontWeight: 700, marginTop: 16, lineHeight: 1.05 }}>
-            Dmytro Rozsoshnykh
+            {AUTHOR.name}
           </div>
           <div style={{ color: '#94a3b8', fontSize: 30, marginTop: 24 }}>
             Infrastruktur · Automatisering · Sikkerhet

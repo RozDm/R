@@ -11,6 +11,16 @@ import { makeStars, type Star } from '@/lib/stars'
 const IDLE_MS = 75_000
 const APPEARANCES_KEY = 'hal-idle-count'
 
+// The status dashboard polls on its own and is meant to be left open on a
+// screen (/status redirects to it). Blacking it out after 75s would defeat
+// that, so HAL stays asleep while the section is on screen.
+function statusInView(): boolean {
+  const el = document.getElementById('status')
+  if (!el) return false
+  const r = el.getBoundingClientRect()
+  return r.top < window.innerHeight && r.bottom > 0
+}
+
 const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   'pointermove',
   'pointerdown',
@@ -25,6 +35,8 @@ export default function HalIdle() {
   const [phase, setPhase] = useState(0)
   const [appearance, setAppearance] = useState(0)
   const [stars, setStars] = useState<Star[]>([])
+  // Touch screens have no mouse to move; pick the hint at wake-up time.
+  const [touch, setTouch] = useState(false)
 
   // Arm the idle timer; any activity re-arms it. Re-runs after each dismissal
   // so HAL can reappear on the next idle spell.
@@ -36,7 +48,7 @@ export default function HalIdle() {
     const arm = () => {
       clearTimeout(timer)
       timer = setTimeout(() => {
-        if (document.hidden) {
+        if (document.hidden || statusInView()) {
           arm()
           return
         }
@@ -49,6 +61,7 @@ export default function HalIdle() {
           sessionStorage.setItem(APPEARANCES_KEY, String(next))
         } catch {}
         setAppearance(next)
+        setTouch(window.matchMedia('(pointer: coarse)').matches)
         setStars(makeStars(200))
         setActive(true)
       }, IDLE_MS)
@@ -180,8 +193,8 @@ export default function HalIdle() {
           )}
         </p>
 
-        <p className="hal-flicker absolute bottom-8 text-[11px] tracking-widest text-gray-700 uppercase">
-          Beveg musen for å fortsette
+        <p className="hal-flicker absolute bottom-8 px-4 text-center text-[11px] tracking-widest text-gray-500 uppercase">
+          {touch ? 'Trykk på skjermen for å fortsette' : 'Beveg musen for å fortsette'}
         </p>
       </div>
     </div>

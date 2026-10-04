@@ -6,6 +6,11 @@ name: Bootstrap D1 (one-shot)
 on:
   workflow_dispatch:
 
+# Read-only GITHUB_TOKEN: nothing here writes to the repo; Cloudflare access
+# comes from the CLOUDFLARE_API_TOKEN secret, not from GitHub.
+permissions:
+  contents: read
+
 jobs:
   bootstrap:
     runs-on: ubuntu-latest

@@ -20,14 +20,23 @@ concurrency:
   group: reset-metrics
   cancel-in-progress: false
 
+# Read-only GITHUB_TOKEN: nothing here writes to the repo; Cloudflare access
+# comes from the CLOUDFLARE_API_TOKEN secret, not from GitHub.
+permissions:
+  contents: read
+
 jobs:
   reset:
     runs-on: ubuntu-latest
     steps:
       - name: Check confirmation
         if: ${{ inputs.confirm != 'RESET' }}
+        # Via env, never ${{ }} inside the script: a dispatch input pasted
+        # into bash is a command-injection vector.
+        env:
+          CONFIRM: ${{ inputs.confirm }}
         run: |
-          echo "confirm was '${{ inputs.confirm }}', expected 'RESET' — aborting."
+          echo "confirm was '$CONFIRM', expected 'RESET' — aborting."
           exit 1
 
       - uses: actions/checkout@v5
@@ -62,3 +71,13 @@ jobs:
         run: |
           npx wrangler d1 execute rozsoshnykh-metrics-v2 --remote \
             --command "SELECT 'views' AS table_name, COUNT(*) AS rows FROM views UNION ALL SELECT 'geo', COUNT(*) FROM geo;"
+
+      # AE can't be wiped, so the chart only restarts in step with the map once
+      # METRICS_EPOCH moves past this reset — rounded UP to a 6-hour UTC
+      # boundary (see src/timeseries.ts). Print the exact value to paste.
+      - name: Reminder — bump METRICS_EPOCH
+        run: |
+          now=$(date -u +%s)
+          next=$(( (now / 21600 + 1) * 21600 ))
+          epoch=$(date -u -d "@$next" '+%Y-%m-%d %H:%M:%S')
+          echo "::warning::Set METRICS_EPOCH = '$epoch' in src/timeseries.ts and deploy, or the Trends chart keeps pre-reset visits the map no longer has."

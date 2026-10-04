@@ -28,9 +28,19 @@ code and comments are English.
 - Routes: `/` (Hero/Skills/Certifications/Status/Visitors/Trends sections), `/blogg`,
   `/blogg/[slug]`, `/blogg/tag/[slug]`, `/kontakt`, `/personvern` (privacy
   notice, linked from the footer + `/kontakt`), plus `feed.xml`, `sitemap`,
-  `robots`, `manifest`, OG images, and `/.well-known/security.txt` (RFC 9116,
+  `robots`, `manifest`, OG images, `/icons/*.png` (build-time PNG renditions of
+  `app/icon.svg` for the manifest + apple-touch-icon, `app/icons/[name]/route.tsx`),
+  and `/.well-known/security.txt` (RFC 9116,
   static in `public/` — bump its `Expires` yearly). `error.tsx`/`global-error.tsx` are the
   client error boundaries (HAL-voiced "Systemfeil").
+- Metadata: every page builds its metadata with `pageMetadata()`
+  (`lib/metadata.ts`). Next merges route metadata SHALLOWLY — a page that set
+  only part of `openGraph`/`alternates` used to lose og:url, og:image,
+  og:site_name and the RSS `<link rel=alternate>` (and inherited the home
+  page's og:url). The root layout deliberately has no canonical/og:url (the
+  404 inherits it). Name, roles, job title, site title/description and the
+  light/dark background colours (`THEME_BG`, mirrored by themeColor, the
+  manifest and `ThemeContext`) live in `lib/site.ts` — never hard-code them.
 - `src/` — Cloudflare Worker, runs in front of the static export
   (`run_worker_first`):
   - `index.ts` — entry point: HTTPS + canonical-host 301s (www/workers.dev →
@@ -56,7 +66,10 @@ code and comments are English.
     (monolith 1:4:9 — intentional, don't "fix" it). `detectTransitions` is
     flap-damped: «nede» mails only after `CONSECUTIVE_FAILS_TO_ALERT` (2)
     consecutive failed probes, «oppe igjen» on the first success after an
-    alerted outage.
+    alerted outage. The public snapshot carries no monitor URLs
+    (`PublicMonitorResult` — one is an admin panel); the URL stays in the
+    alert mails. `isStale`/`STALE_AFTER_MS` (15 min) turn the dashboard
+    banner and the footer dot grey when the cron itself stops writing.
   - `contact.ts` — pure contact/alert mail logic: validation limits,
     Turnstile verify, MIME building (DOM-compatible; tests import it).
   - `metrics.ts` — pure logic for view/geo counters: slug/country
@@ -82,10 +95,16 @@ code and comments are English.
   grand total can't drift from the map under AE sampling. `Alt`'s wave is
   6h-bucketed like 30d, spans epoch→now, capped at ~90 days (near AE
   retention) in `fillBuckets`; since its total is D1, the wave aging past
-  retention never desyncs the number from the map. Every `recordGeo` call
-  (from the `/api/visit` beacon) writes both the D1 `geo` row and an AE
-  point (`blob1='geo'`) — the map and the chart are two views of the same
-  dataset. The `view` AE channel is also written from `/api/views` POSTs
+  retention never desyncs the number from the map; once capped
+  (`isAllRangeCapped`) the card says so under the chart. Every `recordGeo`
+  call (from the `/api/visit` beacon) writes both the D1 `geo` row and an AE
+  point (`blob1='geo'`, `blob2` country, `blob3` `AS<asn>`, `blob4` network
+  org — a bot diagnostic, AE only, no IP; the query is in
+  `src/routes/geo.ts`) — the map and the chart are two views of the same
+  dataset. The page fetches `/api/geo` once (`fetchGeoCountries` in
+  `lib/geo.ts`, shared by the map and the `Alt` total); map shades are
+  relative to the busiest country on a log scale (`geoBucket`), not fixed
+  cut-offs. The `view` AE channel is also written from `/api/views` POSTs
   but isn't graphed yet. AE reads need two runtime Worker secrets —
   `CF_ACCOUNT_ID` + `AE_API_TOKEN` (scoped `Account Analytics:Read`), fed
   from GitHub secrets by the deploy workflow's `wrangler secret put` loop;
@@ -112,6 +131,11 @@ code and comments are English.
   pre-existing defences (Sec-Fetch, UA filter, honeypot, D1 rate limit). A
   double-submit (same address + message within 2 min) is deduped in D1 and
   ack'd without a second e-mail — content-keyed, so no schema column is needed.
+  A failed mail send deletes its D1 row (else the visitor's retry would hit
+  that dedup and be ack'd with nothing sent); the form keeps its text on an
+  error. Turnstile tokens are single-use and siteverify spends them before
+  the rate-limit/mail steps, so `ContactForm` resets the widget
+  (`TurnstileHandle.reset`) after every non-OK response.
 - Worker APIs: `/api/status` (GET, edge-cached 60s), `/api/views/<slug>`
   (GET read; POST count — gated by `isWriteAllowed` = same-origin + non-bot
   AND the slug must resolve to a published post page via the ASSETS binding,
@@ -174,17 +198,23 @@ code and comments are English.
 - Accent is red-500/red-400; font is Intel One Mono via CSS variable.
 - 2001: A Space Odyssey theme is deliberate and load-bearing: intro
   (`HEI %USERNAME%` → stars → monolith → HAL eye), 404, `error.tsx`,
-  `HalIdle` screensaver (idle 75s on the front page; recurring, script
+  `HalIdle` screensaver (idle 75s on the front page, never while `#status` is
+  on screen — the dashboard is meant to be left open; recurring, script
   shortens each appearance, cinematic CRT line reveal via `.hal-text-reveal`),
   loader copy («Åpner podbay-dørene…», «Kalibrerer AE-35-enheten…»), console
   greeting, `HISTORY_LIMIT = 149`. Keep the `%USERNAME%` placeholder joke
-  literal — it is not a template var.
+  literal — it is not a template var. The intro is the front door only: it
+  plays on a plain first load of `/`; the head script in `app/layout.tsx`
+  marks it seen when a session lands anywhere else or on a `/#hash` deep
+  link, so in-site navigation never triggers it. Any key or click skips it.
 - Blog posts: `content/blog/<slug>.md`, frontmatter `title`, `description`,
   `date` (ISO), `tags`, optional `updated` and `draft: true`. Tags are
   normalized/deduped via `lib/tags.ts`
   (`normalizeTag`/`normalizeTags`/`tagToSlug`); the canonical list and alias
   map live in `data/tags.ts` (data next to `skills.ts`/`certifications.ts`,
-  logic in `lib/`). Reading time is computed, not stored. Code blocks are highlighted at build via `rehype-highlight`
+  logic in `lib/`). `/blogg` (`BlogList`) and the tag pages are server
+  components sharing `components/blog/PostCard.tsx`; topic chips are links to
+  `/blogg/tag/<slug>/`, not a client-side filter. Reading time is computed, not stored. Code blocks are highlighted at build via `rehype-highlight`
   (theme in `app/globals.css`). Drafts: `draft: true` keeps a post out of
   every public surface (list, sitemap, RSS, tag pages, slug routing) at
   build time — `getPostSlugs`/`getAllPosts` filter on `NODE_ENV !==

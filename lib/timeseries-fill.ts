@@ -34,14 +34,27 @@ const RANGE_BUCKETS: Record<string, { stepMs: number; count: number }> = {
 const ALL_STEP_MS = 6 * 3_600_000
 const ALL_MAX_BUCKETS = 361 // ~90 days at 6h — near AE retention
 
-function allBuckets(now: number): { stepMs: number; count: number } {
+function allSpan(now: number): number {
   const end = Math.floor(now / ALL_STEP_MS) * ALL_STEP_MS
   const epochMs = METRICS_EPOCH ? Date.parse(METRICS_EPOCH.replace(' ', 'T') + 'Z') : NaN
-  const span = Number.isFinite(epochMs)
+  return Number.isFinite(epochMs)
     ? Math.floor((end - Math.floor(epochMs / ALL_STEP_MS) * ALL_STEP_MS) / ALL_STEP_MS) + 1
     : ALL_MAX_BUCKETS
-  return { stepMs: ALL_STEP_MS, count: Math.max(1, Math.min(span, ALL_MAX_BUCKETS)) }
 }
+
+function allBuckets(now: number): { stepMs: number; count: number } {
+  return { stepMs: ALL_STEP_MS, count: Math.max(1, Math.min(allSpan(now), ALL_MAX_BUCKETS)) }
+}
+
+// True once epoch → now no longer fits the cap: the `all` wave then starts
+// ~90 days back while its headline (the D1 total) still counts from the
+// epoch, and the chart has to say so instead of implying "everything".
+export function isAllRangeCapped(now: number = Date.now()): boolean {
+  return allSpan(now) > ALL_MAX_BUCKETS
+}
+
+// Length of the capped `all` window in days, for that caption.
+export const ALL_MAX_DAYS = Math.round(((ALL_MAX_BUCKETS - 1) * ALL_STEP_MS) / 86_400_000)
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')

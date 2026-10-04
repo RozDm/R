@@ -86,7 +86,10 @@ const BASE_SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  // browsing-topics is the Topics API that replaced FLoC; the old
+  // interest-cohort token is unknown to current Chrome and only logged a
+  // console error on every page.
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
   // Isolates the top-level browsing context: a popup opened by the page can't
   // reach window.opener back into us. Our LinkedIn share link already sets
   // rel="noopener", so this is defence-in-depth for any future popup. Safe

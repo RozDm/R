@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useImperativeHandle, useRef, type Ref } from 'react'
 
 // Minimal Turnstile widget wrapper. Lazy-loads the Cloudflare script on mount,
 // renders into our div, and surfaces the token via onToken. We use 'always'
@@ -32,6 +32,14 @@ declare global {
   }
 }
 
+// Imperative handle for the parent form. Turnstile tokens are single-use:
+// siteverify consumes the token even when the request then fails (rate limit,
+// mail error), so after any non-OK response the form must reset the widget to
+// get a fresh token — re-sending the spent one is rejected with 403.
+export interface TurnstileHandle {
+  reset: () => void
+}
+
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit'
 
 function loadScript(): Promise<void> {
@@ -54,13 +62,30 @@ export default function Turnstile({
   siteKey,
   onToken,
   onError,
+  ref: handleRef,
 }: {
   siteKey: string
   onToken: (token: string | null) => void
   onError?: () => void
+  ref?: Ref<TurnstileHandle>
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
+
+  useImperativeHandle(
+    handleRef,
+    () => ({
+      reset: () => {
+        onToken(null)
+        if (widgetIdRef.current && window.turnstile) {
+          try {
+            window.turnstile.reset(widgetIdRef.current)
+          } catch {}
+        }
+      },
+    }),
+    [onToken],
+  )
 
   useEffect(() => {
     let cancelled = false

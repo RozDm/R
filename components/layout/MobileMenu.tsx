@@ -10,6 +10,7 @@ interface MobileMenuProps {
 export default function MobileMenu({ links }: MobileMenuProps) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -18,13 +19,26 @@ export default function MobileMenu({ links }: MobileMenuProps) {
         setOpen(false)
       }
     }
+    // Escape closes and hands focus back to the toggle, the standard
+    // disclosure-menu contract for keyboard users.
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        buttonRef.current?.focus()
+      }
+    }
     document.addEventListener('click', handleClick)
-    return () => document.removeEventListener('click', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('click', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [open])
 
   return (
     <div ref={menuRef} className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setOpen(!open)}
         className="relative z-10 flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 ease-out"
         aria-label={open ? 'Lukk meny' : 'Åpne meny'}
@@ -47,7 +61,7 @@ export default function MobileMenu({ links }: MobileMenuProps) {
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="block px-5 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 ease-out font-medium"
+              className="block px-5 py-3 text-sm text-gray-700 dark:text-gray-300 [&[aria-current]]:text-red-500 dark:[&[aria-current]]:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 ease-out font-medium"
             >
               {label}
             </HashLink>

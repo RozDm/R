@@ -1,11 +1,13 @@
+import Link from 'next/link'
 import HashLink from '../layout/HashLink'
+import { AUTHOR } from '@/lib/site'
 
 export default function Hero() {
   return (
     <section id="about" className="flex flex-col gap-6 pt-8 animate-fade-in">
       <div>
         <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-3">
-          Systemadministrator · DevOps · Utvikler
+          {AUTHOR.roles.join(' · ')}
         </p>
         <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight">
           Dmytro
@@ -25,12 +27,12 @@ export default function Hero() {
         >
           Min kompetanse
         </HashLink>
-        <HashLink
-          href="/#footer"
+        <Link
+          href="/kontakt/"
           className="px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:border-gray-500 dark:hover:border-gray-500 transition text-sm font-medium tracking-wide"
         >
           Kontakt
-        </HashLink>
+        </Link>
       </div>
     </section>
   )

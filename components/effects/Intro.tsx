@@ -31,7 +31,11 @@ export default function Intro() {
       seen = !!sessionStorage.getItem(SEEN_KEY)
     } catch {}
 
-    if (seen) {
+    // A deep link into a section (/#status, /#skills) asked for content, not
+    // a cinematic — the head script already marks these seen on a full load;
+    // this covers a client-side navigation that arrives with a hash.
+    if (seen || window.location.hash) {
+      markSeen()
       clearPrePaintOverlay()
       return
     }
@@ -94,6 +98,16 @@ export default function Intro() {
     setPhase(7)
     setTimeout(() => setActive(false), 1400)
   }, [])
+
+  // Any key skips too — the overlay is click-only otherwise, which left
+  // keyboard and screen-reader users waiting out the full sequence (and their
+  // Tab presses landing on links hidden underneath it).
+  useEffect(() => {
+    if (!active) return
+    const onKey = () => skip()
+    window.addEventListener('keydown', onKey, { once: true })
+    return () => window.removeEventListener('keydown', onKey)
+  }, [active, skip])
 
   // Monolith and HAL split their opacity (quick fade-in so they read
   // immediately) from their transform (slow, cinematic exit), instead of a
@@ -161,10 +175,10 @@ export default function Intro() {
 
       {/* Skip hint */}
       <p
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[11px] tracking-widest text-gray-700 uppercase transition-opacity duration-[1600ms] ease-in-out"
+        className="absolute bottom-8 inset-x-0 px-4 text-center text-[11px] tracking-widest text-gray-500 uppercase transition-opacity duration-[1600ms] ease-in-out"
         style={{ opacity: phase >= 1 && phase < 7 ? 1 : 0 }}
       >
-        Klikk for å fortsette
+        Klikk eller trykk en tast for å fortsette
       </p>
     </div>
   )

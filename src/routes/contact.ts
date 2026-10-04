@@ -83,18 +83,27 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   if (duplicate) return apiJson('{"ok":true}')
 
   const at = new Date().toISOString()
-  await env.METRICS.prepare(
-    'INSERT INTO contact (at, ip, name, email, message) VALUES (?1, ?2, ?3, ?4, ?5)',
+  const row = await env.METRICS.prepare(
+    'INSERT INTO contact (at, ip, name, email, message) VALUES (?1, ?2, ?3, ?4, ?5) RETURNING id',
   )
     .bind(at, ip, payload.name, payload.email, payload.message)
-    .run()
-    .catch(() => {})
+    .first<{ id: number }>()
+    .catch(() => null)
 
   try {
     const mime = buildContactMime(CONTACT_FROM, CONTACT_TO, payload, at)
     await env.CONTACT_EMAIL.send(new EmailMessage(CONTACT_FROM, CONTACT_TO, mime))
   } catch {
-    // The submission is already in D1; surface a soft error.
+    // Un-store the row: a stored-but-unsent row would make the visitor's retry
+    // look like a duplicate (the dedup above would ack it with ok:true and never
+    // mail it) and would eat into their rate limit. The form keeps its text on
+    // an error, so nothing is lost by dropping the row — the retry re-stores it.
+    if (row) {
+      await env.METRICS.prepare('DELETE FROM contact WHERE id = ?1')
+        .bind(row.id)
+        .run()
+        .catch(() => {})
+    }
     return apiJson('{"error":"send failed"}', 502)
   }
   return apiJson('{"ok":true}')

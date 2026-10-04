@@ -38,6 +38,9 @@ export function handleVisit(
     return apiJson('{"error":"forbidden"}', 403)
   }
 
-  recordGeo(env, ctx, request.cf?.country)
+  recordGeo(env, ctx, request.cf?.country, {
+    asn: request.cf?.asn,
+    org: request.cf?.asOrganization,
+  })
   return apiJson('{"ok":true}')
 }

@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Read-only GITHUB_TOKEN: nothing here writes to the repo; Cloudflare access
+# comes from the CLOUDFLARE_API_TOKEN secret, not from GitHub.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest

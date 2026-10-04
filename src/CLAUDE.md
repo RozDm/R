@@ -39,3 +39,8 @@ root `CLAUDE.md`; incident background in `docs/history.md`.
   snapshot. Never add a per-request KV write; per-request counters go to D1
   (100k writes/day) or AE (10M points/day).
 - `HISTORY_LIMIT = 149` is the monolith's 1:4:9 — intentional, don't "fix" it.
+- `/api/status` is public: `buildStatusData` strips monitor URLs from the KV
+  snapshot (`PublicMonitorResult`). Don't put them back — one monitor is an
+  admin login page. Alerts get the URL from the cron's own probe results.
+- Contact: a failed mail send must delete its D1 row (the 2-minute content
+  dedup would otherwise ack the visitor's retry without mailing it).

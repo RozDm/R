@@ -3,27 +3,17 @@ import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BlogList from '@/components/blog/BlogList'
-import { getAllPosts, formatDate } from '@/lib/blog'
-import { SITE_URL } from '@/lib/site'
+import { getAllPosts, getAllTags } from '@/lib/blog'
+import { pageMetadata } from '@/lib/metadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Blogg',
   description: 'Artikler om systemadministrasjon, DevOps, infrastruktur, automatisering og sikkerhet.',
-  alternates: { canonical: `${SITE_URL}/blogg/` },
-  openGraph: {
-    title: 'Blogg – Dmytro Rozsoshnykh',
-    description: 'Artikler om systemadministrasjon, DevOps, infrastruktur og sikkerhet.',
-    type: 'website',
-    url: `${SITE_URL}/blogg/`,
-    locale: 'nb_NO',
-  },
-}
+  path: '/blogg/',
+})
 
 export default function BloggIndex() {
-  const posts = getAllPosts().map((post) => ({
-    ...post,
-    dateFormatted: formatDate(post.date),
-  }))
+  const posts = getAllPosts()
 
   return (
     <>
@@ -43,7 +33,7 @@ export default function BloggIndex() {
           Artikler
         </h1>
 
-        <BlogList posts={posts} />
+        <BlogList posts={posts} tags={getAllTags()} />
       </main>
       <Footer />
     </>

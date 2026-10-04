@@ -1,9 +1,19 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import Turnstile from './Turnstile'
+import { useCallback, useRef, useState } from 'react'
+import Turnstile, { type TurnstileHandle } from './Turnstile'
 
-type FormState = 'idle' | 'sending' | 'sent' | 'error' | 'ratelimited' | 'challenge' | 'blocked'
+type FormState =
+  | 'idle'
+  | 'sending'
+  | 'sent'
+  | 'error'
+  | 'invalid'
+  | 'ratelimited'
+  | 'challenge'
+  | 'blocked'
+
+const CONTACT_EMAIL = 'contact@rozsoshnykh.no'
 
 // Set at build time from CF Turnstile (Site Key). Empty -> widget is not
 // rendered and the worker also leaves the check off when its secret is
@@ -27,6 +37,7 @@ const clearValidity = (e: React.FormEvent<Field>) => {
 export default function ContactForm() {
   const [state, setState] = useState<FormState>('idle')
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const turnstileRef = useRef<TurnstileHandle>(null)
 
   const onToken = useCallback((token: string | null) => setTurnstileToken(token), [])
 
@@ -50,6 +61,9 @@ export default function ContactForm() {
         setTurnstileToken(null)
         setState('sent')
       } else {
+        // The server verified (and thereby spent) the single-use token before
+        // it rate-limited or failed to mail, so a retry needs a fresh one.
+        turnstileRef.current?.reset()
         // A 403 without a Turnstile widget on the page means the server-side
         // filters (Sec-Fetch / UA) refused the request — asking the user to
         // "confirm you're not a bot" would point at a challenge that doesn't
@@ -57,14 +71,17 @@ export default function ContactForm() {
         setState(
           res.status === 429
             ? 'ratelimited'
-            : res.status === 403
-              ? SITE_KEY
-                ? 'challenge'
-                : 'blocked'
-              : 'error',
+            : res.status === 422
+              ? 'invalid'
+              : res.status === 403
+                ? SITE_KEY
+                  ? 'challenge'
+                  : 'blocked'
+                : 'error',
         )
       }
     } catch {
+      turnstileRef.current?.reset()
       setState('error')
     }
   }
@@ -119,6 +136,10 @@ export default function ContactForm() {
           type="email"
           required
           maxLength={200}
+          // Same shape the worker enforces (src/contact.ts EMAIL_RE): the
+          // browser's own type=email accepts "a@b" with no TLD, which the
+          // server then rejects.
+          pattern="[^\s@]+@[^\s@]+\.[^\s@]{2,}"
           autoComplete="email"
           className={inputClass}
           onInvalid={validity('Skriv inn en gyldig e-postadresse.')}
@@ -140,7 +161,7 @@ export default function ContactForm() {
         />
       </label>
 
-      {SITE_KEY && <Turnstile siteKey={SITE_KEY} onToken={onToken} />}
+      {SITE_KEY && <Turnstile ref={turnstileRef} siteKey={SITE_KEY} onToken={onToken} />}
 
       <div className="flex items-center gap-4">
         <button
@@ -152,7 +173,16 @@ export default function ContactForm() {
         </button>
         {state === 'error' && (
           <p className="text-sm text-red-500 dark:text-red-400" role="alert">
-            Noe gikk galt. Prøv igjen, eller send en e-post direkte.
+            Meldingen ble ikke sendt. Prøv igjen, eller send en e-post direkte til{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
+              {CONTACT_EMAIL}
+            </a>
+            .
+          </p>
+        )}
+        {state === 'invalid' && (
+          <p className="text-sm text-red-500 dark:text-red-400" role="alert">
+            Sjekk feltene: en gyldig e-postadresse og minst 10 tegn i meldingen.
           </p>
         )}
         {state === 'ratelimited' && (
@@ -169,8 +199,8 @@ export default function ContactForm() {
           <p className="text-sm text-red-500 dark:text-red-400" role="alert">
             Meldingen ble stanset av sikkerhetsfiltrene. Prøv på nytt, eller send en e-post
             direkte til{' '}
-            <a href="mailto:contact@rozsoshnykh.no" className="underline hover:no-underline">
-              contact@rozsoshnykh.no
+            <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
+              {CONTACT_EMAIL}
             </a>
             .
           </p>

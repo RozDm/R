@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Intro from '@/components/effects/Intro'
 import LazyHalIdle from '@/components/effects/LazyHalIdle'
 import Header from '@/components/layout/Header'
@@ -8,6 +9,17 @@ import Status from '@/components/home/Status'
 import Visitors from '@/components/home/Visitors'
 import Trends from '@/components/home/Trends'
 import Footer from '@/components/layout/Footer'
+import { pageMetadata } from '@/lib/metadata'
+import { SITE_DESCRIPTION, SITE_TAGLINE, SITE_TITLE } from '@/lib/site'
+
+export const metadata: Metadata = pageMetadata({
+  title: SITE_TITLE,
+  absoluteTitle: true,
+  description: SITE_DESCRIPTION,
+  ogDescription: SITE_TAGLINE,
+  path: '/',
+  ownImage: true,
+})
 
 export default function Home() {
   return (

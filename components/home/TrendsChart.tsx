@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { xTicksFor } from '@/lib/trends-axis'
-import { fillBuckets } from '@/lib/timeseries-fill'
+import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
+import { fetchGeoCountries } from '@/lib/geo'
 
 interface Point {
   ts: string
@@ -49,16 +50,31 @@ function niceCeil(n: number): number {
 
 const dateFmt24 = new Intl.DateTimeFormat('nb-NO', { hour: '2-digit', minute: '2-digit' })
 const dateFmtDay = new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short' })
+const dateFmtPoint = new Intl.DateTimeFormat('nb-NO', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+function bucketDate(ts: string): Date {
+  return new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z')
+}
 
 // AE bucket keys are "YYYY-MM-DD HH:MM:SS" in UTC. V8 parses that space form
 // as LOCAL time, which made the axis read in the visitor's timezone shifted
 // by the offset (e.g. "18:00" for a 20:00-Oslo event). Normalise to ISO-Z so
 // Intl.DateTimeFormat then renders it correctly in the visitor's locale.
 function formatTick(ts: string, range: Range): string {
-  const iso = ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z'
-  const d = new Date(iso)
+  const d = bucketDate(ts)
   if (Number.isNaN(d.getTime())) return ''
   return range === '24h' ? dateFmt24.format(d) : dateFmtDay.format(d)
+}
+
+// Tooltip for one dot: when the bucket starts, in the visitor's timezone.
+function formatPoint(ts: string): string {
+  const d = bucketDate(ts)
+  return Number.isNaN(d.getTime()) ? '' : dateFmtPoint.format(d)
 }
 
 interface Dot {
@@ -68,10 +84,19 @@ interface Dot {
   value: number
 }
 
+// The latest answer, tagged with the range it answers. Everything derived
+// from it is ignored unless it matches the selected range — otherwise a tab
+// switch drew the previous range's points on the new range's grid (and kept
+// them, under the new label, if the new fetch failed).
+interface Result {
+  range: Range
+  series: Series | null
+  failed: boolean
+}
+
 export default function TrendsChart() {
   const [range, setRange] = useState<Range>('7d')
-  const [series, setSeries] = useState<Series | null>(null)
-  const [failed, setFailed] = useState(false)
+  const [result, setResult] = useState<Result | null>(null)
   // Exact all-time total, straight from D1 via /api/geo — the same source and
   // number as the map above. Shown as the headline ONLY on the `Alt` (all
   // time) tab, where it must match the map exactly rather than inherit AE's
@@ -82,7 +107,10 @@ export default function TrendsChart() {
   // there's no SSR-vs-hydration mismatch concern left and we can render the
   // real data immediately on mount.
 
-  const loading = !failed && (!series || series.range !== range)
+  const current = result?.range === range ? result : null
+  const loading = current === null
+  const failed = current?.failed ?? false
+  const series = current?.series ?? null
 
   useEffect(() => {
     const controller = new AbortController()
@@ -91,31 +119,29 @@ export default function TrendsChart() {
       cache: 'no-store',
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
-      .then((d: Series) => {
-        setSeries(d)
-        setFailed(false)
-      })
+      .then((d: Series) => setResult({ range, series: d, failed: false }))
       .catch((err) => {
-        if ((err as Error).name !== 'AbortError') setFailed(true)
+        if ((err as Error).name !== 'AbortError') setResult({ range, series: null, failed: true })
       })
     return () => controller.abort()
   }, [range])
 
   useEffect(() => {
-    const controller = new AbortController()
-    fetch('/api/geo', { signal: controller.signal, cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
-      .then((d: { countries?: Record<string, number> }) => {
-        const sum = Object.values(d.countries ?? {}).reduce((a, b) => a + b, 0)
-        setGeoTotal(sum)
+    let cancelled = false
+    // Same request as the map's (lib/geo.ts shares it).
+    fetchGeoCountries()
+      .then((countries) => {
+        if (!cancelled) setGeoTotal(Object.values(countries).reduce((a, b) => a + b, 0))
       })
       // Leave geoTotal null on failure so the headline shows '–', not a
       // misleading 0 — the map handles its own empty-state separately.
       .catch(() => {})
-    return () => controller.abort()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const { dots, yMax, waveTotal, tickLabels } = useMemo(() => {
+  const { dots, yMax, waveTotal, tickLabels, allCapped } = useMemo(() => {
     // Zero-fill so the x-axis spans the whole window and quiet stretches read
     // as real gaps. We plot a point per bucket that actually had visits; empty
     // buckets contribute no dot (just a gap).
@@ -139,6 +165,7 @@ export default function TrendsChart() {
       // X ticks come from the full grid so labels span the window even though
       // only non-empty buckets get a dot.
       tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range)),
+      allCapped: range === 'all' && isAllRangeCapped(),
     }
   }, [series, range])
 
@@ -167,14 +194,17 @@ export default function TrendsChart() {
         <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
           Besøk over tid
         </span>
-        <div role="tablist" aria-label="Periode" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
+        {/* A toggle group (aria-pressed), not role=tab: there is no separate
+            tabpanel per period, and buttons give keyboard users the expected
+            Tab/Enter behaviour without a roving-tabindex implementation. */}
+        <div role="group" aria-label="Periode" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
           {RANGES.map((r) => (
             <button
               key={r.id}
-              role="tab"
-              aria-selected={range === r.id}
+              type="button"
+              aria-pressed={range === r.id}
               onClick={() => setRange(r.id)}
-              className={`px-3 py-1.5 transition-colors duration-200 ease-out ${range === r.id ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
+              className={`px-3 py-1.5 transition-colors duration-200 ease-out ${range === r.id ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
             >
               {r.label}
             </button>
@@ -198,7 +228,13 @@ export default function TrendsChart() {
         viewBox={`0 0 ${W} ${H}`}
         className={`w-full h-auto transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
         role="img"
-        aria-label={isAll ? 'Besøk per tidsrom, hele perioden' : `Besøk per tidsrom, siste ${rangeLabel}`}
+        aria-label={
+          isAll
+            ? allCapped
+              ? `Besøk per tidsrom, siste ${ALL_MAX_DAYS} dager`
+              : 'Besøk per tidsrom, hele perioden'
+            : `Besøk per tidsrom, siste ${rangeLabel}`
+        }
       >
         {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
         {yTicks.map((v, i) => {
@@ -217,7 +253,7 @@ export default function TrendsChart() {
                 x={PAD_L - 6}
                 y={y + 4}
                 textAnchor="end"
-                className="fill-gray-400 dark:fill-gray-500"
+                className="fill-gray-500 dark:fill-gray-400"
                 fontSize="11"
                 fontFamily="monospace"
               >
@@ -230,7 +266,7 @@ export default function TrendsChart() {
         {!isEmpty &&
           dots.map((d, i) => (
             <circle key={i} cx={d.x} cy={d.y} r="4" className="fill-red-500">
-              <title>{`${d.value} besøk`}</title>
+              <title>{`${formatPoint(d.ts)} — ${d.value} besøk`}</title>
             </circle>
           ))}
 
@@ -240,7 +276,7 @@ export default function TrendsChart() {
             x={t.x}
             y={H - 8}
             textAnchor={i === 0 ? 'start' : i === tickLabels.length - 1 ? 'end' : 'middle'}
-            className="fill-gray-400 dark:fill-gray-500"
+            className="fill-gray-500 dark:fill-gray-400"
             fontSize="11"
             fontFamily="monospace"
           >
@@ -253,7 +289,7 @@ export default function TrendsChart() {
             x={W / 2}
             y={H / 2}
             textAnchor="middle"
-            className="fill-gray-400 dark:fill-gray-500"
+            className="fill-gray-500 dark:fill-gray-400"
             fontSize="13"
             fontFamily="monospace"
           >
@@ -261,6 +297,12 @@ export default function TrendsChart() {
           </text>
         )}
       </svg>
+
+      {allCapped && (
+        <p className="-mt-2 text-[11px] font-mono text-gray-500 dark:text-gray-400">
+          {`Grafen viser de siste ${ALL_MAX_DAYS} dagene; tallet gjelder hele perioden.`}
+        </p>
+      )}
     </div>
   )
 }
