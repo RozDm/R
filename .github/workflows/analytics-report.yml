@@ -1,0 +1,77 @@
+name: Analytics report
+
+# Read-only report from the Analytics Engine dataset, written to the run's
+# summary page. Answers the questions the site's own charts don't:
+#   - which networks (ASN / operator) the "Besøk" visits come from — is the
+#     US share real readers or headless browsers in cloud datacenters?
+#   - which Content-Security-Policy violations browsers reported, on which
+#     pages (the /api/csp-report endpoint).
+# Uses the same AE_API_TOKEN (Account Analytics:Read) the Worker reads with.
+# Changes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Look-back window in days (1–90)'
+        required: true
+        default: '7'
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      AE_API_TOKEN: ${{ secrets.AE_API_TOKEN }}
+      DAYS: ${{ inputs.days }}
+    steps:
+      - name: Query Analytics Engine
+        run: |
+          set -euo pipefail
+          # The input reaches SQL, so it must be a plain integer in range.
+          if ! [[ "$DAYS" =~ ^[0-9]+$ ]] || [ "$DAYS" -lt 1 ] || [ "$DAYS" -gt 90 ]; then
+            echo "::error::days must be an integer 1–90, got '$DAYS'"
+            exit 1
+          fi
+          if [ -z "$CF_ACCOUNT_ID" ] || [ -z "$AE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_ACCOUNT_ID / AE_API_TOKEN secrets are not set"
+            exit 1
+          fi
+
+          q() { # title, sql
+            local title=$1 sql=$2
+            local out
+            out=$(curl -sf --max-time 30 \
+              -H "Authorization: Bearer $AE_API_TOKEN" -H 'Content-Type: text/plain' \
+              --data "$sql FORMAT JSON" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/analytics_engine/sql")
+            printf '%s' "$out" | TITLE="$title" python3 -c '
+          import json, os, sys
+          d = json.load(sys.stdin)
+          rows, cols = d.get("data", []), [m["name"] for m in d.get("meta", [])]
+          title = os.environ["TITLE"]
+          print(f"### {title}\n")
+          if not rows:
+              print("_no data in this window_\n")
+              sys.exit(0)
+          print("| " + " | ".join(cols) + " |")
+          print("|" + "---|" * len(cols))
+          for r in rows:
+              print("| " + " | ".join(str(r.get(c, "")) for c in cols) + " |")
+          print()
+          ' >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          # INTERVAL literals are quoted — AE's parser rejects the bare form.
+          W="timestamp > NOW() - INTERVAL '$DAYS' DAY"
+          echo "## Analytics Engine — last $DAYS day(s)" >> "$GITHUB_STEP_SUMMARY"
+          q "Besøk by network (ASN / operator)" \
+            "SELECT blob3 AS asn, blob4 AS operator, SUM(_sample_interval) AS visits FROM rozsoshnykh_metrics WHERE blob1 = 'geo' AND $W GROUP BY asn, operator ORDER BY visits DESC LIMIT 40"
+          q "Besøk by country" \
+            "SELECT blob2 AS country, SUM(_sample_interval) AS visits FROM rozsoshnykh_metrics WHERE blob1 = 'geo' AND $W GROUP BY country ORDER BY visits DESC LIMIT 40"
+          q "CSP violations reported by browsers" \
+            "SELECT blob2 AS directive, blob3 AS blocked, blob4 AS page, SUM(_sample_interval) AS reports FROM rozsoshnykh_metrics WHERE blob1 = 'csp' AND $W GROUP BY directive, blocked, page ORDER BY reports DESC LIMIT 40"
+          echo "Report written to the run summary."
