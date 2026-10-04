@@ -75,8 +75,10 @@ Two prod incidents shaped the GeoMap rules:
 
 ## Removed features that must not quietly return
 
-- **Newsletter sign-up** — removed; a dormant `subscribers` table remains in
-  D1 (rows may exist in prod, nothing reads or writes it).
+- **Newsletter sign-up** — removed. Its leftover `subscribers` table was
+  confirmed empty and dropped from prod on 2026-10-04 (`d1-repair` sql mode),
+  then removed from `schema/metrics.sql`. A newsletter that comes back needs
+  its own schema, consent flow and a line in `/personvern`.
 - **`d1-backup.yml`** — a weekly gpg-encrypted D1 dump to a GitHub artifact
   (with a `BACKUP_PASSPHRASE` secret) existed briefly and was removed as not
   worth the upkeep. D1 Time Travel (30 days, Cloudflare-side) is the only

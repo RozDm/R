@@ -82,7 +82,7 @@ docs/               history.md — incident history, the "why" behind CLAUDE.md'
 lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
                     stars.ts, site.ts (name/roles/titles/colours), metadata.ts
                     (pageMetadata), geo.ts, timeseries-fill.ts, trends-axis.ts
-schema/             metrics.sql (views, geo, contact + dormant subscribers)
+schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs
 src/                Cloudflare Worker (index.ts, csp.ts, http.ts, status.ts,
                     metrics.ts, contact.ts, timeseries.ts, routes/*)
