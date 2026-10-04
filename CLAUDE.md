@@ -81,9 +81,7 @@ code and comments are English.
 - D1 database `rozsoshnykh-metrics-v2` (binding `METRICS`, schema in
   `schema/metrics.sql`): `views(slug, count)`, `geo(country, count)`, and
   `contact(id, at, ip, name, email, message)`. Counters use atomic
-  `INSERT … ON CONFLICT … count = count + 1`. A dormant `subscribers` table
-  remains from the removed newsletter sign-up (rows may exist in prod;
-  nothing reads or writes it).
+  `INSERT … ON CONFLICT … count = count + 1`.
 - Analytics Engine dataset `rozsoshnykh_metrics` (binding `METRICS_AE`) is
   the sampled time-series behind the front-page **Trends** card
   (`components/home/Trends.tsx` — single Besøk metric, 24t/7d/30d/**Alt**

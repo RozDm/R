@@ -22,17 +22,3 @@ CREATE TABLE IF NOT EXISTS contact (
 );
 CREATE INDEX IF NOT EXISTS contact_ip_at ON contact (ip, at);
 CREATE INDEX IF NOT EXISTS contact_email_at ON contact (email, at);
-
--- DORMANT: the newsletter sign-up (UI + /api/newsletter) was removed before
--- any mail was ever sent. The table stays because rows may exist in prod
--- (emails + GDPR consent proof) and dropping data is a separate, deliberate
--- decision. Nothing reads or writes it; revive or drop when a newsletter
--- comes back.
-CREATE TABLE IF NOT EXISTS subscribers (
-  email        TEXT PRIMARY KEY,
-  at           TEXT NOT NULL,
-  ip           TEXT NOT NULL,
-  token        TEXT NOT NULL,
-  confirmed_at TEXT
-);
-CREATE INDEX IF NOT EXISTS subscribers_ip_at ON subscribers (ip, at);
