@@ -15,7 +15,7 @@ is `rozsoshnykh-metrics-v2`.
 The deleted entry still ghost-locks the old name: `d1 list` shows it, every
 call against its uuid 7404s, and `d1 create rozsoshnykh-metrics` answers
 "already exists". Don't try to reclaim the old name. `d1-repair.yml` is the
-surgery kit built during this incident (see CLAUDE.md for its modes — the
+surgery kit built during this incident (see `.github/CLAUDE.md` for its modes — the
 `create` mode exists specifically because the ghost entry defeats any
 "already exists" check).
 

@@ -86,7 +86,8 @@ content/blog/       Markdown posts (frontmatter: title, description, date, tags)
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, and tag canon + aliases (tags.ts)
 docs/               history.md — incident history, the "why" behind CLAUDE.md's
-                    hard rules (agent docs: CLAUDE.md sitewide, src/CLAUDE.md worker)
+                    hard rules (agent docs: CLAUDE.md sitewide, src/CLAUDE.md worker,
+                    .github/CLAUDE.md workflows)
 lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
                     stars.ts, site.ts (name/roles/titles/colours), metadata.ts
                     (pageMetadata), geo.ts, timeseries-fill.ts, trends-axis.ts

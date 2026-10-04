@@ -13,7 +13,13 @@
       "Bash(git log:*)",
       "Bash(git show:*)",
       "Bash(git branch:*)",
-      "Bash(git fetch origin:*)"
+      "Bash(git fetch origin:*)",
+      "Bash(npm run check)"
+    ],
+    "deny": [
+      "Read(./worker-configuration.d.ts)",
+      "Read(./package-lock.json)",
+      "Read(./public/world.svg)"
     ]
   },
   "hooks": {
