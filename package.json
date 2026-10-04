@@ -11,8 +11,9 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json",
     "test": "vitest run",
     "cf-typegen": "wrangler types",
-    "predeploy": "npm run lint && npm run typecheck && npm run test",
-    "deploy": "next build && wrangler deploy"
+    "predeploy": "npm run check",
+    "deploy": "next build && wrangler deploy",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "engines": {
     "node": ">=22"

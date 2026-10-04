@@ -1,0 +1,6 @@
+# Generated files: collapsed in GitHub PR diffs, and shown as binary by local
+# `git diff`/`git show` so a dependency bump or a typegen run doesn't print
+# thousands of lines. `git diff --stat` still lists them; merges stay textual.
+/package-lock.json linguist-generated=true -diff
+/worker-configuration.d.ts linguist-generated=true -diff
+/public/world.svg linguist-generated=true -diff

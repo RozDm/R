@@ -13,7 +13,7 @@ Audit everything that ships:
 - App: `app/`, `components/`, `lib/`, `data/`, `content/`, `public/`, `app/globals.css`.
 - Worker: `src/` (`index.ts`, `csp.ts`, `http.ts`, `status.ts`, `metrics.ts`, `contact.ts`, `timeseries.ts`, `routes/*`).
 - Build/deploy: `package.json`, `next.config.js`, `wrangler.jsonc`, `.github/workflows/*`, `scripts/*`, `tsconfig*.json`.
-- Docs: `CLAUDE.md`, `src/CLAUDE.md`, `README.md`, `docs/history.md` (drift against code is a finding; narrative belongs in history.md, rules in the CLAUDE.md files).
+- Docs: `CLAUDE.md`, `src/CLAUDE.md`, `.github/CLAUDE.md`, `README.md`, `docs/history.md` (drift against code is a finding; narrative belongs in history.md, rules in the CLAUDE.md files).
 - Tests: `tests/*.ts`.
 
 Look for:

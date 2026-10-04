@@ -1,0 +1,5 @@
+# Skipped by ripgrep and Claude Code's Grep/Glob: generated, large, no signal.
+# (Read is denied for the same files in .claude/settings.json.)
+/worker-configuration.d.ts
+/package-lock.json
+/public/world.svg
