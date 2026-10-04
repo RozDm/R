@@ -102,7 +102,7 @@ export default async function BlogPost({ params }: Props) {
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20">
         <Link
           href="/blogg"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
         >
           &larr; Tilbake til bloggen
         </Link>
@@ -112,7 +112,7 @@ export default async function BlogPost({ params }: Props) {
             {isDraft && (
               <p
                 role="note"
-                className="mb-4 inline-flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/5 px-3 py-1 text-[11px] font-mono uppercase tracking-widest text-red-500 dark:text-red-400"
+                className="mb-4 inline-flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/5 px-3 py-1 text-[11px] font-mono uppercase tracking-widest text-red-600 dark:text-red-400"
               >
                 <span aria-hidden>●</span>
                 Utkast — kun synlig lokalt
@@ -124,7 +124,7 @@ export default async function BlogPost({ params }: Props) {
                   <Link
                     key={tag}
                     href={`/blogg/tag/${tagToSlug(tag)}/`}
-                    className="text-[11px] px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-500/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                    className="text-[11px] px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                   >
                     {tag}
                   </Link>
@@ -151,7 +151,7 @@ export default async function BlogPost({ params }: Props) {
             </p>
           </header>
 
-          <div className="prose dark:prose-invert max-w-none prose-a:text-red-500 dark:prose-a:text-red-400 prose-a:no-underline hover:prose-a:underline prose-headings:font-bold prose-pre:border prose-pre:border-gray-200 dark:prose-pre:border-gray-800 prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
+          <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold prose-pre:border prose-pre:border-gray-200 dark:prose-pre:border-gray-800 prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>{post.content}</ReactMarkdown>
           </div>
 

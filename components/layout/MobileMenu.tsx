@@ -61,7 +61,7 @@ export default function MobileMenu({ links }: MobileMenuProps) {
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="block px-5 py-3 text-sm text-gray-700 dark:text-gray-300 [&[aria-current]]:text-red-500 dark:[&[aria-current]]:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 ease-out font-medium"
+              className="block px-5 py-3 text-sm text-gray-700 dark:text-gray-300 [&[aria-current]]:text-red-600 dark:[&[aria-current]]:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 ease-out font-medium"
             >
               {label}
             </HashLink>

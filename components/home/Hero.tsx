@@ -6,7 +6,7 @@ export default function Hero() {
   return (
     <section id="about" className="flex flex-col gap-6 pt-8 animate-fade-in">
       <div>
-        <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-3">
+        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-3">
           {AUTHOR.roles.join(' · ')}
         </p>
         <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight">

@@ -20,12 +20,12 @@ export default function PersonvernPage() {
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20 min-h-[70vh]">
         <Link
           href="/"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors mb-8"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mb-8"
         >
           &larr; Tilbake til forsiden
         </Link>
 
-        <p className="text-red-500 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
+        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
           Personvern
         </p>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -35,7 +35,7 @@ export default function PersonvernPage() {
           Sist oppdatert: 4. oktober 2026
         </p>
 
-        <div className="prose dark:prose-invert max-w-none prose-a:text-red-500 dark:prose-a:text-red-400 prose-a:no-underline hover:prose-a:underline prose-headings:font-bold">
+        <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold">
           <h2>Behandlingsansvarlig</h2>
           <p>
             Dmytro Rozsoshnykh er ansvarlig for behandlingen av personopplysninger på dette

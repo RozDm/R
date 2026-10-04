@@ -136,7 +136,7 @@ export default function StatusDashboard() {
               ? 'Alle systemer operative'
               : `Driftsforstyrrelser — ${downCount} av ${results.length} tjenester nede`}
         </span>
-        <span className="basis-full sm:basis-auto sm:ml-auto text-xs font-mono text-gray-500 dark:text-gray-400">
+        <span className="basis-full sm:basis-auto sm:ml-auto text-xs font-mono text-gray-600 dark:text-gray-400">
           Oppdatert: {formatTime(data.updatedAt)}
         </span>
       </div>
@@ -156,7 +156,7 @@ export default function StatusDashboard() {
               <span className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${stale ? 'bg-gray-400' : r.ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
               <span className="text-sm font-medium text-gray-900 dark:text-white min-w-0">{r.name}</span>
               <div className="basis-full sm:basis-auto sm:ml-auto text-left sm:text-right">
-                <div className={`text-sm font-mono ${stale ? 'text-gray-500 dark:text-gray-400' : r.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <div className={`text-sm font-mono ${stale ? 'text-gray-500 dark:text-gray-400' : r.ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {stale ? `Sist kjent: ${r.ok ? 'operativ' : 'nede'}` : r.ok ? 'Operativ' : 'Nede'}
                 </div>
                 <div className="text-xs font-mono text-gray-500 dark:text-gray-400">
