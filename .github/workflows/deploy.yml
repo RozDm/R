@@ -64,10 +64,15 @@ jobs:
             printf '%s' "$payload" | npx wrangler secret bulk
           fi
 
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # The repo's own pinned wrangler (package-lock), not cloudflare/
+      # wrangler-action: the action runs on the deprecated Node 20 runtime and
+      # adds nothing over the CLI that `npm ci` already installed — same
+      # version locally, in the secrets step above, and here.
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
 
       - name: Smoke test (live site)
         run: bash scripts/smoke.sh

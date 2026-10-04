@@ -13,8 +13,9 @@ Live: https://rozsoshnykh.no
 - Content: markdown posts in `content/blog/` (gray-matter + react-markdown +
   remark-gfm + rehype-highlight for code blocks)
 - Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (`STATUS`),
-  D1 (`METRICS`), Email Routing (`CONTACT_EMAIL`), crons `*/5 * * * *` (uptime)
-  and `0 3 * * *` (daily prune of the contact table, 30-day window)
+  D1 (`METRICS`), Analytics Engine (`METRICS_AE`), Email Routing
+  (`CONTACT_EMAIL`), Turnstile on the contact form, crons `*/5 * * * *`
+  (uptime) and `0 3 * * *` (daily prune of the contact table, 30-day window)
 - Worker (`src/`) handles canonical host (301 from `www` and `*.workers.dev`),
   strict per-request hash CSP for HTML it can decode, security headers, and the
   `/api/*` endpoints
@@ -27,15 +28,17 @@ Live: https://rozsoshnykh.no
 | `npm run build` | `prebuild` emits `public/world.svg`, then static export to `out/` |
 | `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
 | `npm run typecheck` | `tsc --noEmit` for app **and** worker (`tsconfig.worker.json`) |
-| `npm test` | Vitest — CSP hashing, status history + alert damping, tags, metrics, contact, reading time, time-series (epoch boundary, AE parsing, bucket fill) |
+| `npm test` | Vitest — CSP hashing, status history + alert damping + staleness, tags, metrics, contact, reading time, page metadata, map buckets, time-series (epoch boundary, AE parsing, bucket fill) |
 | `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` from `wrangler.jsonc` |
 | `npm run deploy` | Manual path: `predeploy` (lint + typecheck + test) → build → `wrangler deploy` |
 
 ### CI/CD
 
 Push to `main` triggers `.github/workflows/deploy.yml`: lint → typecheck → test →
-build → push the Turnstile secret → `wrangler deploy` → **`scripts/smoke.sh`**
-against production (pages, APIs, redirects, security headers, noindex). If the
+build → sync runtime secrets (one `wrangler secret bulk`) → `npx wrangler
+deploy` (the repo's pinned wrangler) → **`scripts/smoke.sh`** against
+production (pages, APIs, redirects, security headers, caching, noindex).
+Push to live takes ~2.5 minutes. If the
 smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs as
 the `check` status check.
 

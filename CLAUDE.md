@@ -8,8 +8,8 @@ code and comments are English.
 ## Agent notes
 
 - Generated files — never Read or Grep them: `worker-configuration.d.ts`
-  (~540 kB, regenerate via `npm run cf-typegen`) and `package-lock.json`
-  (~350 kB, npm owns it). Searching them burns context for zero signal;
+  (~620 kB, regenerate via `npm run cf-typegen`) and `package-lock.json`
+  (~370 kB, npm owns it). Searching them burns context for zero signal;
   scope searches to `src/`, `app/`, `components/`, `lib/`, `tests/` instead.
 - Structure drift is worse than missing docs: any PR that adds, moves or
   removes files in `src/`, `app/`, `components/` or `lib/`, or changes the
@@ -104,9 +104,9 @@ code and comments are English.
   relative to the busiest country on a log scale (`geoBucket`), not fixed
   cut-offs. The `view` AE channel is also written from `/api/views` POSTs
   but isn't graphed yet. AE reads need two runtime Worker secrets —
-  `CF_ACCOUNT_ID` + `AE_API_TOKEN` (scoped `Account Analytics:Read`), fed
-  from GitHub secrets by the deploy workflow's `wrangler secret put` loop;
-  missing either → empty series + "Ingen data ennå".
+  `CF_ACCOUNT_ID` + `AE_API_TOKEN` (scoped `Account Analytics:Read`), synced
+  from GitHub secrets by the deploy workflow's single `wrangler secret bulk`
+  step; missing either → empty series + "Ingen data ennå".
 - `METRICS_EPOCH` (`src/timeseries.ts`): AE is append-only, so this UTC
   string filters out pre-relaunch points client-side. Bump it after every
   `reset-metrics` run. It **must sit on a 6-hour UTC boundary**
@@ -118,9 +118,10 @@ code and comments are English.
   session. Rule for ALL client-side counters (`VisitBeacon`, `ViewCounter`):
   set the sessionStorage dedupe flag BEFORE the fetch, so React StrictMode's
   dev double-invoke and remount races can't double-count. The handler runs
-  `recordGeo(env, ctx, request.cf?.country)` — one beacon writes the D1
-  `geo` row and the AE point; clicking through several pages counts as one
-  besøk.
+  `recordGeo(env, ctx, request.cf?.country, { asn, org })` — one beacon
+  writes the D1 `geo` row and the AE point; clicking through several pages
+  counts as one besøk. "Session" is sessionStorage, i.e. per tab: a new tab
+  or a reopened browser is a new besøk.
 - Contact form has Turnstile wired in but feature-gated by env: the widget
   renders only when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set at build time,
   and the worker enforces verification only when `TURNSTILE_SECRET` is set
@@ -159,9 +160,11 @@ code and comments are English.
   AND the CSS keeps `var()` fallbacks — don't strip either: an unstyled SVG
   path renders **black** (full story: `docs/history.md`).
 - `TURNSTILE_SECRET` is a runtime Worker secret (not in wrangler.jsonc), typed
-  via `src/env.d.ts`; the deploy workflow pushes it with `wrangler secret put`
-  from a GitHub secret. `TURNSTILE_SITE_KEY` is a GitHub secret inlined into
-  the build as `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
+  via `src/env.d.ts`; the deploy workflow syncs it (with `CF_ACCOUNT_ID` +
+  `AE_API_TOKEN`) through one `wrangler secret bulk` from GitHub secrets —
+  unset GitHub secrets are skipped, never blanked. `TURNSTILE_SITE_KEY` is a
+  GitHub secret inlined into the build as `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
+  Both Turnstile halves are live in prod.
 - TypeScript is split: app uses `tsconfig.json` (lib.dom), worker uses
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
   `wrangler.jsonc` change run `npm run cf-typegen` and commit the result.
@@ -171,9 +174,14 @@ code and comments are English.
 - `npm run lint` / `npm run typecheck` / `npm test` — all must pass before a PR.
 - `npm run build` — static export to `out/`.
 - Deploy happens via **PR → squash-merge to `main` → GitHub Actions**
-  (`.github/workflows/deploy.yml`: checks → build → wrangler → `scripts/smoke.sh`
-  against the live site). Never `wrangler deploy` from a web sandbox (no
-  network); `npm run deploy` works locally and is gated by `predeploy`.
+  (`.github/workflows/deploy.yml`: checks → build → `wrangler secret bulk` →
+  `npx wrangler deploy` with the repo's pinned wrangler (no
+  `cloudflare/wrangler-action` — it runs on deprecated Node 20) →
+  `scripts/smoke.sh` against the live site). Push → live takes ~2.5 min
+  (CI ~50 s, deploy ~65 s). Never deploy from a sandbox: it has no
+  Cloudflare credentials and would skip the CI gate and smoke test;
+  `npm run deploy` is for a local machine with `wrangler login` and is gated
+  by `predeploy`.
 - The merge gate is **hands-off**: `main` carries a branch-protection rule
   requiring the `check` status check (the PR-side lint/typecheck/test/build
   job) with **0 required approvals** — a solo repo, so you cannot approve your
@@ -186,6 +194,14 @@ code and comments are English.
   works for live diagnosis (a browser needs `--ssl-version-max=tls1.2` — the
   proxy's TLS terminator resets Chromium's TLS 1.3 hello). The deploy gate is
   still the smoke-test step in the deploy run logs, not ad-hoc curl.
+- Browser checks of a change before it ships: `npm run build`, serve `out/`
+  (`python3 -m http.server 8765 --directory out`, restart it after every
+  rebuild — it keeps serving the deleted old `out/`), drive it with Playwright
+  (`executablePath: '/opt/pw-browsers/chromium'`) WITHOUT the agent proxy
+  (it answers plain-HTTP localhost with 405). There is no Worker locally, so
+  stub `/api/*` with `page.route` (the LAST registered matching route wins)
+  and stub `window.turnstile` via `addInitScript` — the real widget can't
+  load from the sandbox.
 
 ## Conventions
 
@@ -292,8 +308,19 @@ code and comments are English.
   past the smooth scroll). The header offset is pure CSS (`scroll-padding-top`,
   above) — don't reintroduce a custom rAF scroll, it fights the global
   `scroll-behavior: smooth` and stutters. Off the home route, plain `<Link>`.
-- `@cloudflare/vitest-pool-workers` is not yet compatible with Vitest 4, so
-  worker routes are covered by `scripts/smoke.sh` in CI, not unit tests.
+  Plain page links (no `#`) set `aria-current` — `page` on an exact match,
+  `true` on a parent (Blogg while reading a post) — which the header and
+  mobile menu style via `[&[aria-current]]:`.
+- Worker routes (`src/routes/*`) have no unit tests yet — only
+  `scripts/smoke.sh` after deploy. `@cloudflare/vitest-pool-workers` ≥ 0.22
+  supports Vitest ^4.1 (checked 2026-10-04), so route tests are now possible
+  but not set up; until they are, keep route logic thin and push decisions
+  into the pure `src/*.ts` modules that Vitest already covers.
+- Cloudflare's zone-level **Browser Cache TTL** (4 h, the default) rewrites
+  `max-age` on edge-cache HITs of the `/api/*` responses (`max-age=60` →
+  `max-age=14400`; `s-maxage` is untouched). The front end is immune because
+  every client fetch of `/api/*` uses `cache: 'no-store'` — keep it that way,
+  or set Browser Cache TTL to "Respect Existing Headers" in the dashboard.
 - `StatusDashboard`, `GeoMap` and `TrendsChart` are all code-split via
   `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
   `LazyGeoMap.tsx` and `LazyTrendsChart.tsx` — none of the three are in
