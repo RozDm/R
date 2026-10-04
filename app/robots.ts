@@ -8,6 +8,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
+      // JSON endpoints: nothing to index, and crawler hits only cost D1/AE reads.
+      disallow: '/api/',
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   }

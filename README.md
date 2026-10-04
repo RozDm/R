@@ -69,8 +69,9 @@ reuses `CLOUDFLARE_ACCOUNT_ID`).
 .claude/            Claude Code project config: skills (audit, new-post),
                     session-start hook, permissions allowlist
 app/                Next App Router: home, /blogg, /blogg/tag/[slug], /kontakt,
-                    feed.xml, sitemap, robots, manifest, OG images, error
-                    boundaries, template.tsx (opacity route cross-fade)
+                    /personvern, feed.xml, sitemap, robots, manifest, OG
+                    images, icons/[name] (PNG icons), error boundaries,
+                    template.tsx (opacity route cross-fade)
 components/         React components (Hero, Skills, StatusDashboard, GeoMap,
                     HalIdle, ContactForm, Turnstile, …)
 content/blog/       Markdown posts (frontmatter: title, description, date, tags)
@@ -78,7 +79,9 @@ context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, and tag canon + aliases (tags.ts)
 docs/               history.md — incident history, the "why" behind CLAUDE.md's
                     hard rules (agent docs: CLAUDE.md sitewide, src/CLAUDE.md worker)
-lib/                blog.ts, tags.ts, reading-time.ts, clipboard.ts, stars.ts, site.ts
+lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
+                    stars.ts, site.ts (name/roles/titles/colours), metadata.ts
+                    (pageMetadata), geo.ts, timeseries-fill.ts, trends-axis.ts
 schema/             metrics.sql (views, geo, contact + dormant subscribers)
 scripts/            smoke.sh, build-world-svg.mjs
 src/                Cloudflare Worker (index.ts, csp.ts, http.ts, status.ts,
@@ -95,7 +98,10 @@ writes a JSON snapshot to KV (`status` key). `/api/status` serves the snapshot
 promptly while KV reads stay near zero); the front page (`/#status`) renders
 it with per-service history, capped at `HISTORY_LIMIT` (149 ≈ 12.5h — the
 monolith's 1:4:9 proportions). The dashboard polls adaptively: 90s when all
-is up, 30s during an incident.
+is up, 30s during an incident. The public snapshot carries monitor names
+only, no URLs. A snapshot older than 15 minutes (the cron itself stopped)
+turns the banner and the footer dot grey ("Statusdata er utdatert") instead
+of repeating the last known state.
 
 Add a service by extending `MONITORS`. Use `internal: true` for routes that
 point at this site itself (the ASSETS binding is required — Workers block
@@ -130,8 +136,9 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
   pairs.
 - **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
 - **Time-series** of visits lives in a Workers Analytics Engine dataset
-  (`METRICS_AE`, binding `rozsoshnykh_metrics`). The `/api/visit` beacon
-  appends one AE point per session; `GET /api/timeseries?metric=geo&range=24h|7d|30d|all`
+  (`rozsoshnykh_metrics`, binding `METRICS_AE`). The `/api/visit` beacon
+  appends one AE point per session (country plus the network's ASN and
+  operator name — a bot diagnostic, never stored in D1, no IP); `GET /api/timeseries?metric=geo&range=24h|7d|30d|all`
   reads them back via the AE SQL API and feeds the front-page **Trends**
   card (dot plot over a zero-filled bucket grid). The windowed tabs
   (24t/7d/30d) show the AE count for their window; the **Alt** (all-time)
@@ -155,7 +162,10 @@ off-screen honeypot + per-IP rate limit (3 / 10 min) + per-email rate limit
 (2 / hour, catches IP-rotating spammers reusing a throwaway address) + short-
 window dedup (identical address + message within 2 min is ack'd without a
 second mail). Both rate-limit windows query D1; a daily cron prunes the table
-to a 30-day window.
+to a 30-day window. If the mail leg fails, the row is deleted again and the
+form reports the error with its text intact, so a retry is a fresh
+submission (not a silently ack'd duplicate). Turnstile tokens are
+single-use: the form resets the widget after every non-OK response.
 
 Turnstile is feature-gated: the widget renders only when `TURNSTILE_SITE_KEY`
 is set, and the worker enforces it only when `TURNSTILE_SECRET` is set, so the

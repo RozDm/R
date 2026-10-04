@@ -3,9 +3,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import { getAllTags, getPostsByTag, formatDate } from '@/lib/blog'
+import PostCard from '@/components/blog/PostCard'
+import { getAllTags, getPostsByTag } from '@/lib/blog'
 import { tagToSlug } from '@/lib/tags'
-import { SITE_URL } from '@/lib/site'
+import { pageMetadata } from '@/lib/metadata'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -23,11 +24,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const tag = resolveTag(slug)
   if (!tag) return {}
-  return {
+  return pageMetadata({
     title: `Emne: ${tag}`,
     description: `Artikler merket med ${tag}.`,
-    alternates: { canonical: `${SITE_URL}/blogg/tag/${slug}/` },
-  }
+    path: `/blogg/tag/${slug}/`,
+  })
 }
 
 export default async function TagPage({ params }: Props) {
@@ -60,25 +61,7 @@ export default async function TagPage({ params }: Props) {
 
         <div className="flex flex-col gap-4">
           {posts.map((post) => (
-            <Link
-              key={post.slug}
-              href={`/blogg/${post.slug}/`}
-              className="group block p-5 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500"
-            >
-              <div className="flex items-baseline justify-between gap-4">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                  {post.title}
-                </h2>
-                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-500">
-                  <time dateTime={post.date}>{formatDate(post.date)}</time>
-                  {' · '}
-                  {post.readingMinutes} min
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                {post.description}
-              </p>
-            </Link>
+            <PostCard key={post.slug} post={post} />
           ))}
         </div>
       </main>

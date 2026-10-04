@@ -11,6 +11,7 @@ import ViewCounter from '@/components/blog/ViewCounter'
 import { getPostBySlug, getPostSlugs, getAdjacentPosts, formatDate } from '@/lib/blog'
 import { tagToSlug } from '@/lib/tags'
 import { SITE_URL, AUTHOR } from '@/lib/site'
+import { pageMetadata } from '@/lib/metadata'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -28,22 +29,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   } catch {
     return {}
   }
-  const url = `${SITE_URL}/blogg/${slug}/`
-  return {
+  return pageMetadata({
     title: post.title,
     description: post.description,
-    alternates: { canonical: url },
-    openGraph: {
-      title: post.title,
-      description: post.description,
-      type: 'article',
-      url,
+    path: `/blogg/${slug}/`,
+    ogTitle: post.title,
+    ownImage: true,
+    article: {
       publishedTime: post.date,
-      authors: [AUTHOR.name],
+      modifiedTime: post.updated && post.updated > post.date ? post.updated : undefined,
       tags: post.tags,
-      locale: 'nb_NO',
     },
-  }
+  })
 }
 
 export default async function BlogPost({ params }: Props) {
@@ -137,12 +134,12 @@ export default async function BlogPost({ params }: Props) {
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight">
               {post.title}
             </h1>
-            <p className="mt-3 text-sm text-gray-500 dark:text-gray-500">
+            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
               <time dateTime={post.date}>{formatDate(post.date)}</time>
               {updated && (
                 <>
                   {' · '}
-                  <span className="text-gray-500 dark:text-gray-500">
+                  <span className="text-gray-500 dark:text-gray-400">
                     Oppdatert{' '}
                     <time dateTime={updated}>{formatDate(updated)}</time>
                   </span>
@@ -167,7 +164,7 @@ export default async function BlogPost({ params }: Props) {
                   href={`/blogg/${prev.slug}/`}
                   className="group rounded-xl border border-gray-200 dark:border-gray-800 p-4 hover:border-red-500/30 dark:hover:border-red-500/20 transition-colors"
                 >
-                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">&larr; Forrige</span>
+                  <span className="text-xs font-mono text-gray-500 dark:text-gray-400">&larr; Forrige</span>
                   <span className="mt-1 block text-sm font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
                     {prev.title}
                   </span>
@@ -180,7 +177,7 @@ export default async function BlogPost({ params }: Props) {
                   href={`/blogg/${next.slug}/`}
                   className="group rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-right hover:border-red-500/30 dark:hover:border-red-500/20 transition-colors sm:col-start-2"
                 >
-                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">Neste &rarr;</span>
+                  <span className="text-xs font-mono text-gray-500 dark:text-gray-400">Neste &rarr;</span>
                   <span className="mt-1 block text-sm font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
                     {next.title}
                   </span>

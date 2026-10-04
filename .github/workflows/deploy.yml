@@ -9,6 +9,11 @@ concurrency:
   group: deploy
   cancel-in-progress: false
 
+# Read-only GITHUB_TOKEN: nothing here writes to the repo; Cloudflare access
+# comes from the CLOUDFLARE_API_TOKEN secret, not from GitHub.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -34,7 +39,9 @@ jobs:
         run: npm run build
 
       # Push runtime secrets before deploy so the new code sees them on the
-      # next request. Each one is a no-op when the GH secret isn't configured.
+      # next request. One `secret bulk` call = one new Worker version (three
+      # `secret put`s made three). Secrets whose GH secret isn't configured are
+      # left out, never blanked. The JSON goes over stdin, never to disk.
       - name: Sync runtime secrets
         env:
           TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
@@ -43,17 +50,19 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          put_secret() {
-            local name=$1 value=$2
-            if [ -n "$value" ]; then
-              printf '%s' "$value" | npx wrangler secret put "$name"
-            else
-              echo "$name not set — skipping"
-            fi
-          }
-          put_secret TURNSTILE_SECRET "$TURNSTILE_SECRET"
-          put_secret CF_ACCOUNT_ID    "$CF_ACCOUNT_ID"
-          put_secret AE_API_TOKEN     "$AE_API_TOKEN"
+          payload=$(node -e '
+            const out = {}
+            for (const k of ["TURNSTILE_SECRET", "CF_ACCOUNT_ID", "AE_API_TOKEN"]) {
+              if (process.env[k]) out[k] = process.env[k]
+              else console.error(`${k} not set — skipping`)
+            }
+            process.stdout.write(JSON.stringify(out))
+          ')
+          if [ "$payload" = "{}" ]; then
+            echo "No runtime secrets configured — nothing to sync"
+          else
+            printf '%s' "$payload" | npx wrangler secret bulk
+          fi
 
       - uses: cloudflare/wrangler-action@v3
         with:

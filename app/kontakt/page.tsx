@@ -3,15 +3,15 @@ import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import ContactForm from '@/components/contact/ContactForm'
-import { SITE_URL } from '@/lib/site'
+import { pageMetadata } from '@/lib/metadata'
 
-export const metadata: Metadata = {
+// A form page with no indexable content; keep it out of search results.
+export const metadata: Metadata = pageMetadata({
   title: 'Kontakt',
   description: 'Send meg en melding — samarbeid, spørsmål eller bare et hei.',
-  alternates: { canonical: `${SITE_URL}/kontakt/` },
-  // A form page with no indexable content; keep it out of search results.
-  robots: { index: false, follow: true },
-}
+  path: '/kontakt/',
+  noindex: true,
+})
 
 export default function KontaktPage() {
   return (
@@ -35,7 +35,7 @@ export default function KontaktPage() {
           Interessert i samarbeid eller har et spørsmål? Fyll ut skjemaet, så
           havner meldingen rett i innboksen min.
         </p>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mb-10 max-w-xl">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-10 max-w-xl">
           Hvordan meldingen behandles står i{' '}
           <Link
             href="/personvern/"

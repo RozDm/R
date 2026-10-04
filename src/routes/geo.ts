@@ -1,5 +1,5 @@
-// Visitor-country counters in D1. recordGeo() upserts on human navigations
-// (called from the HTML path), GET /api/geo reads the aggregate.
+// Visitor-country counters in D1. recordGeo() upserts once per browser
+// session (called from the /api/visit beacon), GET /api/geo reads the aggregate.
 import { apiJson, cachedApiJson, putCachedApiJson } from '../http'
 import { countriesFromRows, isCountableCountry } from '../metrics'
 
@@ -11,7 +11,21 @@ const GEO_CACHE_TTL_S = 60
 
 // Atomic upsert — no client-side batching or read-modify-write races, and the
 // D1 free tier allows 100k writes/day vs KV's 1000.
-export function recordGeo(env: Env, ctx: ExecutionContext, country: unknown): void {
+//
+// `network` (request.cf.asn / asOrganization) rides along on the AE point
+// only — never in D1 — as a bot diagnostic: ~45% of "visits" came from the US,
+// which smells like headless browsers in cloud datacenters. Query it with
+//   SELECT blob3 AS asn, blob4 AS org, SUM(_sample_interval) AS visits
+//   FROM rozsoshnykh_metrics WHERE blob1 = 'geo' GROUP BY asn, org
+//   ORDER BY visits DESC
+// before deciding whether to filter datacenter ASNs. Network operator, not a
+// person: no IP is stored.
+export function recordGeo(
+  env: Env,
+  ctx: ExecutionContext,
+  country: unknown,
+  network: { asn?: unknown; org?: unknown } = {},
+): void {
   if (typeof country !== 'string' || !isCountableCountry(country)) return
   ctx.waitUntil(
     env.METRICS.prepare(
@@ -23,8 +37,10 @@ export function recordGeo(env: Env, ctx: ExecutionContext, country: unknown): vo
   )
   // Time-series point so we can graph visits over time. D1 keeps the running
   // total per country; AE keeps the timestamped trail.
+  const asn = typeof network.asn === 'number' ? `AS${network.asn}` : ''
+  const org = typeof network.org === 'string' ? network.org.slice(0, 96) : ''
   try {
-    env.METRICS_AE.writeDataPoint({ indexes: [country], blobs: ['geo', country], doubles: [1] })
+    env.METRICS_AE.writeDataPoint({ indexes: [country], blobs: ['geo', country, asn, org], doubles: [1] })
   } catch {}
 }
 

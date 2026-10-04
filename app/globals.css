@@ -15,8 +15,6 @@
 }
 
 @theme {
-  --color-primary-light: #3b82f6;
-  --color-primary-dark: #60a5fa;
   --animate-fade-in: fade-in 0.8s ease-out both;
   --font-sans: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-mono: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -213,11 +211,15 @@ html.intro-active::before {
   animation: hal-text-reveal 1.8s cubic-bezier(0.2, 0.6, 0.2, 1) both;
 }
 
+/* Reduced motion: no section slide-ins, no blinking status dots, no
+   route fade. (The intro and HAL's screensaver skip themselves entirely
+   under this preference — see Intro.tsx / HalIdle.tsx.) Unlayered, so it
+   beats Tailwind's utilities layer. */
 @media (prefers-reduced-motion: reduce) {
-  .hal-text-reveal {
-    animation: none;
-  }
-  .animate-page-in {
+  .hal-text-reveal,
+  .animate-page-in,
+  .animate-fade-in,
+  .animate-pulse {
     animation: none;
   }
 }

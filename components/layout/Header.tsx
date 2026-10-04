@@ -7,8 +7,10 @@ const navLinks = [
   { href: '/#about', label: 'Om meg' },
   { href: '/#skills', label: 'Ferdigheter' },
   { href: '/#status', label: 'Status' },
-  { href: '/blogg', label: 'Blogg' },
-  { href: '/#footer', label: 'Kontakt' },
+  { href: '/blogg/', label: 'Blogg' },
+  // The contact page, not the home footer: from /kontakt itself a /#footer
+  // link navigated AWAY from the form it was labelled as.
+  { href: '/kontakt/', label: 'Kontakt' },
 ]
 
 export default function Header() {
@@ -23,7 +25,7 @@ export default function Header() {
             <HashLink
               key={href}
               href={href}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200 ease-out text-sm tracking-wide"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white [&[aria-current]]:text-gray-900 dark:[&[aria-current]]:text-white transition-colors duration-200 ease-out text-sm tracking-wide"
             >
               {label}
             </HashLink>

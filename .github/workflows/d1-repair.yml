@@ -45,6 +45,11 @@ on:
         required: false
         default: ''
 
+# Read-only GITHUB_TOKEN: nothing here writes to the repo; Cloudflare access
+# comes from the CLOUDFLARE_API_TOKEN secret, not from GitHub.
+permissions:
+  contents: read
+
 jobs:
   repair:
     runs-on: ubuntu-latest

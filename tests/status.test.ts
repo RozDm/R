@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HISTORY_LIMIT, buildStatusData, detectTransitions, parseHistory } from '@/src/status'
+import { HISTORY_LIMIT, STALE_AFTER_MS, buildStatusData, detectTransitions, isStale, parseHistory } from '@/src/status'
 import type { HistoryEntry, MonitorResult } from '@/src/status'
 
 const result = (name: string, ok: boolean): MonitorResult => ({
@@ -61,6 +61,30 @@ describe('buildStatusData', () => {
   it('records up/down per monitor when multiple are present', () => {
     const data = buildStatusData(null, [result('A', true), result('B', false)], '2026-01-01T00:00:00Z')
     expect(data.history[0].up).toEqual({ A: true, B: false })
+  })
+
+  it('keeps monitor URLs out of the public snapshot', () => {
+    const data = buildStatusData(null, [result('A', true)], '2026-01-01T00:00:00Z')
+    expect(data.results[0]).toEqual({ name: 'A', ok: true, status: 200, ms: 42 })
+    expect(JSON.stringify(data)).not.toContain('https://')
+  })
+})
+
+describe('isStale', () => {
+  const at = '2026-01-01T00:00:00Z'
+  const t0 = Date.parse(at)
+
+  it('is fresh within the window (a couple of cron ticks late is fine)', () => {
+    expect(isStale(at, t0)).toBe(false)
+    expect(isStale(at, t0 + STALE_AFTER_MS)).toBe(false)
+  })
+
+  it('is stale once the checker has missed three ticks', () => {
+    expect(isStale(at, t0 + STALE_AFTER_MS + 1)).toBe(true)
+  })
+
+  it('treats an unparseable timestamp as stale', () => {
+    expect(isStale('not a date', t0)).toBe(true)
   })
 })
 

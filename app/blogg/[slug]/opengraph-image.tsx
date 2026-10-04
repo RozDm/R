@@ -1,8 +1,9 @@
 import { ImageResponse } from 'next/og'
 import { getPostBySlug, getPostSlugs } from '@/lib/blog'
+import { AUTHOR } from '@/lib/site'
 
 export const dynamic = 'force-static'
-export const alt = 'Artikkel — Dmytro Rozsoshnykh'
+export const alt = `Artikkel — ${AUTHOR.name}`
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -61,7 +62,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         </div>
 
         <div style={{ display: 'flex', color: '#475569', fontSize: 24 }}>
-          Dmytro Rozsoshnykh · rozsoshnykh.no
+          {`${AUTHOR.name} · rozsoshnykh.no`}
         </div>
       </div>
     ),

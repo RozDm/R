@@ -92,6 +92,7 @@ check "blogg"       "$BASE/blogg/"           200 "Artikler"
 check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
 check "tag"         "$BASE/blogg/tag/velkommen/" 200 "Velkommen"
 check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"
+check "personvern"  "$BASE/personvern/"      200 "Personvernerklæring"
 check "404"         "$BASE/finnes-ikke/"     404
 
 echo "== Machine endpoints =="
@@ -101,11 +102,13 @@ check "api/geo"     "$BASE/api/geo"          200 '"countries"'
 check "api/ts/geo"  "$BASE/api/timeseries?metric=geo&range=7d" 200 '"points"'
 check "api/ts/all"  "$BASE/api/timeseries?metric=geo&range=all" 200 '"points"'
 check "api/ts/view" "$BASE/api/timeseries?metric=view&range=7d" 200 '"points"'
-check "robots.txt"  "$BASE/robots.txt"       200 "Sitemap: $BASE/sitemap.xml"
+check "robots.txt"  "$BASE/robots.txt"       200 "Sitemap: $BASE/sitemap.xml" "Disallow: /api/"
 check "sitemap"     "$BASE/sitemap.xml"      200 "<loc>$BASE/blogg/"
 check "rss"         "$BASE/feed.xml"         200 "<rss"
 check "og-image"    "$BASE/opengraph-image"  200
 check "world-svg"   "$BASE/world.svg"        200 "<svg"
+check "security.txt" "$BASE/.well-known/security.txt" 200 "Contact: mailto:"
+check "icon-512"    "$BASE/icons/icon-512.png" 200
 
 echo "== Canonical host =="
 check_redirect "www"         "https://www.rozsoshnykh.no/"        "$BASE/"

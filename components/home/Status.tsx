@@ -11,7 +11,7 @@ export default function Status() {
           Driftsstatus
         </h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-          Sanntidsovervåking av tjenestene mine — sjekkes hvert 5. minutt av en
+          Overvåking av tjenestene mine — sjekkes hvert 5. minutt av en
           Cloudflare Worker (cron) og lagres i KV.
         </p>
       </div>

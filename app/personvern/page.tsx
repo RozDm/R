@@ -2,16 +2,16 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import { SITE_URL } from '@/lib/site'
+import { pageMetadata } from '@/lib/metadata'
 
-export const metadata: Metadata = {
+// Utility page, like /kontakt: keep it out of search results (and out of
+// the sitemap — a sitemap must not list noindex URLs).
+export const metadata: Metadata = pageMetadata({
   title: 'Personvern',
   description: 'Hvilke opplysninger dette nettstedet samler inn, og hvorfor.',
-  alternates: { canonical: `${SITE_URL}/personvern/` },
-  // Utility page, like /kontakt: keep it out of search results (and out of
-  // the sitemap — a sitemap must not list noindex URLs).
-  robots: { index: false, follow: true },
-}
+  path: '/personvern/',
+  noindex: true,
+})
 
 export default function PersonvernPage() {
   return (
@@ -31,8 +31,8 @@ export default function PersonvernPage() {
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Personvernerklæring
         </h1>
-        <p className="text-sm font-mono text-gray-400 dark:text-gray-500 mb-10">
-          Sist oppdatert: 5. juli 2026
+        <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-10">
+          Sist oppdatert: 4. oktober 2026
         </p>
 
         <div className="prose dark:prose-invert max-w-none prose-a:text-red-500 dark:prose-a:text-red-400 prose-a:no-underline hover:prose-a:underline prose-headings:font-bold">
@@ -52,15 +52,30 @@ export default function PersonvernPage() {
           </p>
           <p>
             Meldingen leveres til e-postinnboksen min, og en kopi lagres i en database hos
-            Cloudflare. Databasekopien slettes automatisk etter 30 dager.
+            Cloudflare. Databasekopien slettes automatisk etter 30 dager. Hvis e-posten ikke
+            kan leveres, slettes kopien med en gang, og du får beskjed om å prøve igjen.
+          </p>
+          <p>
+            Skjemaet er beskyttet av Cloudflare Turnstile, som skiller mennesker fra roboter.
+            For å gjøre det behandler Turnstile et lite sett tekniske signaler fra nettleseren
+            og forbindelsen din (blant annet IP-adressen), kun for å stoppe misbruk. Se{' '}
+            <a
+              href="https://www.cloudflare.com/turnstile-privacy-policy/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Cloudflares personvernvedlegg for Turnstile
+            </a>
+            .
           </p>
 
           <h2>Besøksstatistikk</h2>
           <p>
-            Nettstedet teller besøk anonymt: hvilket land et besøk kommer fra (avledet av
-            Cloudflare på kanten av nettverket) og hvor mange ganger et blogginnlegg er lest.
-            Tallene er rene tellere — de kan ikke knyttes til enkeltpersoner, og ingen IP-adresser
-            lagres i statistikken.
+            Nettstedet teller besøk anonymt: hvilket land et besøk kommer fra og hvilket nettverk
+            det kom gjennom (nettverksoperatøren, for eksempel en internettleverandør eller et
+            datasenter — brukt til å skille roboter fra mennesker), begge avledet av Cloudflare
+            på kanten av nettverket, og hvor mange ganger et blogginnlegg er lest. Tallene kan
+            ikke knyttes til enkeltpersoner, og ingen IP-adresser lagres i statistikken.
           </p>
           <p>
             I tillegg brukes Cloudflare Web Analytics, en personvernvennlig måling uten
@@ -71,7 +86,8 @@ export default function PersonvernPage() {
           <p>
             Nettstedet bruker ingen informasjonskapsler til sporing eller markedsføring.
             Nettleserens lokale lagring brukes kun til funksjonelle valg — fargetema, om
-            introanimasjonen er vist, og om besøket allerede er telt. Disse verdiene blir værende
+            introanimasjonen er vist, hvor mange ganger skjermspareren har dukket opp, og om
+            besøket og innleggene du har lest allerede er telt. Disse verdiene blir værende
             i nettleseren din og sendes ikke videre.
           </p>
 

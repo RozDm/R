@@ -7,7 +7,9 @@ export const skillGroups: SkillGroup[] = [
   },
   {
     title: 'Sky & Automatisering',
-    items: ['Azure', 'AWS', 'Ansible', 'PowerShell', 'Bash', 'Docker', 'Kubernetes', 'CI/CD'],
+    // Cloudflare Workers + GitHub Actions run this very site (Worker, D1, KV,
+    // Analytics Engine, CI/CD) — demonstrated, not "learning".
+    items: ['Azure', 'AWS', 'Cloudflare Workers', 'Ansible', 'PowerShell', 'Bash', 'Docker', 'Kubernetes', 'CI/CD', 'GitHub Actions'],
   },
   {
     title: 'Sikkerhet & SOC',
@@ -32,7 +34,7 @@ export const skillGroups: SkillGroup[] = [
       'Terraform',
       'Helm',
       'ArgoCD / FluxCD',
-      'GitHub Actions / GitLab CI',
+      'GitLab CI',
       'HashiCorp Vault',
       'GitHub/GitLab Secrets',
       'Trivy',
@@ -47,7 +49,6 @@ export const skillGroups: SkillGroup[] = [
       'WireGuard',
       'Istio',
       'nftables/iptables',
-      'Cloudflare',
       'Python',
       'Go',
     ],

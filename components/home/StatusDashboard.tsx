@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { HISTORY_LIMIT, isStale } from '@/src/status'
 
 interface ServiceResult {
   name: string
-  url: string
   ok: boolean
   status: number
   ms: number
@@ -35,6 +35,9 @@ function formatTime(iso?: string): string {
 export default function StatusDashboard() {
   const [data, setData] = useState<StatusData | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
+  // Judged when each snapshot lands (and re-judged on every poll), not during
+  // render — so a tab left open notices the checker going quiet.
+  const [stale, setStale] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -49,6 +52,7 @@ export default function StatusDashboard() {
         const res = await fetch('/api/status', { signal: controller.signal, cache: 'no-store' })
         const d: StatusData = await res.json()
         setData(d)
+        setStale(!!d.updatedAt && isStale(d.updatedAt, Date.now()))
         setState('ok')
         const anyDown = (d.results || []).some((r) => !r.ok)
         timer = setTimeout(tick, anyDown ? DOWN_REFRESH_MS : OK_REFRESH_MS)
@@ -98,7 +102,10 @@ export default function StatusDashboard() {
   const results = data.results || []
   const history = data.history || []
   const allUp = results.length > 0 && results.every((r) => r.ok)
+  // A stale snapshot is reported as unknown (grey), never as green or red:
+  // the last known state may no longer be true.
   const noData = results.length === 0
+  const neutral = noData || stale
   const downCount = results.filter((r) => !r.ok).length
 
   return (
@@ -106,7 +113,7 @@ export default function StatusDashboard() {
       {/* Overall banner */}
       <div
         className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border p-5 ${
-          noData
+          neutral
             ? 'border-gray-200 dark:border-gray-800'
             : allUp
               ? 'border-green-500/30 bg-green-500/5'
@@ -117,13 +124,15 @@ export default function StatusDashboard() {
       >
         <span
           className={`inline-block w-3 h-3 rounded-full shrink-0 ${
-            noData ? 'bg-gray-400' : allUp ? 'bg-green-500' : 'bg-red-500 animate-pulse'
+            neutral ? 'bg-gray-400' : allUp ? 'bg-green-500' : 'bg-red-500 animate-pulse'
           }`}
         />
         <span className="font-medium text-gray-900 dark:text-white">
           {noData
             ? 'Ingen data ennå'
-            : allUp
+            : stale
+              ? 'Statusdata er utdatert — overvåkingen svarer ikke'
+              : allUp
               ? 'Alle systemer operative'
               : `Driftsforstyrrelser — ${downCount} av ${results.length} tjenester nede`}
         </span>
@@ -138,20 +147,17 @@ export default function StatusDashboard() {
           <div
             key={r.name}
             className={`flex flex-col gap-3 p-4 rounded-xl border bg-white dark:bg-gray-900/50 transition-all duration-500 ${
-              r.ok
+              r.ok || stale
                 ? 'border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20'
                 : 'border-red-500/40 bg-red-500/5'
             }`}
           >
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${r.ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">{r.name}</span>
-                <span className="text-xs font-mono text-gray-500 dark:text-gray-400 break-all">{r.url}</span>
-              </div>
+              <span className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${stale ? 'bg-gray-400' : r.ok ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+              <span className="text-sm font-medium text-gray-900 dark:text-white min-w-0">{r.name}</span>
               <div className="basis-full sm:basis-auto sm:ml-auto text-left sm:text-right">
-                <div className={`text-sm font-mono ${r.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {r.ok ? 'Operativ' : 'Nede'}
+                <div className={`text-sm font-mono ${stale ? 'text-gray-500 dark:text-gray-400' : r.ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {stale ? `Sist kjent: ${r.ok ? 'operativ' : 'nede'}` : r.ok ? 'Operativ' : 'Nede'}
                 </div>
                 <div className="text-xs font-mono text-gray-500 dark:text-gray-400">
                   {r.status || '—'} · {r.ms} ms
@@ -176,8 +182,8 @@ export default function StatusDashboard() {
                 </div>
                 <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
                   Siste {history.length} sjekker
-                  {history.length === 149 && (
-                    <span title="Monolittens proporsjoner: 1² : 2² : 3²" className="text-gray-400 dark:text-gray-500">
+                  {history.length === HISTORY_LIMIT && (
+                    <span title="Monolittens proporsjoner: 1² : 2² : 3²" className="text-gray-500 dark:text-gray-400">
                       {' '}· 1:4:9
                     </span>
                   )}

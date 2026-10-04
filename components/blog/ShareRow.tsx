@@ -8,7 +8,7 @@ export default function ShareRow({ url }: { url: string }) {
 
   return (
     <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-mono">
-      <span className="text-gray-400 dark:text-gray-500 uppercase tracking-widest">Del</span>
+      <span className="text-gray-500 dark:text-gray-400 uppercase tracking-widest">Del</span>
       <a
         href={`https://www.linkedin.com/sharing/share-offsite/?url=${u}`}
         target="_blank"

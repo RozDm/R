@@ -57,7 +57,7 @@ export default function Footer() {
           Driftsstatus
         </HashLink>
 
-        <p className="text-xs text-gray-400 dark:text-gray-600 pt-8 font-mono">
+        <p className="text-xs text-gray-500 dark:text-gray-400 pt-8 font-mono">
           &copy; {currentYear} Dmytro Rozsoshnykh
           {' · '}
           <Link

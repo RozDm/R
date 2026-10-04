@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import type { MouseEventHandler, ReactNode } from 'react'
 
 interface Props {
@@ -8,6 +9,20 @@ interface Props {
   className?: string
   children: ReactNode
   onClick?: MouseEventHandler<HTMLAnchorElement>
+}
+
+const trimSlash = (p: string) => (p.length > 1 ? p.replace(/\/+$/, '') : p)
+
+// A plain page link (no #hash) marks itself as the current section: exact
+// match → "page", a parent of the current page (Blogg while reading a post)
+// → "true". Hash links never do — every one of them points at '/'.
+function currentFor(href: string, pathname: string | null): 'page' | 'true' | undefined {
+  if (!pathname || href.includes('#')) return undefined
+  const target = trimSlash(href)
+  const here = trimSlash(pathname)
+  if (here === target) return 'page'
+  if (target !== '/' && here.startsWith(`${target}/`)) return 'true'
+  return undefined
 }
 
 // Next 16's <Link href="/#x"> appends to the existing hash instead of replacing
@@ -20,6 +35,7 @@ interface Props {
 // is the best practice in 2026 and doesn't need our help. On other pages we
 // leave Link's client-side navigation alone so e.g. /blogg -> /#about works.
 export default function HashLink({ href, className, children, onClick }: Props) {
+  const pathname = usePathname()
   const handleClick: MouseEventHandler<HTMLAnchorElement> = (e) => {
     if (typeof window !== 'undefined' && window.location.pathname === '/') {
       const hash = href.split('#')[1]
@@ -38,7 +54,7 @@ export default function HashLink({ href, className, children, onClick }: Props) 
     onClick?.(e)
   }
   return (
-    <Link href={href} onClick={handleClick} className={className}>
+    <Link href={href} onClick={handleClick} className={className} aria-current={currentFor(href, pathname)}>
       {children}
     </Link>
   )

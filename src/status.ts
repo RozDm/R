@@ -34,9 +34,15 @@ export interface HistoryEntry {
   up: Record<string, boolean>
 }
 
+// What the public snapshot (KV → /api/status → dashboard) carries per
+// monitor: no URL. The monitored hosts include an admin panel (NetBox), and
+// publishing its address on the front page only hands it to password
+// sprayers. The URL stays in the cron's own results for the alert mails.
+export type PublicMonitorResult = Omit<MonitorResult, 'url'>
+
 export interface StatusData {
   updatedAt: string
-  results: MonitorResult[]
+  results: PublicMonitorResult[]
   history: HistoryEntry[]
 }
 
@@ -68,7 +74,22 @@ export function buildStatusData(raw: string | null, results: MonitorResult[], up
     up: Object.fromEntries(results.map((r) => [r.name, r.ok])),
   })
   if (history.length > HISTORY_LIMIT) history = history.slice(-HISTORY_LIMIT)
-  return { updatedAt, results, history }
+  return {
+    updatedAt,
+    results: results.map(({ name, ok, status, ms }) => ({ name, ok, status, ms })),
+    history,
+  }
+}
+
+// A snapshot older than this means the checker itself has stopped (three
+// missed 5-minute cron ticks, or KV writes failing). The dashboard must then
+// say so instead of repeating a frozen "Alle systemer operative" — nothing
+// else watches the watcher. An unparseable timestamp counts as stale.
+export const STALE_AFTER_MS = 15 * 60_000
+
+export function isStale(updatedAt: string, now: number): boolean {
+  const t = Date.parse(updatedAt)
+  return !Number.isFinite(t) || now - t > STALE_AFTER_MS
 }
 
 // Flap damping for the down edge: a monitor is alerted as down only once this

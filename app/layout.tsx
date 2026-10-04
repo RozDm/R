@@ -4,7 +4,8 @@ import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/context/ThemeContext'
 import VisitBeacon from '@/components/effects/VisitBeacon'
-import { SITE_URL, AUTHOR } from '@/lib/site'
+import { SITE_URL, AUTHOR, SITE_TITLE, SITE_DESCRIPTION, SITE_TAGLINE, THEME_BG } from '@/lib/site'
+import { RSS_ALTERNATE } from '@/lib/metadata'
 
 const intelOneMono = Intel_One_Mono({
   subsets: ['latin'],
@@ -34,33 +35,41 @@ const intelOneMono = Intel_One_Mono({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // Matches the body background per scheme. ThemeContext rewrites both tags
+  // to the active colour when the visitor overrides the OS scheme.
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+    { media: '(prefers-color-scheme: light)', color: THEME_BG.light },
+    { media: '(prefers-color-scheme: dark)', color: THEME_BG.dark },
   ],
 }
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps i Vestland',
-    template: '%s – Dmytro Rozsoshnykh',
+    default: SITE_TITLE,
+    template: `%s – ${AUTHOR.name}`,
   },
-  description: 'Systemadministrator, DevOps og IT-driftstekniker med fokus på infrastruktur, automatisering og sikkerhet. Basert i Askøy, Vestland.',
-  alternates: {
-    canonical: '/',
-    types: { 'application/rss+xml': '/feed.xml' },
-  },
+  description: SITE_DESCRIPTION,
+  // Fallbacks only — every page sets its own canonical/og:url through
+  // pageMetadata() (lib/metadata.ts). No canonical or og:url here: whatever
+  // inherits these (the 404 page) must not claim to be the home page.
+  alternates: { types: RSS_ALTERNATE },
   openGraph: {
-    title: 'Dmytro Rozsoshnykh – Systemadministrator & DevOps i Vestland',
-    description: 'Systemadministrator · DevOps · IT-driftstekniker. Infrastruktur, automatisering og sikkerhet.',
-    url: `${SITE_URL}/`,
-    siteName: 'Dmytro Rozsoshnykh',
+    title: SITE_TITLE,
+    description: SITE_TAGLINE,
+    siteName: AUTHOR.name,
     locale: 'nb_NO',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
+  },
+  // Both listed explicitly: a config `icons` object replaces the file-based
+  // app/icon.svg link instead of merging with it. iOS ignores SVG for the
+  // home screen, so it gets the PNG from app/icons/[name]/route.tsx.
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml', sizes: 'any' }],
+    apple: '/icons/apple-touch-icon.png',
   },
   // Mykt-lansering: domenet er på plass, men indeksering venter til de
   // første postene er publisert. Sett index: true når innholdet er klart,
@@ -108,9 +117,14 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
           }}
         />
+        {/* The intro is the front door only: a visitor who lands on any other
+            page (a post from search, /kontakt) or on a /#hash deep link (the
+            /status redirect, a shared /#skills link) is marked as having seen
+            it, so a later click to the home page never hijacks them with the
+            11-second sequence. Only a plain first load of / plays it. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(location.pathname==='/'&&!sessionStorage.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
+            __html: `(function(){try{var s=sessionStorage;if(location.pathname!=='/'||location.hash){s.setItem('intro-seen','1')}else if(!s.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
           }}
         />
         <script

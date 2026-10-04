@@ -23,7 +23,7 @@ export default function Certifications() {
               <p className="text-sm font-medium text-gray-900 dark:text-white leading-snug">
                 {cert.title}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">
                 {cert.issuer}
               </p>
             </div>

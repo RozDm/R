@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fillBuckets } from '@/lib/timeseries-fill'
+import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
 import { METRICS_EPOCH } from '@/src/timeseries'
 
 // Fixed reference instant: 2026-06-20 12:30:00 UTC. The hour floor is 12:00,
@@ -114,5 +114,20 @@ describe('fillBuckets all', () => {
     const out = fillBuckets([], 'all', now)
     expect(out).toHaveLength(361)
     expect(msOf(out[out.length - 1].ts)).toBe(Math.floor(now / SIX_H) * SIX_H)
+  })
+})
+
+describe('isAllRangeCapped', () => {
+  it('is false while epoch → now fits the grid', () => {
+    expect(isAllRangeCapped(epochMs + 12 * SIX_H)).toBe(false)
+    expect(isAllRangeCapped(epochMs + 360 * SIX_H)).toBe(false) // exactly 361 buckets
+  })
+
+  it('is true once the all-time wave has to drop its oldest buckets', () => {
+    expect(isAllRangeCapped(epochMs + 361 * SIX_H)).toBe(true)
+  })
+
+  it('describes the capped window as 90 days', () => {
+    expect(ALL_MAX_DAYS).toBe(90)
   })
 })

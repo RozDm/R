@@ -33,7 +33,7 @@ export default function Error({
         Noe gikk galt. Jeg er redd jeg ikke kan fortsette akkurat nå.
       </h1>
       {error.digest && (
-        <p className="mt-6 font-mono text-xs text-gray-400 dark:text-gray-600">
+        <p className="mt-6 font-mono text-xs text-gray-500 dark:text-gray-400">
           {`// ${error.digest}`}
         </p>
       )}

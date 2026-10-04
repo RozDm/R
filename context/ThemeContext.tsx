@@ -1,8 +1,18 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { THEME_BG } from '@/lib/site'
 
 type Theme = 'light' | 'dark'
+
+// The <meta name="theme-color"> pair (app/layout.tsx viewport) follows the OS
+// scheme via media queries. Once the visitor picks a theme by hand, point both
+// at that theme's background so the mobile browser bar matches the page.
+function syncThemeColor(theme: Theme) {
+  document
+    .querySelectorAll('meta[name="theme-color"]')
+    .forEach((m) => m.setAttribute('content', THEME_BG[theme]))
+}
 
 interface ThemeContextType {
   theme: Theme
@@ -27,15 +37,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // here — there's no alternative way to learn the initial value.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
-    setThemeState(
-      document.documentElement.classList.contains('dark') ? 'dark' : 'light',
-    )
+    const initial: Theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+    setThemeState(initial)
+    try {
+      if (localStorage.getItem('theme')) syncThemeColor(initial)
+    } catch {}
   }, [])
 
   const toggleTheme = () => {
     setThemeState((prev) => {
       const next: Theme = prev === 'light' ? 'dark' : 'light'
       document.documentElement.classList.toggle('dark', next === 'dark')
+      syncThemeColor(next)
       try {
         localStorage.setItem('theme', next)
       } catch {}
