@@ -88,12 +88,18 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   )
     .bind(at, ip, payload.name, payload.email, payload.message)
     .first<{ id: number }>()
-    .catch(() => null)
+    .catch((err) => {
+      console.error('contact: D1 insert failed', err)
+      return null
+    })
 
   try {
     const mime = buildContactMime(CONTACT_FROM, CONTACT_TO, payload, at)
     await env.CONTACT_EMAIL.send(new EmailMessage(CONTACT_FROM, CONTACT_TO, mime))
-  } catch {
+  } catch (err) {
+    // No address or message in the log line — the visitor's data stays out
+    // of Workers Logs; the error itself is what needs noticing.
+    console.error('contact: mail send failed', err)
     // Un-store the row: a stored-but-unsent row would make the visitor's retry
     // look like a duplicate (the dedup above would ack it with ok:true and never
     // mail it) and would eat into their rate limit. The form keeps its text on

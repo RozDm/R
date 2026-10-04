@@ -33,7 +33,9 @@ export function recordGeo(
     )
       .bind(country)
       .run()
-      .catch(() => {}),
+      // Logged, not thrown: the 2026-07 D1 outage failed these upserts
+      // silently for days while AE kept counting (docs/history.md).
+      .catch((err) => console.error('geo: D1 upsert failed', err)),
   )
   // Time-series point so we can graph visits over time. D1 keeps the running
   // total per country; AE keeps the timestamped trail.

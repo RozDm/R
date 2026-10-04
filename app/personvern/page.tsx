@@ -81,6 +81,12 @@ export default function PersonvernPage() {
             I tillegg brukes Cloudflare Web Analytics, en personvernvennlig måling uten
             informasjonskapsler og uten sporing på tvers av nettsteder.
           </p>
+          <p>
+            Hvis nettleseren din blokkerer noe på en side av sikkerhetshensyn (såkalt
+            Content Security Policy), sender den automatisk en teknisk feilrapport hit. Fra
+            rapporten lagres bare hvilken side det gjaldt og hvilken type ressurs som ble
+            blokkert — ingen IP-adresse og ingen opplysninger om deg.
+          </p>
 
           <h2>Informasjonskapsler og lokal lagring</h2>
           <p>

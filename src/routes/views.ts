@@ -33,7 +33,10 @@ export async function handleViews(url: URL, request: Request, env: Env): Promise
     )
       .bind(slug)
       .first<{ count: number }>()
-      .catch(() => null)
+      .catch((err) => {
+        console.error('views: D1 upsert failed', err)
+        return null
+      })
     if (row) {
       // Append a time-series point alongside the D1 increment. Sampled,
       // append-only, so it doesn't fight the D1 counter — D1 stays the

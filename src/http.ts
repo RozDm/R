@@ -28,7 +28,21 @@ export async function cachedApiJson(
 ): Promise<{ hit: Response | null; key: Request }> {
   const key = new Request(canonicalUrl, { method: 'GET' })
   const hit = await caches.default.match(key)
-  return { hit: hit ?? null, key }
+  return { hit: hit ? withStoredTtl(hit) : null, key }
+}
+
+// On a cache HIT, Cloudflare's zone-level Browser Cache TTL (4 h by default)
+// rewrites the stored max-age (60 → 14400) while leaving s-maxage alone.
+// Restore the TTL we put in so browsers and shared caches don't hold a
+// 60-second status snapshot for four hours. (If the zone rewrites again on
+// egress, the dashboard fix is Browser Cache TTL → "Respect Existing
+// Headers"; the front end is safe either way — it fetches with no-store.)
+function withStoredTtl(hit: Response): Response {
+  const ttl = /s-maxage=(\d+)/.exec(hit.headers.get('Cache-Control') ?? '')?.[1]
+  if (!ttl) return hit
+  const response = new Response(hit.body, hit)
+  response.headers.set('Cache-Control', `public, max-age=${ttl}, s-maxage=${ttl}`)
+  return response
 }
 
 export function putCachedApiJson(
