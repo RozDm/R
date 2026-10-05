@@ -74,8 +74,10 @@ reuses `CLOUDFLARE_ACCOUNT_ID`).
 ### Layout
 
 ```
-.claude/            Claude Code project config: skills (audit, new-post),
-                    session-start hook, permissions allowlist
+.claude/            Claude Code project config: skills (audit, browser-check,
+                    new-post), hooks (session-start.sh: npm ci; guard-bash.mjs:
+                    no shell reads of generated files; stop-docs.mjs: doc-drift
+                    gate before a session ends), permissions allowlist
 app/                Next App Router: home, /blogg, /blogg/tag/[slug], /kontakt,
                     /personvern, en/ (English home, contact, privacy, blog,
                     feed and OG cards), feed.xml, sitemap, robots, manifest, OG
@@ -98,7 +100,7 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     language), og-site-card.tsx, og-post-card.tsx, geo.ts,
                     timeseries-fill.ts, trends-axis.ts
 schema/             metrics.sql (views, geo, contact)
-scripts/            smoke.sh, build-world-svg.mjs
+scripts/            smoke.sh, build-world-svg.mjs, check-docs.mjs (docs drift)
 src/                Cloudflare Worker (index.ts, csp.ts, http.ts, status.ts,
                     metrics.ts, contact.ts, timeseries.ts, routes/*)
 tests/              Vitest
