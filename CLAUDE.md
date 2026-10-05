@@ -51,35 +51,32 @@ the same PR — structure drift is worse than missing docs.
 
 - `app/`, `components/` — App Router, `trailingSlash: true`, Tailwind v4 (no
   config file, `@theme` in `app/globals.css`).
-- Routes: `/` (Hero/Skills/Certifications/Status/Visitors/Trends), `/blogg`,
-  `/blogg/[slug]`, `/blogg/tag/[slug]`, `/kontakt`, `/personvern` (privacy
-  notice, linked from the footer + `/kontakt`), plus `feed.xml`, `sitemap`,
-  `robots`, `manifest`, OG images, `/icons/*.png` (build-time PNGs of
-  `app/icon.svg` for the manifest + apple-touch-icon,
-  `app/icons/[name]/route.tsx`, which also builds `favicon.ico` — the Worker
-  serves it at `/favicon.ico`) and `/.well-known/security.txt` (static in
-  `public/`, RFC 9116 — bump its `Expires` yearly). `error.tsx` /
-  `global-error.tsx` are the HAL-voiced «Systemfeil» boundaries.
-- Languages: `lib/i18n.ts` maps the static pairs (`/` ↔ `/en/`,
-  `/kontakt/` ↔ `/en/contact/`, `/personvern/` ↔ `/en/privacy/`, `/blogg/` ↔
-  `/en/blog/`) — `localePath()` for links inside a page, `switchPath()` for the
-  NO/EN switch (`LangSwitch`), `languageAlternates()` for hreflang. Blog posts
-  and tag pages pair dynamically: the page computes its twin and passes it as
-  `Header alternate` (the switch target) and `pageMetadata({ languages })`
-  (hreflang); with no twin the switch goes to the other blog index. ALL UI copy lives in `data/i18n.ts`:
-  `nb` defines the shape, `en` is typed against it, and `tests/i18n.test.ts`
-  checks parity — add a string to both or the check fails. Server components
-  take `lang` from their page (`HomePage`, `ContactPage` are shared by both
-  languages); client components call `useLang()` (`lib/use-lang.ts`, from the
-  pathname). Bilingual data (skill groups, courses) uses `Localized` +
-  `pick()`. One root layout serves both languages, so the export always says
-  `<html lang="nb">`: the Worker rewrites it to `en` for `/en/` documents and
-  `HtmlLang` keeps it right across client navigations. `/en/privacy/` is a
-  translation — keep it in step with `/personvern/` (the Norwegian one is
-  authoritative).
+- Routes (Norwegian at the root, English twins under `/en/`): `/` + `/en/`
+  (Hero/Skills/Certifications/Status/Visitors/Trends), `/blogg/…` +
+  `/en/blog/…` (index, `[slug]`, `tag/[slug]`), `/kontakt` + `/en/contact`,
+  `/personvern` + `/en/privacy` (privacy notice, linked from the footer and
+  the contact page), plus `feed.xml` + `en/feed.xml`, `sitemap`, `robots`,
+  `manifest`, OG images, `/icons/*.png` (build-time PNGs of `app/icon.svg`
+  for the manifest + apple-touch-icon, `app/icons/[name]/route.tsx`, which
+  also builds `favicon.ico` — the Worker serves it at `/favicon.ico`) and
+  `/.well-known/security.txt` (static in `public/`, RFC 9116 — bump its
+  `Expires` yearly). `error.tsx` / `global-error.tsx` are the HAL-voiced
+  «Systemfeil» boundaries.
+- Languages: ALL UI copy lives in `data/i18n.ts` — `nb` defines the shape,
+  `en` is typed against it, `tests/i18n.test.ts` checks parity; never
+  hard-code copy in a component. Server components take `lang` from their
+  page (both languages share `HomePage`, `ContactPage` and the blog page
+  components); client components call `useLang()`. Links between pages go
+  through `localePath()` (`lib/i18n.ts`, the static pairs); blog posts and
+  tags pair dynamically and pass their twin as `Header alternate` (the NO/EN
+  switch) + `pageMetadata({ languages })` (hreflang). Bilingual data uses
+  `Localized` + `pick()`. The export always says `<html lang="nb">`: the
+  Worker rewrites `/en/` documents to `en`, `HtmlLang` keeps it right on
+  client navigation. `/en/privacy/` translates `/personvern/` (the Norwegian
+  one is authoritative) — change both.
 - Metadata: every page builds it with `pageMetadata()` (`lib/metadata.ts`;
-  pass `lang: 'en'` on English pages — og:locale, hreflang, the English OG
-  card and no RSS link follow from it).
+  `lang: 'en'` on English pages sets og:locale, hreflang, the English OG card
+  and the `/en/feed.xml` alternate).
   Next merges route metadata SHALLOWLY, so a page setting only part of
   `openGraph`/`alternates` drops og:url, og:image, og:site_name and the RSS
   alternate. The root layout has no canonical/og:url on purpose (the 404
@@ -174,31 +171,24 @@ the same PR — structure drift is worse than missing docs.
   marks it seen when a session lands anywhere else or on a `/#hash` deep
   link. Any key or click skips it.
 - Blog posts: Norwegian in `content/blog/<slug>.md`, English in
-  `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>` (a post
-  may exist in one language only). Frontmatter `title`, `description`,
-  `date` (ISO), `tags`, optional `updated` and `draft: true`; twins share
-  date, `updated`, tags and draft state — `tests/blog-pairs.test.ts` fails
-  the build otherwise, so an edit to one updates both. `/new-post` writes
-  both drafts. `lib/blog.ts` takes `lang` everywhere (`getTranslation`,
-  `viewKey` — one view counter per post across languages, keyed by the
-  Norwegian slug); URLs come from `lib/blog-paths.ts`; pages are the shared
-  `components/blog/{BlogIndexPage,PostPage,TagPage}.tsx` behind thin routes
-  in `app/blogg/` and `app/en/blog/`; feeds `/feed.xml` + `/en/feed.xml`
-  (`lib/feed.ts`). Tags are
-  normalized via `lib/tags.ts` (`normalizeTag`/`normalizeTags`/`tagToSlug`);
-  the canonical list and alias map live in `data/tags.ts`. Tags are canonical
-  across languages; `TAG_LABELS_EN` gives the Norwegian-word tags their
-  English label (`tagLabel`), which also forms the English tag URL. `/blogg`
-  (`BlogList`) and the tag pages (both languages) are server components sharing
-  `components/blog/PostCard.tsx`; topic chips link to `/blogg/tag/<slug>/`.
-  Reading time is computed; code blocks are highlighted at build by
-  `rehype-highlight` (theme in `app/globals.css`). `draft: true` keeps a post
-  off every public surface at build time (`getPostSlugs`/`getAllPosts` filter
-  on `NODE_ENV !== 'production'`, so it 404s in prod); `npm run dev` shows it
-  with a red «Utkast» badge. `/new-post` scaffolds drafts.
+  `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>`; a post
+  may exist in one language only. Frontmatter `title`, `description`, `date`
+  (ISO), `tags`, optional `updated` and `draft: true`. Twins share date,
+  `updated`, tags and draft — `tests/blog-pairs.test.ts` fails otherwise, so
+  an edit to one updates both; `/new-post` writes both drafts. `lib/blog.ts`
+  takes `lang` everywhere, URLs come from `lib/blog-paths.ts`, and one view
+  counter covers both versions (`viewKey`: the Norwegian slug). Tags are
+  canonical across languages (`lib/tags.ts` normalizes; canon + aliases in
+  `data/tags.ts`); `TAG_LABELS_EN` gives the Norwegian-word tags their
+  English label, which also forms the English tag URL. Reading time is
+  computed; code blocks are highlighted at build by `rehype-highlight` (theme
+  in `app/globals.css`). `draft: true` keeps a post off every public surface
+  in production builds (`NODE_ENV` filter in `getPostSlugs`/`getAllPosts`);
+  `npm run dev` shows drafts with a red «Utkast» badge.
 - SEO: canonicals + trailing slash everywhere, OG images via `next/og`,
   JSON-LD (Person + WebSite sitewide, BlogPosting + image + BreadcrumbList per
-  post), RSS at `/feed.xml`, prev/next + tag pages. `robots.index: false` in
+  post), RSS at `/feed.xml` + `/en/feed.xml`, hreflang between language
+  twins (pages + sitemap), prev/next + tag pages. `robots.index: false` in
   `app/layout.tsx` until launch — flip it only when asked, then submit the
   sitemap in Search Console. `/kontakt`, `/personvern` and status-style
   utility pages stay noindex permanently; the sitemap never lists noindex
