@@ -20,9 +20,11 @@ describe('localePath', () => {
     expect(localePath('en', '/kontakt/')).toBe('/en/contact/')
     expect(localePath('en', '/personvern/')).toBe('/en/privacy/')
     expect(localePath('en', '/#skills')).toBe('/en/#skills')
+    expect(localePath('en', '/blogg/')).toBe('/en/blog/')
   })
-  it('leaves Norwegian-only pages and Norwegian links alone', () => {
-    expect(localePath('en', '/blogg/')).toBe('/blogg/')
+  it('leaves pages without a static twin and Norwegian links alone', () => {
+    // Posts pair dynamically (their pages pass the twin), not through here.
+    expect(localePath('en', '/blogg/velkommen/')).toBe('/blogg/velkommen/')
     expect(localePath('nb', '/kontakt/')).toBe('/kontakt/')
   })
 })
@@ -33,8 +35,9 @@ describe('switchPath', () => {
     expect(switchPath('/en/privacy/', 'nb')).toBe('/personvern/')
     expect(switchPath('/en', 'nb')).toBe('/')
   })
-  it('falls back to the front page when there is no twin (the blog)', () => {
+  it('falls back to the front page when there is no static twin', () => {
     expect(switchPath('/blogg/velkommen/', 'en')).toBe('/en/')
+    expect(switchPath('/blogg/', 'en')).toBe('/en/blog/')
   })
 })
 
@@ -43,7 +46,8 @@ describe('languageAlternates', () => {
     const both = { nb: '/', en: '/en/', 'x-default': '/' }
     expect(languageAlternates('/')).toEqual(both)
     expect(languageAlternates('/en/')).toEqual(both)
-    expect(languageAlternates('/blogg/')).toBeUndefined()
+    expect(languageAlternates('/blogg/')).toEqual({ nb: '/blogg/', en: '/en/blog/', 'x-default': '/blogg/' })
+    expect(languageAlternates('/blogg/velkommen/')).toBeUndefined()
   })
 })
 

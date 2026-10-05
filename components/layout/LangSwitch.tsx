@@ -6,16 +6,17 @@ import { DICT } from '@/data/i18n'
 import { HREFLANG, langFromPath, switchPath } from '@/lib/i18n'
 
 // NO ⇄ EN: the same page in the other language, or that language's front page
-// when the page exists in one language only (the blog is Norwegian-only). The
-// label is the other language's code, written in that language.
-export default function LangSwitch() {
+// when the page exists in one language only. Blog pages pass `href` (their
+// twin, or the other blog index). The label is the other language's code,
+// written in that language.
+export default function LangSwitch({ href }: { href?: string }) {
   const pathname = usePathname() ?? '/'
   const lang = langFromPath(pathname)
   const other = lang === 'nb' ? 'en' : 'nb'
   const t = DICT[lang].langSwitch
   return (
     <Link
-      href={switchPath(pathname, other)}
+      href={href ?? switchPath(pathname, other)}
       hrefLang={HREFLANG[other]}
       lang={HREFLANG[other]}
       title={t.title}

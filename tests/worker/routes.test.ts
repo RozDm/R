@@ -69,6 +69,12 @@ describe('/api/views/<slug>', () => {
     ])
   })
 
+  it('counts an English-only post under its own slug', async () => {
+    const fake = makeEnv()
+    const url = new URL(`${ORIGIN}/api/views/english-only`)
+    expect(await (await handleViews(url, post('english-only'), fake.env))!.json()).toEqual({ views: 1 })
+  })
+
   it('never mints a row for a slug that is not a published page', async () => {
     const fake = makeEnv()
     const url = new URL(`${ORIGIN}/api/views/finnes-ikke`)

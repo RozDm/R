@@ -3,8 +3,8 @@
 Personal portfolio + blog for Dmytro Rozsoshnykh, live at https://rozsoshnykh.no.
 Next.js 16 static export (App Router, `output: 'export'`) served by a Cloudflare
 Worker. React 19, TypeScript 6, Tailwind v4. The site is Norwegian (nb-NO) at
-the root with an English twin under `/en/` (front page, contact, privacy); the
-blog is Norwegian-only. Code and comments are English.
+the root with an English twin under `/en/` (front page, contact, privacy,
+blog). Code and comments are English.
 
 ## Where the rules live
 
@@ -60,11 +60,13 @@ the same PR — structure drift is worse than missing docs.
   serves it at `/favicon.ico`) and `/.well-known/security.txt` (static in
   `public/`, RFC 9116 — bump its `Expires` yearly). `error.tsx` /
   `global-error.tsx` are the HAL-voiced «Systemfeil» boundaries.
-- Languages: `lib/i18n.ts` maps the pairs (`/` ↔ `/en/`, `/kontakt/` ↔
-  `/en/contact/`, `/personvern/` ↔ `/en/privacy/`) — `localePath()` for links
-  inside a page, `switchPath()` for the NO/EN switch (`LangSwitch`; a page
-  without a twin, like the blog, switches to the other front page),
-  `languageAlternates()` for hreflang. ALL UI copy lives in `data/i18n.ts`:
+- Languages: `lib/i18n.ts` maps the static pairs (`/` ↔ `/en/`,
+  `/kontakt/` ↔ `/en/contact/`, `/personvern/` ↔ `/en/privacy/`, `/blogg/` ↔
+  `/en/blog/`) — `localePath()` for links inside a page, `switchPath()` for the
+  NO/EN switch (`LangSwitch`), `languageAlternates()` for hreflang. Blog posts
+  and tag pages pair dynamically: the page computes its twin and passes it as
+  `Header alternate` (the switch target) and `pageMetadata({ languages })`
+  (hreflang); with no twin the switch goes to the other blog index. ALL UI copy lives in `data/i18n.ts`:
   `nb` defines the shape, `en` is typed against it, and `tests/i18n.test.ts`
   checks parity — add a string to both or the check fails. Server components
   take `lang` from their page (`HomePage`, `ContactPage` are shared by both
@@ -171,11 +173,23 @@ the same PR — structure drift is worse than missing docs.
   (never under prefers-reduced-motion): the head script in `app/layout.tsx`
   marks it seen when a session lands anywhere else or on a `/#hash` deep
   link. Any key or click skips it.
-- Blog posts: `content/blog/<slug>.md`, frontmatter `title`, `description`,
-  `date` (ISO), `tags`, optional `updated` and `draft: true`. Tags are
+- Blog posts: Norwegian in `content/blog/<slug>.md`, English in
+  `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>` (a post
+  may exist in one language only). Frontmatter `title`, `description`,
+  `date` (ISO), `tags`, optional `updated` and `draft: true`; twins share
+  date, `updated`, tags and draft state — `tests/blog-pairs.test.ts` fails
+  the build otherwise, so an edit to one updates both. `/new-post` writes
+  both drafts. `lib/blog.ts` takes `lang` everywhere (`getTranslation`,
+  `viewKey` — one view counter per post across languages, keyed by the
+  Norwegian slug); URLs come from `lib/blog-paths.ts`; pages are the shared
+  `components/blog/{BlogIndexPage,PostPage,TagPage}.tsx` behind thin routes
+  in `app/blogg/` and `app/en/blog/`; feeds `/feed.xml` + `/en/feed.xml`
+  (`lib/feed.ts`). Tags are
   normalized via `lib/tags.ts` (`normalizeTag`/`normalizeTags`/`tagToSlug`);
-  the canonical list and alias map live in `data/tags.ts`. `/blogg`
-  (`BlogList`) and the tag pages are server components sharing
+  the canonical list and alias map live in `data/tags.ts`. Tags are canonical
+  across languages; `TAG_LABELS_EN` gives the Norwegian-word tags their
+  English label (`tagLabel`), which also forms the English tag URL. `/blogg`
+  (`BlogList`) and the tag pages (both languages) are server components sharing
   `components/blog/PostCard.tsx`; topic chips link to `/blogg/tag/<slug>/`.
   Reading time is computed; code blocks are highlighted at build by
   `rehype-highlight` (theme in `app/globals.css`). `draft: true` keeps a post

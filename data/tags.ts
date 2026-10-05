@@ -77,6 +77,20 @@ export const STANDARD_TAGS = [
   'SRE',
 ] as const
 
+// English labels for the canonical tags that are Norwegian words. Posts in
+// both languages carry the canonical tag (English frontmatter like "Security"
+// resolves to «Sikkerhet» through TAG_ALIASES); the English blog shows these
+// labels and builds its tag URLs from them. Product names need no entry.
+export const TAG_LABELS_EN: Record<string, string> = {
+  Virtualisering: 'Virtualisation',
+  Sikkerhet: 'Security',
+  Overvåking: 'Monitoring',
+  Nettverk: 'Networking',
+  Automatisering: 'Automation',
+  Migrering: 'Migration',
+  Velkommen: 'Welcome',
+}
+
 // Aliaser: lowercase nøkkel → kanonisk tag.
 // Brukes til å fange opp vanlige skrivemåter, forkortelser og engelske varianter.
 export const TAG_ALIASES: Record<string, string> = {
@@ -92,6 +106,7 @@ export const TAG_ALIASES: Record<string, string> = {
   'vmware vsphere': 'VMware',
   'vmware esxi': 'VMware',
   virtualization: 'Virtualisering',
+  virtualisation: 'Virtualisering',
 
   // Identitet
   ad: 'Active Directory',
@@ -131,5 +146,7 @@ export const TAG_ALIASES: Record<string, string> = {
 
   // Operasjoner
   migration: 'Migrering',
+  automation: 'Automatisering',
+  welcome: 'Velkommen',
   migrasjon: 'Migrering',
 }

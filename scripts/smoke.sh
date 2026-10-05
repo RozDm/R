@@ -99,6 +99,10 @@ check "en home"     "$BASE/en/"              200 '<html lang="en"' "Service stat
 check "en contact"  "$BASE/en/contact/"      200 '<html lang="en"' "Contact form"
 check "en privacy"  "$BASE/en/privacy/"      200 '<html lang="en"' "Privacy notice"
 check "en og-image" "$BASE/en/opengraph-image" 200
+check "en blog"     "$BASE/en/blog/"         200 '<html lang="en"' "Articles"
+check "en post"     "$BASE/en/blog/welcome/" 200 '<html lang="en"' "Welcome to the blog" 'hrefLang="nb"'
+check "en tag"      "$BASE/en/blog/tag/welcome/" 200 "Welcome"
+check "en rss"      "$BASE/en/feed.xml"      200 "<rss" "<language>en-GB</language>"
 
 echo "== Machine endpoints =="
 check "api/status"  "$BASE/api/status"       200 '"results"'

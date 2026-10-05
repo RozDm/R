@@ -1,4 +1,4 @@
-import type { Localized } from '@/lib/i18n'
+import type { Lang, Localized } from '@/lib/i18n'
 
 // `string` = the same in both languages (product names); Localized = translated.
 export interface SkillGroup {
@@ -14,6 +14,9 @@ export interface Certification {
 
 export interface PostMeta {
   slug: string
+  lang: Lang
+  // English posts only: the slug of the Norwegian twin (frontmatter).
+  translationOf?: string
   title: string
   description: string
   date: string

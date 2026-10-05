@@ -9,11 +9,16 @@ import { isValidSlug, isWriteAllowed } from '../metrics'
 // before it may mint a D1 row — otherwise junk slugs accumulate in `views`
 // forever. The static export is the source of truth: the post page exists
 // iff the slug is live (drafts never reach the export). Checked via the
-// ASSETS binding — a Worker can't fetch its own public URL.
+// ASSETS binding — a Worker can't fetch its own public URL. The slug is the
+// post's view key (lib/blog.ts viewKey): the Norwegian slug for a post that
+// has one, else an English-only post's own slug under /en/blog/.
 async function isPublishedPost(url: URL, env: Env, slug: string): Promise<boolean> {
-  const page = await env.ASSETS.fetch(new Request(`${url.origin}/blogg/${slug}/`))
-  await page.body?.cancel()
-  return page.status === 200
+  for (const base of ['/blogg/', '/en/blog/']) {
+    const page = await env.ASSETS.fetch(new Request(`${url.origin}${base}${slug}/`))
+    await page.body?.cancel()
+    if (page.status === 200) return true
+  }
+  return false
 }
 
 export async function handleViews(url: URL, request: Request, env: Env): Promise<Response | null> {
