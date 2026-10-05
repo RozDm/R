@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { DICT } from '@/data/i18n'
+import { INTL_LOCALE, type Lang } from '@/lib/i18n'
+import { useLang } from '@/lib/use-lang'
 import { HISTORY_LIMIT, isStale } from '@/src/status'
 
 interface ServiceResult {
@@ -27,12 +30,14 @@ interface StatusData {
 const OK_REFRESH_MS = 90_000
 const DOWN_REFRESH_MS = 30_000
 
-function formatTime(iso?: string): string {
+function formatTime(lang: Lang, iso?: string): string {
   if (!iso) return '—'
-  return new Intl.DateTimeFormat('nb-NO', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
+  return new Intl.DateTimeFormat(INTL_LOCALE[lang], { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
 }
 
 export default function StatusDashboard() {
+  const lang = useLang()
+  const t = DICT[lang].status
   const [data, setData] = useState<StatusData | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
   // Judged when each snapshot lands (and re-judged on every poll), not during
@@ -87,14 +92,14 @@ export default function StatusDashboard() {
   if (state === 'loading') {
     return (
       <div className="min-h-[352px]">
-        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Åpner podbay-dørene…</p>
+        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">{t.loading}</p>
       </div>
     )
   }
   if (state === 'error' || !data) {
     return (
       <div className="min-h-[352px]">
-        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kunne ikke hente status.</p>
+        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">{t.failed}</p>
       </div>
     )
   }
@@ -129,15 +134,15 @@ export default function StatusDashboard() {
         />
         <span className="font-medium text-gray-900 dark:text-white">
           {noData
-            ? 'Ingen data ennå'
+            ? t.noData
             : stale
-              ? 'Statusdata er utdatert — overvåkingen svarer ikke'
+              ? t.stale
               : allUp
-              ? 'Alle systemer operative'
-              : `Driftsforstyrrelser — ${downCount} av ${results.length} tjenester nede`}
+              ? t.allUp
+              : t.someDown(downCount, results.length)}
         </span>
         <span className="basis-full sm:basis-auto sm:ml-auto text-xs font-mono text-gray-600 dark:text-gray-400">
-          Oppdatert: {formatTime(data.updatedAt)}
+          {t.updated}: {formatTime(lang, data.updatedAt)}
         </span>
       </div>
 
@@ -157,7 +162,7 @@ export default function StatusDashboard() {
               <span className="text-sm font-medium text-gray-900 dark:text-white min-w-0">{r.name}</span>
               <div className="basis-full sm:basis-auto sm:ml-auto text-left sm:text-right">
                 <div className={`text-sm font-mono ${stale ? 'text-gray-500 dark:text-gray-400' : r.ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {stale ? `Sist kjent: ${r.ok ? 'operativ' : 'nede'}` : r.ok ? 'Operativ' : 'Nede'}
+                  {stale ? t.lastKnown(r.ok) : r.ok ? t.up : t.down}
                 </div>
                 <div className="text-xs font-mono text-gray-500 dark:text-gray-400">
                   {r.status || '—'} · {r.ms} ms
@@ -172,7 +177,7 @@ export default function StatusDashboard() {
                     return (
                       <span
                         key={i}
-                        title={`${formatTime(h.at)} — ${up === undefined ? 'ingen data' : up ? 'oppe' : 'nede'}`}
+                        title={t.bar(formatTime(lang, h.at), up)}
                         className={`h-6 flex-1 min-w-0 rounded-sm ${
                           up === undefined ? 'bg-gray-300 dark:bg-gray-700' : up ? 'bg-green-500/70' : 'bg-red-500/70'
                         }`}
@@ -181,9 +186,9 @@ export default function StatusDashboard() {
                   })}
                 </div>
                 <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
-                  Siste {history.length} sjekker
+                  {t.lastChecks(history.length)}
                   {history.length === HISTORY_LIMIT && (
-                    <span title="Monolittens proporsjoner: 1² : 2² : 3²" className="text-gray-500 dark:text-gray-400">
+                    <span title={t.monolith} className="text-gray-500 dark:text-gray-400">
                       {' '}· 1:4:9
                     </span>
                   )}

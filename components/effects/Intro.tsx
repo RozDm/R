@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Starfield from './Starfield'
 import { makeStars, type Star } from '@/lib/stars'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 const SEEN_KEY = 'intro-seen'
 
@@ -17,6 +19,7 @@ function clearPrePaintOverlay() {
 }
 
 export default function Intro() {
+  const t = DICT[useLang()].intro
   // Starts inactive so the server-rendered HTML (and any client-side
   // navigation back to the home page) shows nothing. The animation is only
   // triggered, once per session, by the effect below.
@@ -129,7 +132,7 @@ export default function Intro() {
         style={{ opacity: phase === 1 ? 1 : 0 }}
       >
         <p className="font-mono text-sm md:text-base tracking-[0.3em] text-gray-500">
-          HEI %USERNAME%
+          {t.greeting}
         </p>
       </div>
 
@@ -178,7 +181,7 @@ export default function Intro() {
         className="absolute bottom-8 inset-x-0 px-4 text-center text-[11px] tracking-widest text-gray-500 uppercase transition-opacity duration-[1600ms] ease-in-out"
         style={{ opacity: phase >= 1 && phase < 7 ? 1 : 0 }}
       >
-        Klikk eller trykk en tast for å fortsette
+        {t.skip}
       </p>
     </div>
   )

@@ -2,8 +2,9 @@
 
 Personal portfolio + blog for Dmytro Rozsoshnykh, live at https://rozsoshnykh.no.
 Next.js 16 static export (App Router, `output: 'export'`) served by a Cloudflare
-Worker. React 19, TypeScript 6, Tailwind v4. All site copy is Norwegian (nb-NO);
-code and comments are English.
+Worker. React 19, TypeScript 6, Tailwind v4. The site is Norwegian (nb-NO) at
+the root with an English twin under `/en/` (front page, contact, privacy); the
+blog is Norwegian-only. Code and comments are English.
 
 ## Where the rules live
 
@@ -59,7 +60,24 @@ the same PR — structure drift is worse than missing docs.
   serves it at `/favicon.ico`) and `/.well-known/security.txt` (static in
   `public/`, RFC 9116 — bump its `Expires` yearly). `error.tsx` /
   `global-error.tsx` are the HAL-voiced «Systemfeil» boundaries.
-- Metadata: every page builds it with `pageMetadata()` (`lib/metadata.ts`).
+- Languages: `lib/i18n.ts` maps the pairs (`/` ↔ `/en/`, `/kontakt/` ↔
+  `/en/contact/`, `/personvern/` ↔ `/en/privacy/`) — `localePath()` for links
+  inside a page, `switchPath()` for the NO/EN switch (`LangSwitch`; a page
+  without a twin, like the blog, switches to the other front page),
+  `languageAlternates()` for hreflang. ALL UI copy lives in `data/i18n.ts`:
+  `nb` defines the shape, `en` is typed against it, and `tests/i18n.test.ts`
+  checks parity — add a string to both or the check fails. Server components
+  take `lang` from their page (`HomePage`, `ContactPage` are shared by both
+  languages); client components call `useLang()` (`lib/use-lang.ts`, from the
+  pathname). Bilingual data (skill groups, courses) uses `Localized` +
+  `pick()`. One root layout serves both languages, so the export always says
+  `<html lang="nb">`: the Worker rewrites it to `en` for `/en/` documents and
+  `HtmlLang` keeps it right across client navigations. `/en/privacy/` is a
+  translation — keep it in step with `/personvern/` (the Norwegian one is
+  authoritative).
+- Metadata: every page builds it with `pageMetadata()` (`lib/metadata.ts`;
+  pass `lang: 'en'` on English pages — og:locale, hreflang, the English OG
+  card and no RSS link follow from it).
   Next merges route metadata SHALLOWLY, so a page setting only part of
   `openGraph`/`alternates` drops og:url, og:image, og:site_name and the RSS
   alternate. The root layout has no canonical/og:url on purpose (the 404
@@ -148,10 +166,11 @@ the same PR — structure drift is worse than missing docs.
   on screen; recurring, the script shortens each appearance, CRT line reveal
   via `.hal-text-reveal`), loader copy («Åpner podbay-dørene…», «Kalibrerer
   AE-35-enheten…»), console greeting, `HISTORY_LIMIT = 149`. `%USERNAME%` is
-  a literal joke, not a template var. The intro plays only on a plain first
-  load of `/` (never under prefers-reduced-motion): the head script in `app/layout.tsx` marks it seen when a
-  session lands anywhere else or on a `/#hash` deep link. Any key or click
-  skips it.
+  a literal joke, not a template var (English: `HELLO %USERNAME%`). The
+  intro plays only on a plain first load of a front page, `/` or `/en/`
+  (never under prefers-reduced-motion): the head script in `app/layout.tsx`
+  marks it seen when a session lands anywhere else or on a `/#hash` deep
+  link. Any key or click skips it.
 - Blog posts: `content/blog/<slug>.md`, frontmatter `title`, `description`,
   `date` (ISO), `tags`, optional `updated` and `draft: true`. Tags are
   normalized via `lib/tags.ts` (`normalizeTag`/`normalizeTags`/`tagToSlug`);
@@ -200,17 +219,17 @@ the same PR — structure drift is worse than missing docs.
   its wrapper keyed by pathname — a root template alone re-mounts only when
   the top-level segment changes, so `/blogg/` → a post wouldn't fade.
   OPACITY-ONLY — a transform would become a containing block for the
-  `position:fixed` intro overlays / sticky header — and the home route opts
-  out (`usePathname() !== '/'`) so the intro's z-100 overlay keeps a clean
-  stacking context. Respects `prefers-reduced-motion`.
-- In-page nav (`components/layout/HashLink.tsx`): on `/` it intercepts `/#x`
-  clicks with native `scrollIntoView({behavior:'smooth'})` +
+  `position:fixed` intro overlays / sticky header — and both front pages
+  (`/`, `/en/`) opt out so the intro's z-100 overlay keeps a clean stacking
+  context. Respects `prefers-reduced-motion`.
+- In-page nav (`components/layout/HashLink.tsx`): on a front page (`/` or
+  `/en/`) it intercepts links into that same page (`/#x`, `/en/#x`) with native `scrollIntoView({behavior:'smooth'})` +
   `history.pushState` (Next's `<Link href="/#x">` concatenates hashes into
   `/#main#about`; setting `location.hash` jumps past the smooth scroll). The
   header offset is pure CSS (`scroll-padding-top`) — no custom rAF scroll, it
   fights the global `scroll-behavior: smooth`. The logo is a HashLink too:
-  on `/` it scrolls back to the top (Next treats `/` → `/` as a no-op). Off
-  the home route, plain `<Link>`. `<html data-scroll-behavior="smooth">`
+  on its front page it scrolls back to the top (Next treats `/` → `/` as a
+  no-op). Everywhere else, plain `<Link>` navigation. `<html data-scroll-behavior="smooth">`
   must stay: it lets Next switch smooth scrolling off while it resets scroll
   on a route change — without it the reset animates, Next's follow-up
   `scrollIntoView` calls cancel it, and the new page opens mid-scroll. Page links set `aria-current` (`page` on an exact match, `true`

@@ -4,6 +4,7 @@ import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/context/ThemeContext'
 import VisitBeacon from '@/components/effects/VisitBeacon'
+import HtmlLang from '@/components/effects/HtmlLang'
 import { SITE_URL, AUTHOR, SITE_TITLE, SITE_DESCRIPTION, SITE_TAGLINE, THEME_BG } from '@/lib/site'
 import { RSS_ALTERNATE } from '@/lib/metadata'
 
@@ -104,7 +105,7 @@ export default function RootLayout({
     '@type': 'WebSite',
     name: AUTHOR.name,
     url: SITE_URL,
-    inLanguage: 'nb-NO',
+    inLanguage: ['nb-NO', 'en-GB'],
     author: { '@type': 'Person', name: AUTHOR.name },
   }
 
@@ -129,12 +130,12 @@ export default function RootLayout({
             page (a post from search, /kontakt) or on a /#hash deep link (the
             /status redirect, a shared /#skills link) is marked as having seen
             it, so a later click to the home page never hijacks them with the
-            11-second sequence. Only a plain first load of / plays it — and
+            11-second sequence. Only a plain first load of / or /en/ plays it — and
             never under prefers-reduced-motion (Intro skips it there anyway;
             raising the black cover would only hold it until hydration). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=sessionStorage;if(location.pathname!=='/'||location.hash||matchMedia('(prefers-reduced-motion: reduce)').matches){s.setItem('intro-seen','1')}else if(!s.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
+            __html: `(function(){try{var s=sessionStorage,p=location.pathname;if((p!=='/'&&p!=='/en/')||location.hash||matchMedia('(prefers-reduced-motion: reduce)').matches){s.setItem('intro-seen','1')}else if(!s.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
           }}
         />
         <script
@@ -155,6 +156,7 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <VisitBeacon />
+          <HtmlLang />
         </ThemeProvider>
         <Script
           src="https://static.cloudflareinsights.com/beacon.min.js"

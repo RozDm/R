@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getAllPosts, getAllTags, getPostsByTag } from '@/lib/blog'
 import { tagToSlug } from '@/lib/tags'
 import { SITE_URL } from '@/lib/site'
+import { languageAlternates } from '@/lib/i18n'
 
 export const dynamic = 'force-static'
 
@@ -15,13 +16,23 @@ function newest(posts: { date: string }[]): Date | undefined {
   return dates.length ? new Date(Math.max(...dates)) : undefined
 }
 
+// hreflang pairs as absolute URLs (sitemap <xhtml:link> entries).
+function alternates(path: string) {
+  const langs = languageAlternates(path)
+  return langs
+    ? { languages: Object.fromEntries(Object.entries(langs).map(([k, p]) => [k, `${SITE_URL}${p}`])) }
+    : undefined
+}
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts()
 
-  // /kontakt and /personvern are intentionally excluded — they're noindex,
-  // and a sitemap must not list URLs we tell crawlers not to index.
+  // /kontakt, /personvern and their /en/ twins are intentionally excluded —
+  // they're noindex, and a sitemap must not list URLs we tell crawlers not to
+  // index. The blog is Norwegian-only: no alternates there.
   return [
-    { url: `${SITE_URL}/` },
+    { url: `${SITE_URL}/`, alternates: alternates('/') },
+    { url: `${SITE_URL}/en/`, alternates: alternates('/en/') },
     { url: `${SITE_URL}/blogg/`, lastModified: newest(posts) },
     ...posts.map((post) => ({
       url: `${SITE_URL}/blogg/${post.slug}/`,

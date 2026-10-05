@@ -4,14 +4,15 @@ import { pageMetadata } from '@/lib/metadata'
 import { SITE_COPY } from '@/lib/site'
 
 export const metadata: Metadata = pageMetadata({
-  title: SITE_COPY.nb.title,
+  lang: 'en',
+  title: SITE_COPY.en.title,
   absoluteTitle: true,
-  description: SITE_COPY.nb.description,
-  ogDescription: SITE_COPY.nb.tagline,
-  path: '/',
+  description: SITE_COPY.en.description,
+  ogDescription: SITE_COPY.en.tagline,
+  path: '/en/',
   ownImage: true,
 })
 
-export default function Home() {
-  return <HomePage lang="nb" />
+export default function HomeEn() {
+  return <HomePage lang="en" />
 }

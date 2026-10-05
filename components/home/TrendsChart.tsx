@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { xTicksFor } from '@/lib/trends-axis'
 import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
 import { fetchGeoCountries } from '@/lib/geo'
+import { DICT } from '@/data/i18n'
+import { INTL_LOCALE, type Lang } from '@/lib/i18n'
+import { useLang } from '@/lib/use-lang'
 
 interface Point {
   ts: string
@@ -18,12 +21,8 @@ interface Series {
 
 type Range = '24h' | '7d' | '30d' | 'all'
 
-const RANGES: { id: Range; label: string }[] = [
-  { id: '24h', label: '24t' },
-  { id: '7d', label: '7d' },
-  { id: '30d', label: '30d' },
-  { id: 'all', label: 'Alt' },
-]
+// Tab order; labels come from the dictionary (24t/Alt vs 24h/All).
+const RANGES: Range[] = ['24h', '7d', '30d', 'all']
 
 const W = 800
 const H = 220
@@ -48,14 +47,15 @@ function niceCeil(n: number): number {
   return 10 * base
 }
 
-const dateFmt24 = new Intl.DateTimeFormat('nb-NO', { hour: '2-digit', minute: '2-digit' })
-const dateFmtDay = new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short' })
-const dateFmtPoint = new Intl.DateTimeFormat('nb-NO', {
-  day: 'numeric',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-})
+function formatters(lang: Lang) {
+  const locale = INTL_LOCALE[lang]
+  return {
+    hour: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }),
+    day: new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }),
+    point: new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+  }
+}
+const FMT: Record<Lang, ReturnType<typeof formatters>> = { nb: formatters('nb'), en: formatters('en') }
 
 function bucketDate(ts: string): Date {
   return new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z')
@@ -65,16 +65,16 @@ function bucketDate(ts: string): Date {
 // as LOCAL time, which made the axis read in the visitor's timezone shifted
 // by the offset (e.g. "18:00" for a 20:00-Oslo event). Normalise to ISO-Z so
 // Intl.DateTimeFormat then renders it correctly in the visitor's locale.
-function formatTick(ts: string, range: Range): string {
+function formatTick(ts: string, range: Range, lang: Lang): string {
   const d = bucketDate(ts)
   if (Number.isNaN(d.getTime())) return ''
-  return range === '24h' ? dateFmt24.format(d) : dateFmtDay.format(d)
+  return range === '24h' ? FMT[lang].hour.format(d) : FMT[lang].day.format(d)
 }
 
 // Tooltip for one dot: when the bucket starts, in the visitor's timezone.
-function formatPoint(ts: string): string {
+function formatPoint(ts: string, lang: Lang): string {
   const d = bucketDate(ts)
-  return Number.isNaN(d.getTime()) ? '' : dateFmtPoint.format(d)
+  return Number.isNaN(d.getTime()) ? '' : FMT[lang].point.format(d)
 }
 
 interface Dot {
@@ -95,6 +95,8 @@ interface Result {
 }
 
 export default function TrendsChart() {
+  const lang = useLang()
+  const t = DICT[lang].trends
   const [range, setRange] = useState<Range>('7d')
   const [result, setResult] = useState<Result | null>(null)
   // Exact all-time total, straight from D1 via /api/geo — the same source and
@@ -164,10 +166,10 @@ export default function TrendsChart() {
       waveTotal: filled.reduce((sum, p) => sum + p.value, 0),
       // X ticks come from the full grid so labels span the window even though
       // only non-empty buckets get a dot.
-      tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range)),
+      tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range, lang)),
       allCapped: range === 'all' && isAllRangeCapped(),
     }
-  }, [series, range])
+  }, [series, range, lang])
 
   // Don't unmount the whole section on a fetch hiccup — that nuked the header
   // and the period tabs, leaving no way to retry without a page reload.
@@ -176,37 +178,37 @@ export default function TrendsChart() {
   // A quiet window (visits exist, just none in this range) reads differently
   // from a genuinely empty dataset — say which so a non-zero total below
   // doesn't sit next to a bare "Ingen data ennå".
-  const emptyMsg = geoTotal && geoTotal > 0 ? 'Ingen besøk i denne perioden' : 'Ingen data ennå'
+  const emptyMsg = geoTotal && geoTotal > 0 ? t.emptyWindow : t.noData
   // Integer, de-duplicated y-ticks so a max of 1 doesn't label 0/0.5/1 as
   // "0,1,1" after rounding.
   const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
-  const rangeLabel = RANGES.find((r) => r.id === range)?.label ?? ''
+  const rangeLabel = t.ranges[range]
   // Headline number: exact D1 all-time (= the map) on `Alt`, else the AE count
   // for the selected window. Label follows suit: "totalt" only when it truly is
   // the grand total, "siste 7d" etc. for a windowed count.
   const isAll = range === 'all'
   const displayTotal = isAll ? geoTotal : series ? waveTotal : null
-  const totalLabel = isAll ? 'totalt' : `siste ${rangeLabel}`
+  const totalLabel = isAll ? t.total : t.last(rangeLabel)
 
   return (
     <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-          Besøk over tid
+          {t.cardTitle}
         </span>
         {/* A toggle group (aria-pressed), not role=tab: there is no separate
             tabpanel per period, and buttons give keyboard users the expected
             Tab/Enter behaviour without a roving-tabindex implementation. */}
-        <div role="group" aria-label="Periode" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
-          {RANGES.map((r) => (
+        <div role="group" aria-label={t.periodLabel} className="inline-flex rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden text-xs font-mono">
+          {RANGES.map((id) => (
             <button
-              key={r.id}
+              key={id}
               type="button"
-              aria-pressed={range === r.id}
-              onClick={() => setRange(r.id)}
-              className={`px-3 py-1.5 transition-colors duration-200 ease-out ${range === r.id ? 'bg-red-500/10 text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
+              aria-pressed={range === id}
+              onClick={() => setRange(id)}
+              className={`px-3 py-1.5 transition-colors duration-200 ease-out ${range === id ? 'bg-red-500/10 text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'}`}
             >
-              {r.label}
+              {t.ranges[id]}
             </button>
           ))}
         </div>
@@ -229,11 +231,7 @@ export default function TrendsChart() {
         className={`w-full h-auto transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
         role="img"
         aria-label={
-          isAll
-            ? allCapped
-              ? `Besøk per tidsrom, siste ${ALL_MAX_DAYS} dager`
-              : 'Besøk per tidsrom, hele perioden'
-            : `Besøk per tidsrom, siste ${rangeLabel}`
+          isAll ? (allCapped ? t.chartCapped(ALL_MAX_DAYS) : t.chartAll) : t.chartWindow(rangeLabel)
         }
       >
         {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
@@ -266,7 +264,7 @@ export default function TrendsChart() {
         {!isEmpty &&
           dots.map((d, i) => (
             <circle key={i} cx={d.x} cy={d.y} r="4" className="fill-red-500">
-              <title>{`${formatPoint(d.ts)} — ${d.value} besøk`}</title>
+              <title>{t.dot(formatPoint(d.ts, lang), d.value)}</title>
             </circle>
           ))}
 
@@ -293,14 +291,14 @@ export default function TrendsChart() {
             fontSize="13"
             fontFamily="monospace"
           >
-            {failed ? 'Kunne ikke laste — bytt periode for å prøve igjen' : emptyMsg}
+            {failed ? t.failed : emptyMsg}
           </text>
         )}
       </svg>
 
       {allCapped && (
         <p className="-mt-2 text-[11px] font-mono text-gray-500 dark:text-gray-400">
-          {`Grafen viser de siste ${ALL_MAX_DAYS} dagene; tallet gjelder hele perioden.`}
+          {t.capped(ALL_MAX_DAYS)}
         </p>
       )}
     </div>

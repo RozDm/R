@@ -1,18 +1,20 @@
 import GeoMap from './LazyGeoMap'
+import { DICT } from '@/data/i18n'
+import type { Lang } from '@/lib/i18n'
 
-export default function Visitors() {
+export default function Visitors({ lang }: { lang: Lang }) {
+  const t = DICT[lang].visitors
   return (
     <section id="besok" className="flex flex-col gap-8 animate-fade-in [animation-delay:600ms]">
       <div>
         <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          Besøk
+          {t.eyebrow}
         </p>
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Hvor leserne kommer fra
+          {t.title}
         </h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-          Landet hentes fra Cloudflare på kanten og telles i D1 — ingen
-          informasjonskapsler, ingen sporing av enkeltpersoner.
+          {t.lead}
         </p>
       </div>
       <GeoMap />

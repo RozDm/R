@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { AUTHOR, SITE_URL } from './site'
+import { AUTHOR, SITE_CARD_SIZE, SITE_URL, siteCardAlt } from './site'
+import { OG_LOCALE, languageAlternates, type Lang } from './i18n'
 
 // Next merges route metadata SHALLOWLY: a page that sets `openGraph` or
 // `alternates` replaces the parent's object wholesale instead of extending
@@ -11,17 +12,21 @@ import { AUTHOR, SITE_URL } from './site'
 
 export const RSS_ALTERNATE = { 'application/rss+xml': '/feed.xml' }
 
-// The site-wide card rendered by app/opengraph-image.tsx. Pages with their
-// own opengraph-image file (home, blog posts) pass `ownImage` so the file
-// convention supplies it instead.
-const DEFAULT_OG_IMAGE = {
-  url: '/opengraph-image',
-  width: 1200,
-  height: 630,
-  alt: `${AUTHOR.name} — ${AUTHOR.roles.join(' / ')}`,
+// The site-wide card rendered by app/opengraph-image.tsx (/en/: the English
+// one). Pages with their own opengraph-image file (home, blog posts) pass
+// `ownImage` so the file convention supplies it instead.
+function defaultOgImage(lang: Lang) {
+  return {
+    url: lang === 'en' ? '/en/opengraph-image' : '/opengraph-image',
+    ...SITE_CARD_SIZE,
+    alt: siteCardAlt(lang),
+  }
 }
 
 export interface PageMetadataInput {
+  // Page language (default 'nb'). Pages that exist in both languages get
+  // hreflang alternates automatically (lib/i18n.ts pairs).
+  lang?: Lang
   title: string
   description: string
   // Canonical path with the trailing slash the static export uses ('/kontakt/').
@@ -38,14 +43,17 @@ export interface PageMetadataInput {
 }
 
 export function pageMetadata(input: PageMetadataInput): Metadata {
+  const lang = input.lang ?? 'nb'
   const url = `${SITE_URL}${input.path}`
+  const languages = languageAlternates(input.path)
   const og = {
     title: input.ogTitle ?? (input.absoluteTitle ? input.title : `${input.title} – ${AUTHOR.name}`),
     description: input.ogDescription ?? input.description,
     url,
     siteName: AUTHOR.name,
-    locale: 'nb_NO',
-    ...(input.ownImage ? {} : { images: [DEFAULT_OG_IMAGE] }),
+    locale: OG_LOCALE[lang],
+    ...(languages ? { alternateLocale: [OG_LOCALE[lang === 'nb' ? 'en' : 'nb']] } : {}),
+    ...(input.ownImage ? {} : { images: [defaultOgImage(lang)] }),
   }
   const openGraph: Metadata['openGraph'] = input.article
     ? {
@@ -61,7 +69,12 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
   return {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,
-    alternates: { canonical: url, types: RSS_ALTERNATE },
+    alternates: {
+      canonical: url,
+      ...(languages ? { languages } : {}),
+      // The feed is the Norwegian blog; English pages don't advertise it.
+      ...(lang === 'nb' ? { types: RSS_ALTERNATE } : {}),
+    },
     openGraph,
     ...(input.noindex ? { robots: { index: false, follow: true } } : {}),
   }

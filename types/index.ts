@@ -1,12 +1,15 @@
+import type { Localized } from '@/lib/i18n'
+
+// `string` = the same in both languages (product names); Localized = translated.
 export interface SkillGroup {
-  title: string
-  items: string[]
+  title: Localized
+  items: (string | Localized)[]
   learning?: boolean
 }
 
 export interface Certification {
-  title: string
-  issuer: string
+  title: string | Localized
+  issuer: string | Localized
 }
 
 export interface PostMeta {
