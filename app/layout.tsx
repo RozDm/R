@@ -110,7 +110,16 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="nb" className={intelOneMono.variable} suppressHydrationWarning>
+    <html
+      lang="nb"
+      className={intelOneMono.variable}
+      // globals.css sets `scroll-behavior: smooth` for in-page anchors. This
+      // attribute lets Next switch it off while it resets scroll on a route
+      // change; without it that reset animates, Next's follow-up
+      // scrollIntoView calls cancel it, and the new page opens mid-scroll.
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -121,10 +130,12 @@ export default function RootLayout({
             page (a post from search, /kontakt) or on a /#hash deep link (the
             /status redirect, a shared /#skills link) is marked as having seen
             it, so a later click to the home page never hijacks them with the
-            11-second sequence. Only a plain first load of / plays it. */}
+            11-second sequence. Only a plain first load of / plays it — and
+            never under prefers-reduced-motion (Intro skips it there anyway;
+            raising the black cover would only hold it until hydration). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=sessionStorage;if(location.pathname!=='/'||location.hash){s.setItem('intro-seen','1')}else if(!s.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
+            __html: `(function(){try{var s=sessionStorage;if(location.pathname!=='/'||location.hash||matchMedia('(prefers-reduced-motion: reduce)').matches){s.setItem('intro-seen','1')}else if(!s.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
           }}
         />
         <script

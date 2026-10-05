@@ -37,7 +37,14 @@ function currentFor(href: string, pathname: string | null): 'page' | 'true' | un
 export default function HashLink({ href, className, children, onClick }: Props) {
   const pathname = usePathname()
   const handleClick: MouseEventHandler<HTMLAnchorElement> = (e) => {
-    if (typeof window !== 'undefined' && window.location.pathname === '/') {
+    if (typeof window !== 'undefined' && window.location.pathname === '/' && href === '/') {
+      // The logo on the home page: Next treats / → / as a no-op, so a reader
+      // deep in the page clicked it and nothing happened. Back to the top,
+      // dropping any #section from the URL.
+      e.preventDefault()
+      if (window.location.hash) history.pushState(null, '', '/')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else if (typeof window !== 'undefined' && window.location.pathname === '/') {
       const hash = href.split('#')[1]
       const target = hash ? document.getElementById(hash) : null
       if (hash && target) {
