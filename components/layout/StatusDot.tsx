@@ -2,14 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { isStale } from '@/src/status'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 type DotState = 'unknown' | 'up' | 'down'
-
-const LABEL: Record<DotState, string> = {
-  up: 'alle systemer operative',
-  down: 'driftsforstyrrelser',
-  unknown: 'status ukjent',
-}
 
 // One fetch on mount, no polling: the footer is on every page and only needs
 // an honest hint, not a live dashboard. Unknown/error/stale degrades to gray.
@@ -17,6 +13,7 @@ const LABEL: Record<DotState, string> = {
 // pulsing red only when something is down (movement means "look at me").
 export default function StatusDot() {
   const [state, setState] = useState<DotState>('unknown')
+  const label = DICT[useLang()].footer.dot
 
   useEffect(() => {
     const controller = new AbortController()
@@ -39,7 +36,7 @@ export default function StatusDot() {
   return (
     <>
       <span aria-hidden className={`inline-block w-2 h-2 rounded-full ${color}`} />
-      <span className="sr-only">{`(${LABEL[state]})`}</span>
+      <span className="sr-only">{`(${label[state]})`}</span>
     </>
   )
 }

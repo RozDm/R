@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchGeoCountries, geoBucket } from '@/lib/geo'
+import { DICT } from '@/data/i18n'
+import { INTL_LOCALE } from '@/lib/i18n'
+import { useLang } from '@/lib/use-lang'
 
 interface GeoData {
   countries: Record<string, number>
@@ -17,6 +20,8 @@ function flag(code: string): string {
 }
 
 export default function GeoMap() {
+  const lang = useLang()
+  const t = DICT[lang].visitors
   const svgRef = useRef<HTMLDivElement>(null)
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null)
   const [data, setData] = useState<GeoData | null>(null)
@@ -27,11 +32,11 @@ export default function GeoMap() {
 
   const regionNames = useMemo(() => {
     try {
-      return new Intl.DisplayNames(['nb'], { type: 'region' })
+      return new Intl.DisplayNames([INTL_LOCALE[lang]], { type: 'region' })
     } catch {
       return null
     }
-  }, [])
+  }, [lang])
 
   // Fetch the pre-built /world.svg (browser-cached for a week). The
   // markup is set via dangerouslySetInnerHTML below so React knows not to
@@ -74,7 +79,7 @@ export default function GeoMap() {
     const root = svgRef.current.querySelector('svg')
     if (!root) return
     root.setAttribute('role', 'img')
-    root.setAttribute('aria-label', 'Verdenskart over hvor besøkende kommer fra')
+    root.setAttribute('aria-label', t.mapLabel)
     root.classList.add('w-full', 'h-auto', 'select-none')
 
     const names = regionNames
@@ -99,9 +104,9 @@ export default function GeoMap() {
         title = document.createElementNS('http://www.w3.org/2000/svg', 'title') as SVGTitleElement
         p.appendChild(title)
       }
-      title.textContent = `${countryName(code)}${n ? ` · ${n} besøk` : ''}`
+      title.textContent = `${countryName(code)}${n ? ` · ${t.visits(n)}` : ''}`
     })
-  }, [svgMarkup, counts, regionNames])
+  }, [svgMarkup, counts, regionNames, t])
 
   const sorted = counts ? Object.entries(counts).sort((a, b) => b[1] - a[1]) : []
   const total = sorted.reduce((sum, [, n]) => sum + n, 0)
@@ -119,7 +124,7 @@ export default function GeoMap() {
           the SVG container below. */}
       {!svgMarkup && !svgFailed && (
         <div className="w-full aspect-[2000/1001] flex items-center justify-center">
-          <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kalibrerer AE-35-enheten…</p>
+          <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">{t.loading}</p>
         </div>
       )}
 
@@ -134,13 +139,13 @@ export default function GeoMap() {
       )}
 
       {dataFailed ? (
-        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Kunne ikke hente besøksdata.</p>
+        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">{t.failed}</p>
       ) : data === null ? (
         // Still loading: a same-height placeholder, NOT the empty-state text —
         // flashing "Ingen besøksdata ennå" on every refresh read as data loss.
         <p aria-hidden className="text-gray-500 dark:text-gray-400 font-mono text-sm">…</p>
       ) : sorted.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">Ingen besøksdata ennå.</p>
+        <p className="text-gray-500 dark:text-gray-400 font-mono text-sm">{t.empty}</p>
       ) : (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-mono text-gray-500 dark:text-gray-400">
           {sorted.map(([code, count]) => (
@@ -151,13 +156,13 @@ export default function GeoMap() {
           ))}
           <span className="ml-auto inline-flex items-center gap-3">
             <span className="inline-flex items-center gap-1" aria-hidden>
-              færre
+              {t.fewer}
               {LEGEND_FILLS.map((fill) => (
                 <span key={fill} className="inline-block w-3 h-3 rounded-sm" style={{ background: fill }} />
               ))}
-              flere
+              {t.more}
             </span>
-            <span>{total} besøk</span>
+            <span>{t.visits(total)}</span>
           </span>
         </div>
       )}

@@ -1,0 +1,60 @@
+import { ImageResponse } from 'next/og'
+import type { Lang } from './i18n'
+import { AUTHOR, SITE_CARD_SIZE, SITE_COPY } from './site'
+
+export { SITE_CARD_SIZE, siteCardAlt } from './site'
+
+// The site-wide social card (HAL eye, roles, name, focus line) — rendered at
+// build time by app/opengraph-image.tsx (Norwegian) and
+// app/en/opengraph-image.tsx (English).
+
+export function siteCardImage(lang: Lang): ImageResponse {
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: '100%',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          background: '#030712',
+          padding: 80,
+        }}
+      >
+        {/* HAL 9000 eye */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 110,
+            height: 110,
+            borderRadius: 9999,
+            background: '#cc0000',
+            boxShadow: '0 0 70px 24px rgba(220,0,0,0.35)',
+          }}
+        >
+          <div style={{ width: 34, height: 34, borderRadius: 9999, background: '#ffd27f' }} />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ color: '#f87171', fontSize: 26, letterSpacing: 4 }}>
+            {SITE_COPY[lang].roles.join(' / ').toUpperCase()}
+          </div>
+          <div style={{ color: '#ffffff', fontSize: 84, fontWeight: 700, marginTop: 16, lineHeight: 1.05 }}>
+            {AUTHOR.name}
+          </div>
+          <div style={{ color: '#94a3b8', fontSize: 30, marginTop: 24 }}>
+            {SITE_COPY[lang].focus}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', color: '#475569', fontSize: 24 }}>
+          rozsoshnykh.no
+        </div>
+      </div>
+    ),
+    { ...SITE_CARD_SIZE },
+  )
+}

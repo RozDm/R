@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from 'react'
 import Turnstile, { type TurnstileHandle } from './Turnstile'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 type FormState =
   | 'idle'
@@ -35,6 +37,7 @@ const clearValidity = (e: React.FormEvent<Field>) => {
 }
 
 export default function ContactForm() {
+  const t = DICT[useLang()].contact
   const [state, setState] = useState<FormState>('idle')
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
@@ -89,13 +92,13 @@ export default function ContactForm() {
   if (state === 'sent') {
     return (
       <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-6" role="status">
-        <p className="font-medium text-gray-900 dark:text-white">Takk! Meldingen er sendt.</p>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Jeg svarer som regel innen en dag eller to.</p>
+        <p className="font-medium text-gray-900 dark:text-white">{t.sentTitle}</p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.sentBody}</p>
         <button
           onClick={() => setState('idle')}
           className="mt-4 text-sm font-mono text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
         >
-          Send en til &rarr;
+          {t.sendAnother} &rarr;
         </button>
       </div>
     )
@@ -117,20 +120,20 @@ export default function ContactForm() {
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-gray-900 dark:text-white">Navn</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-white">{t.name}</span>
         <input
           name="name"
           required
           maxLength={100}
           autoComplete="name"
           className={inputClass}
-          onInvalid={validity('Skriv inn navnet ditt.')}
+          onInvalid={validity(t.nameInvalid)}
           onInput={clearValidity}
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-gray-900 dark:text-white">E-post</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-white">{t.email}</span>
         <input
           name="email"
           type="email"
@@ -142,13 +145,13 @@ export default function ContactForm() {
           pattern="[^\s@]+@[^\s@]+\.[^\s@]{2,}"
           autoComplete="email"
           className={inputClass}
-          onInvalid={validity('Skriv inn en gyldig e-postadresse.')}
+          onInvalid={validity(t.emailInvalid)}
           onInput={clearValidity}
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-gray-900 dark:text-white">Melding</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-white">{t.message}</span>
         <textarea
           name="message"
           required
@@ -156,7 +159,7 @@ export default function ContactForm() {
           maxLength={5000}
           rows={6}
           className={inputClass}
-          onInvalid={validity('Meldingen må være minst 10 tegn.')}
+          onInvalid={validity(t.messageInvalid)}
           onInput={clearValidity}
         />
       </label>
@@ -169,11 +172,11 @@ export default function ContactForm() {
           disabled={state === 'sending'}
           className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition-opacity duration-200 ease-out text-sm font-medium tracking-wide disabled:opacity-50"
         >
-          {state === 'sending' ? 'Sender…' : 'Send melding'}
+          {state === 'sending' ? t.sending : t.send}
         </button>
         {state === 'error' && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            Meldingen ble ikke sendt. Prøv igjen, eller send en e-post direkte til{' '}
+            {t.errorFailed}{' '}
             <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
               {CONTACT_EMAIL}
             </a>
@@ -182,23 +185,22 @@ export default function ContactForm() {
         )}
         {state === 'invalid' && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            Sjekk feltene: en gyldig e-postadresse og minst 10 tegn i meldingen.
+            {t.errorInvalid}
           </p>
         )}
         {state === 'ratelimited' && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            For mange meldinger på kort tid — prøv igjen om noen minutter.
+            {t.errorRate}
           </p>
         )}
         {state === 'challenge' && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            Bekreft at du ikke er en bot, så prøv igjen.
+            {t.errorChallenge}
           </p>
         )}
         {state === 'blocked' && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            Meldingen ble stanset av sikkerhetsfiltrene. Prøv på nytt, eller send en e-post
-            direkte til{' '}
+            {t.errorBlocked}{' '}
             <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
               {CONTACT_EMAIL}
             </a>

@@ -87,13 +87,18 @@ done
 echo "== Pages =="
 # Home asserts noindex too: the soft launch must not accidentally start
 # getting indexed before launch (flip robots in app/layout.tsx when ready).
-check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh" "Driftsstatus" 'name="robots" content="noindex'
+check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh" "Driftsstatus" 'name="robots" content="noindex' '<html lang="nb"'
 check "blogg"       "$BASE/blogg/"           200 "Artikler"
 check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
 check "tag"         "$BASE/blogg/tag/velkommen/" 200 "Velkommen"
 check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"
 check "personvern"  "$BASE/personvern/"      200 "Personvernerklæring"
 check "404"         "$BASE/finnes-ikke/"     404
+# English twins (/en/): the Worker must rewrite <html lang> for them.
+check "en home"     "$BASE/en/"              200 '<html lang="en"' "Service status" "Where readers come from" 'hrefLang="nb"'
+check "en contact"  "$BASE/en/contact/"      200 '<html lang="en"' "Contact form"
+check "en privacy"  "$BASE/en/privacy/"      200 '<html lang="en"' "Privacy notice"
+check "en og-image" "$BASE/en/opengraph-image" 200
 
 echo "== Machine endpoints =="
 check "api/status"  "$BASE/api/status"       200 '"results"'

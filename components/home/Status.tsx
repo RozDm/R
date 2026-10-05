@@ -1,18 +1,20 @@
 import StatusDashboard from './LazyStatusDashboard'
+import { DICT } from '@/data/i18n'
+import type { Lang } from '@/lib/i18n'
 
-export default function Status() {
+export default function Status({ lang }: { lang: Lang }) {
+  const t = DICT[lang].status
   return (
     <section id="status" className="flex flex-col gap-8 animate-fade-in [animation-delay:450ms]">
       <div>
         <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          Status
+          {t.eyebrow}
         </p>
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Driftsstatus
+          {t.title}
         </h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 max-w-xl">
-          Overvåking av tjenestene mine — sjekkes hvert 5. minutt av en
-          Cloudflare Worker (cron) og lagres i KV.
+          {t.lead}
         </p>
       </div>
       <StatusDashboard />

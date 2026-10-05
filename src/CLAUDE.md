@@ -129,6 +129,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `contact.at` (ISO strings) are ISO cutoffs from `isoCutoff()` bound as
   parameters — NEVER `datetime('now', …)`: its "YYYY-MM-DD HH:MM:SS" form
   mis-compares with ISO as TEXT and makes every same-day row look recent.
+- `/en/` HTML: the export has one root layout, so every page says
+  `<html lang="nb">`; the HTML branch rewrites it to `lang="en"` for `/en`
+  paths (smoke-checked). The hash CSP is unaffected — it covers inline
+  scripts, not attributes.
 - Assets are fetched with `redirect: 'manual'`: a Request built in the Worker
   follows redirects by default, which served `/blogg` as a 200 duplicate. The
   binding's `html_handling` 307s (`/blogg` → `/blogg/`, `…/index.html` → `…/`)

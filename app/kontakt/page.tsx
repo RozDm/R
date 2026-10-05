@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
-import ContactForm from '@/components/contact/ContactForm'
+import ContactPage from '@/components/contact/ContactPage'
 import { pageMetadata } from '@/lib/metadata'
 
 // A form page with no indexable content; keep it out of search results.
@@ -14,41 +11,5 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default function KontaktPage() {
-  return (
-    <>
-      <Header />
-      <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20 min-h-[70vh]">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mb-8"
-        >
-          &larr; Tilbake til forsiden
-        </Link>
-
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          Kontakt
-        </p>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          Kontaktskjema
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-2 max-w-xl">
-          Interessert i samarbeid eller har et spørsmål? Fyll ut skjemaet, så
-          havner meldingen rett i innboksen min.
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-10 max-w-xl">
-          Hvordan meldingen behandles står i{' '}
-          <Link
-            href="/personvern/"
-            className="text-red-600 dark:text-red-400 underline underline-offset-2 hover:decoration-2"
-          >
-            personvernerklæringen
-          </Link>
-          .
-        </p>
-
-        <ContactForm />
-      </main>
-      <Footer />
-    </>
-  )
+  return <ContactPage lang="nb" />
 }

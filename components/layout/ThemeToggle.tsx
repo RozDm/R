@@ -1,9 +1,12 @@
 'use client'
 
 import { useTheme } from '@/context/ThemeContext'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 export default function ThemeToggle() {
   const { theme, toggleTheme, mounted } = useTheme()
+  const t = DICT[useLang()].theme
   // Until mounted, render the same icon the server did (moon) so hydration
   // matches; swap to the real icon once the actual theme is known.
   const isLight = mounted && theme === 'light'
@@ -12,7 +15,7 @@ export default function ThemeToggle() {
     <button
       onClick={toggleTheme}
       className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 ease-out"
-      aria-label={isLight ? 'Bytt til mørkt tema' : 'Bytt til lyst tema'}
+      aria-label={isLight ? t.toDark : t.toLight}
     >
       {isLight ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">

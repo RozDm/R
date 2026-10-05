@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import { copyText } from '@/lib/clipboard'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 // Click copies the address to the clipboard (mailto handlers are unreliable
 // on desktops without a default mail app). Right-click still exposes the
 // mailto via the wrapping anchor's href.
 export default function CopyEmail({ email }: { email: string }) {
   const [copied, setCopied] = useState(false)
+  const t = DICT[useLang()].footer
 
   const copy = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -21,13 +24,13 @@ export default function CopyEmail({ email }: { email: string }) {
     <a
       href={`mailto:${email}`}
       onClick={copy}
-      title="Klikk for å kopiere"
+      title={t.copyHint}
       className="inline-flex items-center gap-2 font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
     >
       {email}
       {copied && (
         <span className="text-xs text-green-700 dark:text-green-400" aria-live="polite">
-          kopiert!
+          {t.copied}
         </span>
       )}
     </a>

@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react'
 import HashLink from './HashLink'
+import type { NavLink } from './Header'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 interface MobileMenuProps {
-  links: { href: string; label: string }[]
+  links: NavLink[]
 }
 
 export default function MobileMenu({ links }: MobileMenuProps) {
+  const t = DICT[useLang()].nav
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -41,7 +45,7 @@ export default function MobileMenu({ links }: MobileMenuProps) {
         ref={buttonRef}
         onClick={() => setOpen(!open)}
         className="relative z-10 flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 ease-out"
-        aria-label={open ? 'Lukk meny' : 'Åpne meny'}
+        aria-label={open ? t.closeMenu : t.openMenu}
         aria-expanded={open}
       >
         <div className="flex flex-col justify-center items-center w-5 h-5 gap-[5px]">
@@ -54,12 +58,14 @@ export default function MobileMenu({ links }: MobileMenuProps) {
       {open && (
         <nav
           className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700/50 overflow-hidden animate-fade-in"
-          aria-label="Mobilnavigasjon"
+          aria-label={t.mobileLabel}
         >
-          {links.map(({ href, label }) => (
+          {links.map(({ href, label, title, hrefLang }) => (
             <HashLink
               key={href}
               href={href}
+              title={title}
+              hrefLang={hrefLang}
               onClick={() => setOpen(false)}
               className="block px-5 py-3 text-sm text-gray-700 dark:text-gray-300 [&[aria-current]]:text-red-600 dark:[&[aria-current]]:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 ease-out font-medium"
             >

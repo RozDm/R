@@ -9,7 +9,12 @@ interface Props {
   className?: string
   children: ReactNode
   onClick?: MouseEventHandler<HTMLAnchorElement>
+  title?: string
+  hrefLang?: string
 }
+
+// The two front pages (/ and /en/): where the section links live.
+const isFrontPage = (p: string) => p === '/' || p === '/en/' || p === '/en'
 
 const trimSlash = (p: string) => (p.length > 1 ? p.replace(/\/+$/, '') : p)
 
@@ -21,7 +26,7 @@ function currentFor(href: string, pathname: string | null): 'page' | 'true' | un
   const target = trimSlash(href)
   const here = trimSlash(pathname)
   if (here === target) return 'page'
-  if (target !== '/' && here.startsWith(`${target}/`)) return 'true'
+  if (target !== '/' && target !== '/en' && here.startsWith(`${target}/`)) return 'true'
   return undefined
 }
 
@@ -34,17 +39,22 @@ function currentFor(href: string, pathname: string | null): 'page' | 'true' | un
 // fought the global `scroll-behavior: smooth` and stuttered; the native path
 // is the best practice in 2026 and doesn't need our help. On other pages we
 // leave Link's client-side navigation alone so e.g. /blogg -> /#about works.
-export default function HashLink({ href, className, children, onClick }: Props) {
+export default function HashLink({ href, className, children, onClick, title, hrefLang }: Props) {
   const pathname = usePathname()
   const handleClick: MouseEventHandler<HTMLAnchorElement> = (e) => {
-    if (typeof window !== 'undefined' && window.location.pathname === '/' && href === '/') {
+    const here = typeof window !== 'undefined' ? window.location.pathname : ''
+    const [base] = href.split('#')
+    // Only links into the front page we are on are handled here; a link to
+    // the other language's front page is a normal navigation.
+    const samePage = isFrontPage(here) && base === here
+    if (samePage && !href.includes('#')) {
       // The logo on the home page: Next treats / → / as a no-op, so a reader
       // deep in the page clicked it and nothing happened. Back to the top,
       // dropping any #section from the URL.
       e.preventDefault()
-      if (window.location.hash) history.pushState(null, '', '/')
+      if (window.location.hash) history.pushState(null, '', here)
       window.scrollTo({ top: 0, behavior: 'smooth' })
-    } else if (typeof window !== 'undefined' && window.location.pathname === '/') {
+    } else if (samePage) {
       const hash = href.split('#')[1]
       const target = hash ? document.getElementById(hash) : null
       if (hash && target) {
@@ -61,7 +71,14 @@ export default function HashLink({ href, className, children, onClick }: Props) 
     onClick?.(e)
   }
   return (
-    <Link href={href} onClick={handleClick} className={className} aria-current={currentFor(href, pathname)}>
+    <Link
+      href={href}
+      onClick={handleClick}
+      className={className}
+      title={title}
+      hrefLang={hrefLang}
+      aria-current={currentFor(href, pathname)}
+    >
       {children}
     </Link>
   )

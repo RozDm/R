@@ -6,6 +6,9 @@
 
 import Link from 'next/link'
 import { useEffect } from 'react'
+import { DICT } from '@/data/i18n'
+import { localePath } from '@/lib/i18n'
+import { useLang } from '@/lib/use-lang'
 
 export default function Error({
   error,
@@ -14,6 +17,8 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const lang = useLang()
+  const t = DICT[lang]
   useEffect(() => {
     // Surface the digest in DevTools without leaking the stack to users.
     if (process.env.NODE_ENV !== 'production') console.error(error)
@@ -27,10 +32,10 @@ export default function Error({
       </div>
 
       <p className="font-mono text-sm tracking-widest text-red-600 dark:text-red-400 uppercase mb-4">
-        Systemfeil
+        {t.error.eyebrow}
       </p>
       <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white max-w-2xl leading-tight">
-        Noe gikk galt. Jeg er redd jeg ikke kan fortsette akkurat nå.
+        {t.error.title}
       </h1>
       {error.digest && (
         <p className="mt-6 font-mono text-xs text-gray-500 dark:text-gray-400">
@@ -43,13 +48,13 @@ export default function Error({
           onClick={reset}
           className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg hover:opacity-80 transition text-sm font-medium tracking-wide"
         >
-          Prøv på nytt
+          {t.error.retry}
         </button>
         <Link
-          href="/"
+          href={localePath(lang, '/')}
           className="px-6 py-3 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg hover:border-gray-500 dark:hover:border-gray-500 transition text-sm font-medium tracking-wide"
         >
-          Tilbake til forsiden
+          {t.backHome}
         </Link>
       </div>
     </main>

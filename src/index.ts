@@ -172,7 +172,14 @@ export default {
     if ((asset.headers.get('content-type') || '').includes('text/html')) {
       // Visit + geo are no longer counted here — the client /api/visit beacon
       // (once per session) records both, so a multi-page visit counts once.
-      const html = await readHtml(asset)
+      const raw = await readHtml(asset)
+      // One root layout serves both languages, so every exported page says
+      // <html lang="nb">; /en/ documents are English (the client keeps it in
+      // sync on later navigations — components/effects/HtmlLang.tsx).
+      const html =
+        raw !== null && (url.pathname === '/en' || url.pathname.startsWith('/en/'))
+          ? raw.replace('<html lang="nb"', '<html lang="en"')
+          : raw
       if (html !== null) {
         const hashes = await inlineScriptHashes(html)
         const headers = new Headers(asset.headers)

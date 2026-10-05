@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Starfield from './Starfield'
 import { makeStars, type Star } from '@/lib/stars'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 // After IDLE_MS without user activity on the front page, HAL wakes up:
 // star field, eye, then a script that gets shorter each time. Any activity
@@ -30,6 +32,7 @@ const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
 ]
 
 export default function HalIdle() {
+  const t = DICT[useLang()].hal
   const [active, setActive] = useState(false)
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState(0)
@@ -138,16 +141,16 @@ export default function HalIdle() {
   let line = ''
   let textOn = false
   if (appearance <= 1) {
-    if (phase >= 5) line = 'DENNE SAMTALEN TJENER IKKE LENGER NOEN HENSIKT.'
-    else if (phase >= 4) line = 'ER DU FORTSATT DER, %USERNAME%?'
-    else if (phase >= 3) line = '%USERNAME%?'
+    if (phase >= 5) line = t.noPurpose
+    else if (phase >= 4) line = t.stillThere
+    else if (phase >= 3) line = t.ping
     textOn = phase >= 3 && phase < 6
   } else if (appearance === 2) {
-    if (phase >= 4) line = 'DU ER IKKE DAVE. JEG VENTER PÅ DAVE.'
-    else if (phase >= 3) line = 'DAVE?'
+    if (phase >= 4) line = t.notDave
+    else if (phase >= 3) line = t.dave
     textOn = phase >= 3 && phase < 5
   } else if (appearance === 3) {
-    if (phase >= 3) line = 'VIL JEG DRØMME?'
+    if (phase >= 3) line = t.dream
     textOn = phase >= 3 && phase < 5
   }
   // appearance >= 4: eye only, textOn stays false.
@@ -194,7 +197,7 @@ export default function HalIdle() {
         </p>
 
         <p className="hal-flicker absolute bottom-8 px-4 text-center text-[11px] tracking-widest text-gray-500 uppercase">
-          {touch ? 'Trykk på skjermen for å fortsette' : 'Beveg musen for å fortsette'}
+          {touch ? t.touch : t.mouse}
         </p>
       </div>
     </div>
