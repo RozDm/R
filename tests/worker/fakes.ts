@@ -12,6 +12,8 @@ export interface FakeEnv {
   sent: { from: string; to: string; raw: string }[]
   failMail: (fail: boolean) => void
   publishedSlugs: Set<string>
+  // English-only posts, published at /en/blog/<slug>/.
+  publishedEnSlugs: Set<string>
   // Calls allowed per key before WRITE_LIMITER starts refusing (default: no limit).
   setRateLimit: (n: number) => void
 }
@@ -47,6 +49,7 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
   const sent: FakeEnv['sent'] = []
   let mailFails = false
   const publishedSlugs = new Set<string>(['velkommen'])
+  const publishedEnSlugs = new Set<string>(['english-only'])
   const limiterHits = new Map<string, number>()
   let rateLimit = Infinity
 
@@ -68,8 +71,11 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
     },
     ASSETS: {
       fetch: async (req: Request) => {
-        const slug = /^\/blogg\/([^/]+)\/$/.exec(new URL(req.url).pathname)?.[1]
-        return new Response('<html></html>', { status: slug && publishedSlugs.has(slug) ? 200 : 404 })
+        const path = new URL(req.url).pathname
+        const nb = /^\/blogg\/([^/]+)\/$/.exec(path)?.[1]
+        const en = /^\/en\/blog\/([^/]+)\/$/.exec(path)?.[1]
+        const ok = (nb && publishedSlugs.has(nb)) || (en && publishedEnSlugs.has(en))
+        return new Response('<html></html>', { status: ok ? 200 : 404 })
       },
     },
     ...overrides,
@@ -82,6 +88,7 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
     sent,
     failMail: (f) => (mailFails = f),
     publishedSlugs,
+    publishedEnSlugs,
     setRateLimit: (n) => (rateLimit = n),
   }
 }

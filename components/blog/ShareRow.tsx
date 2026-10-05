@@ -1,14 +1,16 @@
 import CopyLink from './CopyLink'
+import { DICT } from '@/data/i18n'
+import type { Lang } from '@/lib/i18n'
 
 // Plain share links — no third-party SDKs, no extra scripts, CSP untouched.
-export default function ShareRow({ url }: { url: string }) {
+export default function ShareRow({ url, lang }: { url: string; lang: Lang }) {
   const u = encodeURIComponent(url)
   const linkClass =
     'inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out'
 
   return (
     <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-mono">
-      <span className="text-gray-500 dark:text-gray-400 uppercase tracking-widest">Del</span>
+      <span className="text-gray-500 dark:text-gray-400 uppercase tracking-widest">{DICT[lang].blog.share}</span>
       <a
         href={`https://www.linkedin.com/sharing/share-offsite/?url=${u}`}
         target="_blank"

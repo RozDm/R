@@ -63,8 +63,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   monitor URLs (`PublicMonitorResult`); don't put them back — one monitor is
   an admin login page. Alert mails take the URL from the cron's own probes.
 - `/api/views/<slug>` — GET reads; POST counts, gated by `isWriteAllowed`
-  AND the slug resolving to a published post page via ASSETS, so junk slugs
-  can't mint D1 rows.
+  AND the slug resolving to a published post page via ASSETS (`/blogg/<slug>/`
+  or, for an English-only post, `/en/blog/<slug>/`), so junk slugs can't mint
+  D1 rows. The slug is the post's view key (`lib/blog.ts viewKey`): both
+  language versions of a post count into the Norwegian slug.
 - `/api/geo` — GET, edge-cached 60s.
 - `/api/visit` — POST is the Besøk beacon:
   `recordGeo(env, ctx, request.cf?.country, { asn, org })` writes the D1

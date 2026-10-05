@@ -11,6 +11,7 @@ import { OG_LOCALE, languageAlternates, type Lang } from './i18n'
 // og:url, og:site_name, og:image and the feed link always travel together.
 
 export const RSS_ALTERNATE = { 'application/rss+xml': '/feed.xml' }
+const RSS_ALTERNATE_EN = { 'application/rss+xml': '/en/feed.xml' }
 
 // The site-wide card rendered by app/opengraph-image.tsx (/en/: the English
 // one). Pages with their own opengraph-image file (home, blog posts) pass
@@ -39,13 +40,16 @@ export interface PageMetadataInput {
   noindex?: boolean
   // The route has its own opengraph-image file.
   ownImage?: boolean
+  // hreflang pairs for pages that pair dynamically (blog posts and tags),
+  // as paths; static pairs come from lib/i18n.ts automatically.
+  languages?: Record<string, string>
   article?: { publishedTime: string; modifiedTime?: string; tags: string[] }
 }
 
 export function pageMetadata(input: PageMetadataInput): Metadata {
   const lang = input.lang ?? 'nb'
   const url = `${SITE_URL}${input.path}`
-  const languages = languageAlternates(input.path)
+  const languages = input.languages ?? languageAlternates(input.path)
   const og = {
     title: input.ogTitle ?? (input.absoluteTitle ? input.title : `${input.title} – ${AUTHOR.name}`),
     description: input.ogDescription ?? input.description,
@@ -72,8 +76,8 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
     alternates: {
       canonical: url,
       ...(languages ? { languages } : {}),
-      // The feed is the Norwegian blog; English pages don't advertise it.
-      ...(lang === 'nb' ? { types: RSS_ALTERNATE } : {}),
+      // Each language advertises its own blog feed.
+      types: lang === 'en' ? RSS_ALTERNATE_EN : RSS_ALTERNATE,
     },
     openGraph,
     ...(input.noindex ? { robots: { index: false, follow: true } } : {}),

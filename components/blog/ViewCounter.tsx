@@ -1,15 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { DICT } from '@/data/i18n'
+import { useLang } from '@/lib/use-lang'
 
 // Below this the count stays hidden: «4 visninger» reads as an empty site.
 // D1 still counts every view; the number appears once it's worth showing.
 const MIN_SHOWN = 50
 
 // Counts one view per browser session per post (sessionStorage flag), so a
-// reader hopping back and forth doesn't inflate the number.
+// reader hopping back and forth doesn't inflate the number. `slug` is the
+// post's view key (lib/blog.ts viewKey): both language versions share it.
 export default function ViewCounter({ slug }: { slug: string }) {
   const [views, setViews] = useState<number | null>(null)
+  const t = DICT[useLang()].blog
 
   useEffect(() => {
     const controller = new AbortController()
@@ -40,7 +44,7 @@ export default function ViewCounter({ slug }: { slug: string }) {
   return (
     <span>
       {' · '}
-      {views} {views === 1 ? 'visning' : 'visninger'}
+      {t.views(views)}
     </span>
   )
 }

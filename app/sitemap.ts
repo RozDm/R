@@ -1,8 +1,8 @@
 import type { MetadataRoute } from 'next'
-import { getAllPosts, getAllTags, getPostsByTag } from '@/lib/blog'
-import { tagToSlug } from '@/lib/tags'
+import { getAllPosts, getAllTags, getPostsByTag, getTranslation } from '@/lib/blog'
+import { blogPath, postPath, tagPath } from '@/lib/blog-paths'
 import { SITE_URL } from '@/lib/site'
-import { languageAlternates } from '@/lib/i18n'
+import { languageAlternates, type Lang } from '@/lib/i18n'
 
 export const dynamic = 'force-static'
 
@@ -24,23 +24,49 @@ function alternates(path: string) {
     : undefined
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const posts = getAllPosts()
+// A post or tag page in both languages carries its hreflang pair.
+function pairAlternates(nbPath: string | null, enPath: string | null) {
+  return nbPath && enPath
+    ? { languages: { nb: `${SITE_URL}${nbPath}`, en: `${SITE_URL}${enPath}`, 'x-default': `${SITE_URL}${nbPath}` } }
+    : undefined
+}
 
+function blogEntries(lang: Lang): MetadataRoute.Sitemap {
+  const posts = getAllPosts(lang)
+  const twinLang: Lang = lang === 'nb' ? 'en' : 'nb'
+  const twinTags = new Set(getAllTags(twinLang))
+  return [
+    { url: `${SITE_URL}${blogPath(lang)}`, lastModified: newest(posts), alternates: alternates(blogPath(lang)) },
+    ...posts.map((post) => {
+      const twin = getTranslation(post)
+      const own = postPath(lang, post.slug)
+      const other = twin ? postPath(twinLang, twin.slug) : null
+      return {
+        url: `${SITE_URL}${own}`,
+        lastModified: post.date ? new Date(post.updated && post.updated > post.date ? post.updated : post.date) : undefined,
+        alternates: lang === 'nb' ? pairAlternates(own, other) : pairAlternates(other, own),
+      }
+    }),
+    ...getAllTags(lang).map((tag) => {
+      const own = tagPath(lang, tag)
+      const other = twinTags.has(tag) ? tagPath(twinLang, tag) : null
+      return {
+        url: `${SITE_URL}${own}`,
+        lastModified: newest(getPostsByTag(tag, lang)),
+        alternates: lang === 'nb' ? pairAlternates(own, other) : pairAlternates(other, own),
+      }
+    }),
+  ]
+}
+
+export default function sitemap(): MetadataRoute.Sitemap {
   // /kontakt, /personvern and their /en/ twins are intentionally excluded —
   // they're noindex, and a sitemap must not list URLs we tell crawlers not to
-  // index. The blog is Norwegian-only: no alternates there.
+  // index.
   return [
     { url: `${SITE_URL}/`, alternates: alternates('/') },
     { url: `${SITE_URL}/en/`, alternates: alternates('/en/') },
-    { url: `${SITE_URL}/blogg/`, lastModified: newest(posts) },
-    ...posts.map((post) => ({
-      url: `${SITE_URL}/blogg/${post.slug}/`,
-      lastModified: post.date ? new Date(post.updated && post.updated > post.date ? post.updated : post.date) : undefined,
-    })),
-    ...getAllTags().map((tag) => ({
-      url: `${SITE_URL}/blogg/tag/${tagToSlug(tag)}/`,
-      lastModified: newest(getPostsByTag(tag)),
-    })),
+    ...blogEntries('nb'),
+    ...blogEntries('en'),
   ]
 }

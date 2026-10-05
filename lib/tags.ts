@@ -1,4 +1,5 @@
-import { STANDARD_TAGS, TAG_ALIASES } from '@/data/tags'
+import { STANDARD_TAGS, TAG_ALIASES, TAG_LABELS_EN } from '@/data/tags'
+import type { Lang } from './i18n'
 
 function capitalizeFirst(s: string): string {
   if (!s) return s
@@ -56,4 +57,10 @@ export function tagToSlug(tag: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+// How a canonical tag reads in `lang`: the English blog shows English words
+// for the Norwegian-word tags (data/tags.ts TAG_LABELS_EN).
+export function tagLabel(tag: string, lang: Lang): string {
+  return lang === 'en' ? (TAG_LABELS_EN[tag] ?? tag) : tag
 }

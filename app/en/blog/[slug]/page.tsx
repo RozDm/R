@@ -6,13 +6,13 @@ interface Props {
 }
 
 export function generateStaticParams() {
-  return postStaticParams('nb')
+  return postStaticParams('en')
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return postMetadata('nb', (await params).slug)
+  return postMetadata('en', (await params).slug)
 }
 
-export default async function BlogPost({ params }: Props) {
-  return <PostPage lang="nb" slug={(await params).slug} />
+export default async function BlogPostEn({ params }: Props) {
+  return <PostPage lang="en" slug={(await params).slug} />
 }

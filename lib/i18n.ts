@@ -1,6 +1,6 @@
 // Two languages: Norwegian at the root (the canonical site, every existing URL
-// unchanged) and English under /en/. The blog stays Norwegian-only, so blog
-// pages have no English counterpart. Strings live in data/i18n.ts.
+// unchanged) and English under /en/. Blog posts may exist in one language or
+// both (lib/blog.ts pairs them). Strings live in data/i18n.ts.
 
 export type Lang = 'nb' | 'en'
 
@@ -19,18 +19,20 @@ export function langFromPath(pathname: string | null | undefined): Lang {
 }
 
 // Pages that exist in both languages, as [Norwegian path, English path].
-// English paths get English slugs; everything else is Norwegian-only.
+// English paths get English slugs. Blog posts and tag pages pair dynamically —
+// their pages pass the twin explicitly (lib/blog.ts getTranslation).
 const PAIRS: readonly (readonly [string, string])[] = [
   ['/', '/en/'],
   ['/kontakt/', '/en/contact/'],
   ['/personvern/', '/en/privacy/'],
+  ['/blogg/', '/en/blog/'],
 ]
 
 const withSlash = (p: string) => (p.endsWith('/') ? p : `${p}/`)
 
 // The path of the Norwegian page `nbPath` in `lang` — for links inside a page
-// (the contact button on /en/ must go to /en/contact/). Norwegian-only pages
-// (the blog) stay as they are in both languages.
+// (the contact button on /en/ must go to /en/contact/). Paths without a
+// static twin stay as they are.
 export function localePath(lang: Lang, nbPath: string): string {
   if (lang === 'nb') return nbPath
   const [base, hash] = nbPath.split('#')

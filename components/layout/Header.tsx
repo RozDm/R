@@ -3,7 +3,7 @@ import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
 import LangSwitch from './LangSwitch'
 import { DICT } from '@/data/i18n'
-import { HREFLANG, localePath, type Lang } from '@/lib/i18n'
+import { localePath, type Lang } from '@/lib/i18n'
 
 export interface NavLink {
   href: string
@@ -18,17 +18,16 @@ function navLinks(lang: Lang): NavLink[] {
     { href: localePath(lang, '/#about'), label: t.about },
     { href: localePath(lang, '/#skills'), label: t.skills },
     { href: localePath(lang, '/#status'), label: t.status },
-    // The blog is Norwegian-only: from an English page, say so up front.
-    lang === 'nb'
-      ? { href: '/blogg/', label: t.blog }
-      : { href: '/blogg/', label: t.blog, title: t.blogTitle, hrefLang: HREFLANG.nb },
+    { href: localePath(lang, '/blogg/'), label: t.blog },
     // The contact page, not the home footer: from /kontakt itself a /#footer
     // link navigated AWAY from the form it was labelled as.
     { href: localePath(lang, '/kontakt/'), label: t.contact },
   ]
 }
 
-export default function Header({ lang = 'nb' }: { lang?: Lang }) {
+// `alternate`: this page in the other language, when the page knows better
+// than the static pairs (blog posts and tag pages pair dynamically).
+export default function Header({ lang = 'nb', alternate }: { lang?: Lang; alternate?: string }) {
   const links = navLinks(lang)
   return (
     <header className="relative w-full py-4 px-4 md:px-8 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200/50 dark:border-white/5 sticky top-0 z-50">
@@ -48,11 +47,11 @@ export default function Header({ lang = 'nb' }: { lang?: Lang }) {
               {label}
             </HashLink>
           ))}
-          <LangSwitch />
+          <LangSwitch href={alternate} />
           <ThemeToggle />
         </nav>
         <div className="flex items-center gap-3 md:hidden">
-          <LangSwitch />
+          <LangSwitch href={alternate} />
           <ThemeToggle />
           <MobileMenu links={links} />
         </div>

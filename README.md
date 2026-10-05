@@ -77,13 +77,14 @@ reuses `CLOUDFLARE_ACCOUNT_ID`).
 .claude/            Claude Code project config: skills (audit, new-post),
                     session-start hook, permissions allowlist
 app/                Next App Router: home, /blogg, /blogg/tag/[slug], /kontakt,
-                    /personvern, en/ (English home, contact, privacy and OG
-                    card), feed.xml, sitemap, robots, manifest, OG
+                    /personvern, en/ (English home, contact, privacy, blog,
+                    feed and OG cards), feed.xml, sitemap, robots, manifest, OG
                     images, icons/[name] (PNG icons), error boundaries,
                     template.tsx (opacity route cross-fade)
 components/         React components (Hero, Skills, StatusDashboard, GeoMap,
                     HalIdle, ContactForm, Turnstile, …)
-content/blog/       Markdown posts (frontmatter: title, description, date, tags)
+content/blog/       Markdown posts (frontmatter: title, description, date, tags);
+                    English twins in content/blog/en/ (translationOf)
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, tag canon + aliases (tags.ts), UI
                     copy in both languages (i18n.ts)
@@ -93,7 +94,8 @@ docs/               history.md — incident history, the "why" behind CLAUDE.md'
 lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
                     stars.ts, site.ts (name/roles/titles/colours per language),
                     metadata.ts (pageMetadata), i18n.ts + use-lang.ts (NO/EN
-                    paths and language), og-site-card.tsx, geo.ts,
+                    paths and language), blog-paths.ts, feed.ts (RSS per
+                    language), og-site-card.tsx, og-post-card.tsx, geo.ts,
                     timeseries-fill.ts, trends-axis.ts
 schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs
