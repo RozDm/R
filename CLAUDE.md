@@ -21,15 +21,28 @@ Context is split so a session loads only what its task touches:
 
 A PR that adds, moves or removes files in `src/`, `app/`, `components/` or
 `lib/`, or changes the `/api/*` surface, updates the matching file above in
-the same PR — structure drift is worse than missing docs.
+the same PR — structure drift is worse than missing docs. Enforced:
+`scripts/check-docs.mjs` (run by `tests/docs.test.ts`, so CI blocks the
+merge) fails when a doc names a path that doesn't exist, or when a Worker
+module, `/api/*` route, `app/` route dir, `lib/` file, workflow, script,
+skill or hook is in no doc. The Stop hook `.claude/hooks/stop-docs.mjs` runs
+it before a session ends, and also blocks once when the branch adds, removes
+or renames such files without touching any doc — fix the doc, or say why
+none applies.
 
 ## Working efficiently
+
+Token economy is a standing requirement of every task here, not a mode to
+switch on: read only the part of a file the task needs (Grep first, then
+`offset`/`limit`), batch independent calls, don't re-run what already
+answered, keep output and replies short.
 
 - `worker-configuration.d.ts` (generated: `npm run cf-typegen`),
   `package-lock.json` (npm owns it) and `public/world.svg` (built by
   `prebuild`) are denied to Read in `.claude/settings.json`, skipped by
   Grep/Glob via `.ignore`, and shown as binary by `git diff` via
-  `.gitattributes`. Don't route around that with `cat`/`sed`;
+  `.gitattributes`; the PreToolUse hook `.claude/hooks/guard-bash.mjs`
+  denies shell reads of them (`cat`, `grep`, `git show rev:file`, …).
   `git diff --stat` tells you whether they changed.
 - `npm run check` runs lint + typecheck + tests in one call. Run
   `npm run build` only when the change touches pages, metadata, the export
