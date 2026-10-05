@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react'
 
+// Below this the count stays hidden: «4 visninger» reads as an empty site.
+// D1 still counts every view; the number appears once it's worth showing.
+const MIN_SHOWN = 50
+
 // Counts one view per browser session per post (sessionStorage flag), so a
 // reader hopping back and forth doesn't inflate the number.
 export default function ViewCounter({ slug }: { slug: string }) {
@@ -32,7 +36,7 @@ export default function ViewCounter({ slug }: { slug: string }) {
     return () => controller.abort()
   }, [slug])
 
-  if (views === null) return null
+  if (views === null || views < MIN_SHOWN) return null
   return (
     <span>
       {' · '}

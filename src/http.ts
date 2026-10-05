@@ -1,6 +1,19 @@
 // Shared HTTP helper for the worker's JSON API responses.
 import { ENFORCED_CSP, HSTS, applyBaseHeaders } from './csp'
 
+// Per-IP throttle for the public write endpoints (wrangler.jsonc ratelimits).
+// `scope` keeps each endpoint's budget separate. Fails open: a limiter hiccup
+// (or a binding missing in tests/dev) must never drop a real visit.
+export async function allowWrite(env: Env, request: Request, scope: string): Promise<boolean> {
+  const ip = request.headers.get('cf-connecting-ip')
+  if (!ip || !env.WRITE_LIMITER) return true
+  try {
+    return (await env.WRITE_LIMITER.limit({ key: `${scope}:${ip}` })).success
+  } catch {
+    return true
+  }
+}
+
 export function apiJson(body: string, status = 200, cacheControl = 'no-store'): Response {
   const response = new Response(body, {
     status,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countriesFromRows, isCountableCountry, isValidSlug, looksLikeBot } from '@/src/metrics'
+import { countriesFromRows, isCountableCountry, isDatacenterAsn, isValidSlug, looksLikeBot } from '@/src/metrics'
 
 describe('isValidSlug', () => {
   it('accepts normal slugs', () => {
@@ -62,5 +62,19 @@ describe('looksLikeBot', () => {
 
   it('passes normal browsers', () => {
     expect(looksLikeBot('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36')).toBe(false)
+  })
+})
+
+describe('isDatacenterAsn', () => {
+  it('flags cloud / hosting networks', () => {
+    expect(isDatacenterAsn(16509)).toBe(true) // AWS
+    expect(isDatacenterAsn(24940)).toBe(true) // Hetzner
+  })
+  it('leaves ISPs, VPN/relay egress and junk alone', () => {
+    expect(isDatacenterAsn(2119)).toBe(false) // Telenor
+    expect(isDatacenterAsn(13335)).toBe(false) // Cloudflare WARP / Private Relay
+    expect(isDatacenterAsn(36183)).toBe(false) // Akamai (Private Relay)
+    expect(isDatacenterAsn(undefined)).toBe(false)
+    expect(isDatacenterAsn('16509')).toBe(false)
   })
 })

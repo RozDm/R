@@ -112,10 +112,12 @@ check "og-image"    "$BASE/opengraph-image"  200
 check "world-svg"   "$BASE/world.svg"        200 "<svg"
 check "security.txt" "$BASE/.well-known/security.txt" 200 "Contact: mailto:"
 check "icon-512"    "$BASE/icons/icon-512.png" 200
+check "favicon.ico" "$BASE/favicon.ico"      200
 
 echo "== Canonical host =="
 check_redirect "www"         "https://www.rozsoshnykh.no/"        "$BASE/"
 check_redirect "workers.dev" "https://d.rozsoshnykh.workers.dev/" "$BASE/"
+check_redirect "no-slash"    "$BASE/blogg"                         "$BASE/blogg/"
 
 echo "== Security headers =="
 check_header "HSTS"       "$BASE/" "^strict-transport-security:"

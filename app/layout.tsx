@@ -21,15 +21,14 @@ const intelOneMono = Intel_One_Mono({
   // first paint. `optional` gives the font a short block window and, if it
   // isn't ready, keeps the fallback for that paint and never swaps late — so
   // the layout can't shift. The font is immutably cached (see cacheControlFor),
-  // so repeat visits and client-side navigations render Intel One Mono with no
-  // shift; only a cold first paint may briefly use the system monospace.
+  // so repeat visits and client-side navigations render Intel One Mono.
   display: 'optional',
-  // The font is applied via a CSS variable (Tailwind --font-sans/--font-mono)
-  // rather than the generated className, so Next's automatic <link rel=preload>
-  // points at files the browser can't tie to usage in time and logs
-  // "preloaded but not used" warnings. Skip preloading; the cache does the
-  // heavy lifting after the first visit.
-  preload: false,
+  // Preload is what makes `optional` work on a FIRST visit: without it the
+  // woff2 is discovered only after the CSS is parsed, misses the ~100ms block
+  // window, and a newcomer's whole first page renders in the system monospace
+  // (measured live: DejaVu/Consolas on a cold load). It's a variable font, so
+  // this is one ~21 KB latin file covering every weight.
+  preload: true,
 })
 
 export const viewport: Viewport = {

@@ -48,6 +48,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `tests/timeseries.test.ts`) — a mid-bucket epoch drops a straddling 6h
   bucket's visits and the chart undercounts the map. Bump it after every
   `reset-metrics` run, rounding UP.
+- `WRITE_LIMITER` (ratelimits, 20/min per key, per Cloudflare location):
+  `allowWrite(env, request, scope)` in `http.ts` keys it `<scope>:<ip>` for
+  `/api/visit` (429), `/api/views` POST (falls back to a read) and
+  `/api/csp-report` (silent 204). It fails open. The header gates are
+  spoofable; this is what stops a POST loop from burning D1's write quota.
 - Runtime secrets (`TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN`) are
   not in `wrangler.jsonc`; they're typed in `src/env.d.ts` and synced by
   `deploy.yml`.
@@ -124,6 +129,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `contact.at` (ISO strings) are ISO cutoffs from `isoCutoff()` bound as
   parameters — NEVER `datetime('now', …)`: its "YYYY-MM-DD HH:MM:SS" form
   mis-compares with ISO as TEXT and makes every same-day row look recent.
+- Assets are fetched with `redirect: 'manual'`: a Request built in the Worker
+  follows redirects by default, which served `/blogg` as a 200 duplicate. The
+  binding's `html_handling` 307s (`/blogg` → `/blogg/`, `…/index.html` → `…/`)
+  go out as 301s. `/favicon.ico` is rewritten to the build-time
+  `/icons/favicon.ico`.
 - Failures swallowed for availability (D1 upserts, mail sends, prune) still
   `console.error` — Workers Logs is the only place they show.
 

@@ -143,18 +143,31 @@ export default {
       (await handleStatus(url, env, ctx)) ??
       (await handleViews(url, request, env)) ??
       (await handleGeo(url, env, ctx)) ??
-      handleVisit(url, request, env, ctx) ??
+      (await handleVisit(url, request, env, ctx)) ??
       (await handleTimeseries(url, env, ctx)) ??
       (await handleContact(url, request, env)) ??
       (await handleCspReport(url, request, env))
     if (apiResponse) return apiResponse
 
+    // Clients that ask for /favicon.ico directly (RSS readers, link unfurlers,
+    // bookmarks) get the build-time ICO from app/icons/[name]/route.tsx.
+    if (url.pathname === '/favicon.ico') url.pathname = '/icons/favicon.ico'
+
     // Fetch the asset with a clean request: no conditional headers (they make
     // the binding answer 304 with an empty body), identity encoding so we can
-    // read the HTML.
+    // read the HTML. redirect: 'manual' — a Request built here follows
+    // redirects by default, which silently served /blogg as a 200 duplicate
+    // of /blogg/ instead of passing on the binding's trailing-slash redirect.
     const asset = await env.ASSETS.fetch(
-      new Request(url.toString(), { headers: { 'Accept-Encoding': 'identity' } }),
+      new Request(url.toString(), { headers: { 'Accept-Encoding': 'identity' }, redirect: 'manual' }),
     )
+
+    // html_handling redirects (/blogg → /blogg/, /x/index.html → /x/) come
+    // back as 307s; they're permanent, so hand them on as 301s.
+    const assetLocation = asset.headers.get('location')
+    if (asset.status >= 300 && asset.status < 400 && assetLocation) {
+      return redirect301(null, new URL(assetLocation, url).toString())
+    }
 
     if ((asset.headers.get('content-type') || '').includes('text/html')) {
       // Visit + geo are no longer counted here — the client /api/visit beacon
