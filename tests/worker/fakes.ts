@@ -12,6 +12,8 @@ export interface FakeEnv {
   sent: { from: string; to: string; raw: string }[]
   failMail: (fail: boolean) => void
   publishedSlugs: Set<string>
+  // Calls allowed per key before WRITE_LIMITER starts refusing (default: no limit).
+  setRateLimit: (n: number) => void
 }
 
 export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeEnv {
@@ -45,6 +47,8 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
   const sent: FakeEnv['sent'] = []
   let mailFails = false
   const publishedSlugs = new Set<string>(['velkommen'])
+  const limiterHits = new Map<string, number>()
+  let rateLimit = Infinity
 
   const env = {
     METRICS: d1,
@@ -53,6 +57,13 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
       send: async (m: { from: string; to: string; raw: string }) => {
         if (mailFails) throw new Error('Email Routing unavailable')
         sent.push(m)
+      },
+    },
+    WRITE_LIMITER: {
+      limit: async ({ key }: { key: string }) => {
+        const n = (limiterHits.get(key) ?? 0) + 1
+        limiterHits.set(key, n)
+        return { success: n <= rateLimit }
       },
     },
     ASSETS: {
@@ -64,7 +75,15 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
     ...overrides,
   } as unknown as Env
 
-  return { env, db, aePoints, sent, failMail: (f) => (mailFails = f), publishedSlugs }
+  return {
+    env,
+    db,
+    aePoints,
+    sent,
+    failMail: (f) => (mailFails = f),
+    publishedSlugs,
+    setRateLimit: (n) => (rateLimit = n),
+  }
 }
 
 // waitUntil promises are collected so a test can await the background writes.

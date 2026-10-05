@@ -35,6 +35,14 @@
   //   wrangler secret put AE_API_TOKEN
   // The read route falls back to an empty time-series when either is unset,
   // so writes can start collecting before the read token exists.
+  // Per-IP throttle for the public write endpoints (/api/visit, /api/views
+  // POST, /api/csp-report). Their header gates are spoofable, so a POST loop
+  // could otherwise pollute the counters and burn D1's 100k writes/day —
+  // which would take the contact form down with them. Limits are per
+  // Cloudflare location; a real visitor sends a handful per session.
+  "ratelimits": [
+    { "name": "WRITE_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } }
+  ],
   "analytics_engine_datasets": [
     { "binding": "METRICS_AE", "dataset": "rozsoshnykh_metrics" }
   ],

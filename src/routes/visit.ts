@@ -9,16 +9,16 @@
 // GET is a harmless self-diagnostic (shows the caller's own country and
 // whether it would count; stores nothing) — handy when the map looks empty,
 // e.g. to tell "ad-blocker swallowed the POST" from "edge sees no country".
-import { apiJson } from '../http'
+import { allowWrite, apiJson } from '../http'
 import { isWriteAllowed, isCountableCountry } from '../metrics'
 import { recordGeo } from './geo'
 
-export function handleVisit(
+export async function handleVisit(
   url: URL,
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-): Response | null {
+): Promise<Response | null> {
   if (url.pathname !== '/api/visit') return null
 
   if (request.method === 'GET') {
@@ -36,6 +36,9 @@ export function handleVisit(
 
   if (!isWriteAllowed(request.headers)) {
     return apiJson('{"error":"forbidden"}', 403)
+  }
+  if (!(await allowWrite(env, request, 'visit'))) {
+    return apiJson('{"error":"rate limited"}', 429)
   }
 
   recordGeo(env, ctx, request.cf?.country, {

@@ -62,7 +62,7 @@ jobs:
           for r in rows:
               print("| " + " | ".join(str(r.get(c, "")) for c in cols) + " |")
           print()
-          ' >> "$GITHUB_STEP_SUMMARY"
+          ' | tee -a "$GITHUB_STEP_SUMMARY"
           }
 
           # INTERVAL literals are quoted — AE's parser rejects the bare form.

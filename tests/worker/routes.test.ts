@@ -34,6 +34,20 @@ describe('/api/csp-report', () => {
     expect(fake.aePoints).toEqual([])
   })
 
+  it('drops reports past the per-IP budget', async () => {
+    const fake = makeEnv()
+    fake.setRateLimit(1)
+    const send = (ip: string) => {
+      const req = report(`${ORIGIN}/`, 'inline')
+      req.headers.set('cf-connecting-ip', ip)
+      return handleCspReport(url, req, fake.env)
+    }
+    expect((await send('203.0.113.9'))!.status).toBe(204)
+    expect((await send('203.0.113.9'))!.status).toBe(204)
+    expect((await send('203.0.113.10'))!.status).toBe(204)
+    expect(fake.aePoints).toHaveLength(2)
+  })
+
   it('refuses GET with 405 (the smoke check)', async () => {
     const res = (await handleCspReport(url, new Request(url), makeEnv().env))!
     expect(res.status).toBe(405)
@@ -69,6 +83,15 @@ describe('/api/views/<slug>', () => {
     expect(await (await handleViews(url, new Request(url), fake.env))!.json()).toEqual({ views: 0 })
   })
 
+  it('past the per-IP budget a POST reads instead of counting', async () => {
+    const fake = makeEnv()
+    fake.setRateLimit(1)
+    const url = new URL(`${ORIGIN}/api/views/velkommen`)
+    expect(await (await handleViews(url, post('velkommen'), fake.env))!.json()).toEqual({ views: 1 })
+    expect(await (await handleViews(url, post('velkommen'), fake.env))!.json()).toEqual({ views: 1 })
+    expect(fake.aePoints).toHaveLength(1)
+  })
+
   it('rejects malformed slugs', async () => {
     const url = new URL(`${ORIGIN}/api/views/Bad_Slug`)
     expect((await handleViews(url, new Request(url), makeEnv().env))!.status).toBe(400)
@@ -86,7 +109,7 @@ describe('/api/visit', () => {
   it('counts the country in D1 and writes an AE point with the network', async () => {
     const fake = makeEnv()
     const { ctx, settle } = makeCtx()
-    const res = handleVisit(url, visit({ country: 'NO', asn: 2119, asOrganization: 'Telenor Norge AS' }), fake.env, ctx)!
+    const res = (await handleVisit(url, visit({ country: 'NO', asn: 2119, asOrganization: 'Telenor Norge AS' }), fake.env, ctx))!
     await settle()
     expect(res.status).toBe(200)
     expect(fake.db.prepare('SELECT country, count FROM geo').all()).toEqual([{ country: 'NO', count: 1 }])
@@ -96,11 +119,21 @@ describe('/api/visit', () => {
   it('skips pseudo-countries and refuses bots', async () => {
     const fake = makeEnv()
     const { ctx, settle } = makeCtx()
-    handleVisit(url, visit({ country: 'T1' }), fake.env, ctx)
-    const bot = handleVisit(url, visit({ country: 'NO' }, { ...BROWSER_HEADERS, 'user-agent': 'HeadlessChrome' }), fake.env, ctx)!
+    await handleVisit(url, visit({ country: 'T1' }), fake.env, ctx)
+    const bot = (await handleVisit(url, visit({ country: 'NO' }, { ...BROWSER_HEADERS, 'user-agent': 'HeadlessChrome' }), fake.env, ctx))!
     await settle()
     expect(bot.status).toBe(403)
     expect(fake.db.prepare('SELECT COUNT(*) AS n FROM geo').get()).toEqual({ n: 0 })
     expect(fake.aePoints).toEqual([])
+  })
+
+  it('answers 429 past the per-IP budget and records nothing more', async () => {
+    const fake = makeEnv()
+    fake.setRateLimit(1)
+    const { ctx, settle } = makeCtx()
+    expect((await handleVisit(url, visit({ country: 'NO' }), fake.env, ctx))!.status).toBe(200)
+    expect((await handleVisit(url, visit({ country: 'NO' }), fake.env, ctx))!.status).toBe(429)
+    await settle()
+    expect(fake.db.prepare('SELECT country, count FROM geo').all()).toEqual([{ country: 'NO', count: 1 }])
   })
 })

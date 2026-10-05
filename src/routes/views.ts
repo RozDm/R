@@ -1,7 +1,7 @@
 // /api/views/<slug> — GET reads the counter, POST counts one view. Only the
 // page's own same-origin fetch() counts, so crawlers and external spam can't
 // inflate it.
-import { apiJson } from '../http'
+import { allowWrite, apiJson } from '../http'
 import { isValidSlug, isWriteAllowed } from '../metrics'
 
 // The header gates are spoofable (any client can send Sec-Fetch-Site and a
@@ -26,6 +26,9 @@ export async function handleViews(url: URL, request: Request, env: Env): Promise
   if (
     request.method === 'POST' &&
     isWriteAllowed(request.headers) &&
+    // Over the per-IP budget → answer like a GET (the reader still sees the
+    // count), just without writing.
+    (await allowWrite(env, request, 'views')) &&
     (await isPublishedPost(url, env, slug))
   ) {
     const row = await env.METRICS.prepare(
