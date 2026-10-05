@@ -72,6 +72,8 @@ jobs:
             "SELECT blob3 AS asn, blob4 AS operator, SUM(_sample_interval) AS visits FROM rozsoshnykh_metrics WHERE blob1 = 'geo' AND $W GROUP BY asn, operator ORDER BY visits DESC LIMIT 40"
           q "Besøk by country" \
             "SELECT blob2 AS country, SUM(_sample_interval) AS visits FROM rozsoshnykh_metrics WHERE blob1 = 'geo' AND $W GROUP BY country ORDER BY visits DESC LIMIT 40"
+          q "Filtered as datacenter traffic (not on the map)" \
+            "SELECT blob3 AS asn, blob4 AS operator, blob2 AS country, SUM(_sample_interval) AS visits FROM rozsoshnykh_metrics WHERE blob1 = 'bot' AND $W GROUP BY asn, operator, country ORDER BY visits DESC LIMIT 40"
           q "CSP violations reported by browsers" \
             "SELECT blob2 AS directive, blob3 AS blocked, blob4 AS page, SUM(_sample_interval) AS reports FROM rozsoshnykh_metrics WHERE blob1 = 'csp' AND $W GROUP BY directive, blocked, page ORDER BY reports DESC LIMIT 40"
           echo "Report written to the run summary."

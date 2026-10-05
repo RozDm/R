@@ -36,3 +36,33 @@ export function countriesFromRows(rows: { country: string; count: number }[]): R
   }
   return countries
 }
+
+// Cloud / hosting networks whose "visitors" are crawlers and headless
+// browsers, not readers: a Norwegian-language site drew ~45% of its Besøk
+// from the US. Deliberately NOT listed, because real people browse through
+// them: consumer VPN hosts (M247, Datacamp, Clouvider), iCloud Private Relay
+// and WARP egress (Akamai, Cloudflare, Fastly) and corporate proxies (Zscaler).
+export const DATACENTER_ASNS: ReadonlySet<number> = new Set([
+  16509, 14618, // Amazon AWS
+  15169, 19527, 396982, // Google / Google Cloud
+  8075, // Microsoft Azure
+  14061, // DigitalOcean
+  24940, 213230, // Hetzner
+  16276, // OVH
+  63949, // Linode
+  20473, // Vultr
+  31898, // Oracle Cloud
+  45102, 37963, // Alibaba Cloud
+  132203, 45090, // Tencent Cloud
+  136907, // Huawei Cloud
+  51167, // Contabo
+  12876, // Scaleway
+  60781, 28753, // Leaseweb
+  8560, // IONOS
+  47583, // Hostinger
+  398324, // Censys (scanner)
+])
+
+export function isDatacenterAsn(asn: unknown): boolean {
+  return typeof asn === 'number' && DATACENTER_ASNS.has(asn)
+}

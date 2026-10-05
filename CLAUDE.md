@@ -55,7 +55,8 @@ the same PR — structure drift is worse than missing docs.
   notice, linked from the footer + `/kontakt`), plus `feed.xml`, `sitemap`,
   `robots`, `manifest`, OG images, `/icons/*.png` (build-time PNGs of
   `app/icon.svg` for the manifest + apple-touch-icon,
-  `app/icons/[name]/route.tsx`) and `/.well-known/security.txt` (static in
+  `app/icons/[name]/route.tsx`, which also builds `favicon.ico` — the Worker
+  serves it at `/favicon.ico`) and `/.well-known/security.txt` (static in
   `public/`, RFC 9116 — bump its `Expires` yearly). `error.tsx` /
   `global-error.tsx` are the HAL-voiced «Systemfeil» boundaries.
 - Metadata: every page builds it with `pageMetadata()` (`lib/metadata.ts`).
@@ -80,7 +81,7 @@ the same PR — structure drift is worse than missing docs.
   Trends chart are two views of one dataset. Rule for ALL client counters
   (`VisitBeacon`, `ViewCounter`): set the sessionStorage dedupe flag BEFORE
   the fetch, so StrictMode's double-invoke and remount races can't
-  double-count.
+  double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`).
 - Trends card (`components/home/Trends.tsx`): one Besøk metric, tabs
   24t/7d/30d/**Alt**, dot plot over a zero-filled bucket grid
   (`lib/timeseries-fill.ts`). D1 is the truth for totals, AE answers "when":
@@ -192,7 +193,9 @@ the same PR — structure drift is worse than missing docs.
 - The body font uses `display: 'optional'` (not `swap`) in `app/layout.tsx`:
   `next/font` has no metrics for Intel One Mono, so `swap` reflows the whole
   page on a cold first paint. Don't switch back without a hand-built
-  metric-matched fallback `@font-face`.
+  metric-matched fallback `@font-face`. Keep `preload: true` with it — without
+  the preload the woff2 misses `optional`'s block window and a newcomer's
+  first page renders in the system monospace.
 - `app/template.tsx` cross-fades route changes (450ms `animate-page-in`),
   its wrapper keyed by pathname — a root template alone re-mounts only when
   the top-level segment changes, so `/blogg/` → a post wouldn't fade.

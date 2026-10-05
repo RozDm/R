@@ -19,7 +19,8 @@ incident background: `docs/history.md`.
   the Actions tab.
 - `analytics-report.yml` — manual, `days` 1–90, read-only: AE breakdowns in
   the run summary — Besøk by ASN/operator and country, and the CSP
-  violations browsers reported.
+  violations browsers reported. The tables are also teed to the job log, so
+  an agent can read them with `get_job_logs` (summaries have no API).
 - `reset-metrics.yml` — manual, type `RESET` to confirm: wipes the D1
   `views` + `geo` counters and prints before/after counts. AE can't be reset
   (append-only), so bump `METRICS_EPOCH` in `src/timeseries.ts` after every

@@ -116,6 +116,16 @@ describe('/api/visit', () => {
     expect(fake.aePoints[0].blobs).toEqual(['geo', 'NO', 'AS2119', 'Telenor Norge AS'])
   })
 
+  it('keeps datacenter networks off the map but logs them to AE as bot', async () => {
+    const fake = makeEnv()
+    const { ctx, settle } = makeCtx()
+    const res = (await handleVisit(url, visit({ country: 'US', asn: 16509, asOrganization: 'AMAZON-02' }), fake.env, ctx))!
+    await settle()
+    expect(res.status).toBe(200)
+    expect(fake.db.prepare('SELECT COUNT(*) AS n FROM geo').get()).toEqual({ n: 0 })
+    expect(fake.aePoints.map((p) => p.blobs)).toEqual([['bot', 'US', 'AS16509', 'AMAZON-02']])
+  })
+
   it('skips pseudo-countries and refuses bots', async () => {
     const fake = makeEnv()
     const { ctx, settle } = makeCtx()
