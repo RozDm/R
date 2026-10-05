@@ -14,5 +14,11 @@ import { usePathname } from 'next/navigation'
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const animate = !!pathname && pathname !== '/'
-  return <div className={animate ? 'animate-page-in' : undefined}>{children}</div>
+  // Keyed by pathname: Next re-mounts a root template only when the top-level
+  // segment changes, so /blogg/ → /blogg/<slug>/ would otherwise skip the fade.
+  return (
+    <div key={pathname} className={animate ? 'animate-page-in' : undefined}>
+      {children}
+    </div>
+  )
 }

@@ -148,7 +148,7 @@ the same PR — structure drift is worse than missing docs.
   via `.hal-text-reveal`), loader copy («Åpner podbay-dørene…», «Kalibrerer
   AE-35-enheten…»), console greeting, `HISTORY_LIMIT = 149`. `%USERNAME%` is
   a literal joke, not a template var. The intro plays only on a plain first
-  load of `/`: the head script in `app/layout.tsx` marks it seen when a
+  load of `/` (never under prefers-reduced-motion): the head script in `app/layout.tsx` marks it seen when a
   session lands anywhere else or on a `/#hash` deep link. Any key or click
   skips it.
 - Blog posts: `content/blog/<slug>.md`, frontmatter `title`, `description`,
@@ -193,7 +193,9 @@ the same PR — structure drift is worse than missing docs.
   `next/font` has no metrics for Intel One Mono, so `swap` reflows the whole
   page on a cold first paint. Don't switch back without a hand-built
   metric-matched fallback `@font-face`.
-- `app/template.tsx` cross-fades route changes (450ms `animate-page-in`).
+- `app/template.tsx` cross-fades route changes (450ms `animate-page-in`),
+  its wrapper keyed by pathname — a root template alone re-mounts only when
+  the top-level segment changes, so `/blogg/` → a post wouldn't fade.
   OPACITY-ONLY — a transform would become a containing block for the
   `position:fixed` intro overlays / sticky header — and the home route opts
   out (`usePathname() !== '/'`) so the intro's z-100 overlay keeps a clean
@@ -203,8 +205,12 @@ the same PR — structure drift is worse than missing docs.
   `history.pushState` (Next's `<Link href="/#x">` concatenates hashes into
   `/#main#about`; setting `location.hash` jumps past the smooth scroll). The
   header offset is pure CSS (`scroll-padding-top`) — no custom rAF scroll, it
-  fights the global `scroll-behavior: smooth`. Off the home route, plain
-  `<Link>`. Page links set `aria-current` (`page` on an exact match, `true`
+  fights the global `scroll-behavior: smooth`. The logo is a HashLink too:
+  on `/` it scrolls back to the top (Next treats `/` → `/` as a no-op). Off
+  the home route, plain `<Link>`. `<html data-scroll-behavior="smooth">`
+  must stay: it lets Next switch smooth scrolling off while it resets scroll
+  on a route change — without it the reset animates, Next's follow-up
+  `scrollIntoView` calls cancel it, and the new page opens mid-scroll. Page links set `aria-current` (`page` on an exact match, `true`
   on a parent), styled via `[&[aria-current]]:`.
 - `StatusDashboard`, `GeoMap` and `TrendsChart` are code-split via
   `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
