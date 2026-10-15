@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
 // A template (unlike a layout) re-mounts on every navigation, so the
@@ -18,8 +19,24 @@ export default function Template({ children }: { children: React.ReactNode }) {
   // Keyed by pathname: Next re-mounts a root template only when the top-level
   // segment changes, so /blogg/ → /blogg/<slug>/ would otherwise skip the fade.
   return (
-    <div key={pathname} className={animate ? 'animate-page-in' : undefined}>
+    <PageFade key={pathname} animate={animate}>
       {children}
-    </div>
+    </PageFade>
   )
+}
+
+// Set once the document's first page has hydrated; every page mounted after
+// that arrived by a client-side navigation.
+let hydrated = false
+
+// Fades in only on client-side navigations. The document's first page (a post
+// opened from search or a shared link) renders without the class, in the
+// static HTML too — a full load must paint at once, not sit at opacity 0 for
+// 450ms (which also hid it from LCP).
+function PageFade({ animate, children }: { animate: boolean; children: React.ReactNode }) {
+  const [navigated] = useState(() => hydrated)
+  useEffect(() => {
+    hydrated = true
+  }, [])
+  return <div className={animate && navigated ? 'animate-page-in' : undefined}>{children}</div>
 }

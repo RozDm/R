@@ -17,6 +17,7 @@ export default function LangSwitch({ href }: { href?: string }) {
   return (
     <Link
       href={href ?? switchPath(pathname, other)}
+      prefetch={false}
       hrefLang={HREFLANG[other]}
       lang={HREFLANG[other]}
       title={t.title}

@@ -70,6 +70,17 @@ check_header() { # name url header_pattern
   fi
 }
 
+check_no_header() { # name url header_pattern — the header must be absent
+  local name=$1 url=$2 pat=$3
+  fetch "$url" > /dev/null
+  if grep -qi -- "$pat" "$HDR"; then
+    echo "FAIL $name: $url headers contain '$pat'"
+    FAIL=1
+  else
+    echo "OK   $name"
+  fi
+}
+
 # Warm-up: right after a deploy the custom-domain TLS bindings can take a few
 # minutes to propagate (curl exits with code 000 until then). Wait for the
 # edge to answer at all before judging individual checks.
@@ -135,10 +146,13 @@ check_header "COOP"       "$BASE/" "^cross-origin-opener-policy: same-origin"
 check_header "CSP report" "$BASE/" "^reporting-endpoints: csp-endpoint="
 
 echo "== Caching =="
-# Static assets must carry a real browser cache so repeat visits and
-# client-side navigations don't re-download every chunk. world.svg is the
-# stable-URL canary for the whole cacheControlFor() rule.
-check_header "cache world.svg" "$BASE/world.svg" "^cache-control: public, max-age=604800"
+# Static files skip the Worker (run_worker_first in wrangler.jsonc) and take
+# their browser cache from public/_headers, so repeat visits and client-side
+# navigations don't re-download every chunk. world.svg is the canary: its
+# cache header proves _headers applied, and no X-Frame-Options (which the
+# Worker sets on everything it serves) proves no Worker request was spent.
+check_header    "cache world.svg"    "$BASE/world.svg" "^cache-control: public, max-age=604800"
+check_no_header "world.svg no Worker" "$BASE/world.svg" "^x-frame-options:"
 
 if [ "$FAIL" = "1" ]; then
   echo; echo "Smoke test FAILED"
