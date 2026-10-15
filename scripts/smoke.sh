@@ -71,8 +71,15 @@ check_header() { # name url header_pattern
 }
 
 check_no_header() { # name url header_pattern — the header must be absent
-  local name=$1 url=$2 pat=$3
-  fetch "$url" > /dev/null
+  # Retries like check(): right after a deploy some edges still run the
+  # previous version, and this is a check the old version fails.
+  local name=$1 url=$2 pat=$3 i
+  for i in 1 2 3 4 5 6; do
+    fetch "$url" > /dev/null
+    grep -qi -- "$pat" "$HDR" || break
+    echo "  retry $i: $url still has '$pat'"
+    sleep 15
+  done
   if grep -qi -- "$pat" "$HDR"; then
     echo "FAIL $name: $url headers contain '$pat'"
     FAIL=1
