@@ -6,11 +6,13 @@ import { makeStars, type Star } from '@/lib/stars'
 import { DICT } from '@/data/i18n'
 import { useLang } from '@/lib/use-lang'
 
+// localStorage, not sessionStorage: the ~11s sequence is a first-meeting
+// thing — once per visitor, not once per tab or visit.
 const SEEN_KEY = 'intro-seen'
 
 function markSeen() {
   try {
-    sessionStorage.setItem(SEEN_KEY, '1')
+    localStorage.setItem(SEEN_KEY, '1')
   } catch {}
 }
 
@@ -22,16 +24,16 @@ export default function Intro() {
   const t = DICT[useLang()].intro
   // Starts inactive so the server-rendered HTML (and any client-side
   // navigation back to the home page) shows nothing. The animation is only
-  // triggered, once per session, by the effect below.
+  // triggered, once per visitor, by the effect below.
   const [active, setActive] = useState(false)
   const [phase, setPhase] = useState(0)
   const [stars, setStars] = useState<Star[]>([])
 
-  // Decide on mount whether this is the first visit this session.
+  // Decide on mount whether this visitor has seen the intro before.
   useEffect(() => {
     let seen = false
     try {
-      seen = !!sessionStorage.getItem(SEEN_KEY)
+      seen = !!localStorage.getItem(SEEN_KEY)
     } catch {}
 
     // A deep link into a section (/#status, /#skills) asked for content, not
@@ -45,7 +47,7 @@ export default function Intro() {
 
     // Respect prefers-reduced-motion: visitors who asked the OS to keep
     // motion calm shouldn't sit through an ~11s cinematic intro. Mark seen
-    // (so the rest of the session matches the no-motion preference) and
+    // (so later visits match the no-motion preference too) and
     // hand them straight to the page.
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       markSeen()
@@ -53,7 +55,7 @@ export default function Intro() {
       return
     }
 
-    // The intro is gated by sessionStorage that's only readable on the
+    // The intro is gated by localStorage that's only readable on the
     // client, so the mount-time check is the only honest place to flip
     // state — set-state-in-effect lint is informational here.
     // eslint-disable-next-line react-hooks/set-state-in-effect

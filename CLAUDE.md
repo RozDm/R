@@ -98,7 +98,11 @@ answered, keep output and replies short.
   `ThemeContext`) live in `lib/site.ts` — never hard-code them.
 - `src/` — the Cloudflare Worker in front of the static export
   (`run_worker_first`): canonical-host redirects, per-request hash-based CSP,
-  `/api/*`, crons. Stores: KV `STATUS` (uptime snapshot only), D1
+  `/api/*`, crons. Static files (`/_next/static/*`, `/fonts/*`, `/icons/*`,
+  `/world.svg`) skip it — every Worker invocation counts against the free
+  plan's 100k requests/day, and past it Worker-first requests get a 429 — and
+  take their headers from `public/_headers`; the two lists must match
+  (`tests/static-assets.test.ts`). Stores: KV `STATUS` (uptime snapshot only), D1
   `rozsoshnykh-metrics-v2` (`METRICS`: view/geo counters, contact log),
   Analytics Engine `rozsoshnykh_metrics` (`METRICS_AE`: time series).
   Endpoints: `/api/status`, `/api/views/<slug>`, `/api/geo`, `/api/visit`,
@@ -111,7 +115,10 @@ answered, keep output and replies short.
   Trends chart are two views of one dataset. Rule for ALL client counters
   (`VisitBeacon`, `ViewCounter`): set the sessionStorage dedupe flag BEFORE
   the fetch, so StrictMode's double-invoke and remount races can't
-  double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`).
+  double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`); the map
+  and Trends hide every absolute visit number (legend, tooltips, headline,
+  y-axis) until the all-time D1 total reaches `MIN_PUBLIC_VISITS`
+  (`lib/geo.ts`) — shades and the chart's shape stay.
 - Trends card (`components/home/Trends.tsx`): one Besøk metric, tabs
   24t/7d/30d/**Alt**, dot plot over a zero-filled bucket grid
   (`lib/timeseries-fill.ts`). D1 is the truth for totals, AE answers "when":
@@ -168,6 +175,9 @@ answered, keep output and replies short.
   (`text-red-500 … tracking-widest uppercase`) + bold h2 + cards
   (`bg-white dark:bg-gray-900/50 rounded-xl border … hover:border-red-500/30`),
   staggered `animate-fade-in` delays (0/150/300/450/600/750ms).
+- Secondary links (footer, tag chips, the NO/EN switch) set
+  `prefetch={false}`: each viewport prefetch is several Worker requests and
+  mobile data; primary nav, post cards and prev/next keep Next's default.
 - Accent TEXT is red-600 in light mode / red-400 in dark; red-500 is for
   decoration only (dots, borders, selection, chart dots) — red-500 text on
   the light background fails WCAG AA. In-text links are underlined. Font is
@@ -179,10 +189,11 @@ answered, keep output and replies short.
   via `.hal-text-reveal`), loader copy («Åpner podbay-dørene…», «Kalibrerer
   AE-35-enheten…»), console greeting, `HISTORY_LIMIT = 149`. `%USERNAME%` is
   a literal joke, not a template var (English: `HELLO %USERNAME%`). The
-  intro plays only on a plain first load of a front page, `/` or `/en/`
-  (never under prefers-reduced-motion): the head script in `app/layout.tsx`
-  marks it seen when a session lands anywhere else or on a `/#hash` deep
-  link. Any key or click skips it.
+  intro plays once per visitor (localStorage `intro-seen`), only on a plain
+  first load of a front page, `/` or `/en/` (never under
+  prefers-reduced-motion): the head script in `app/layout.tsx` marks it seen
+  when a visitor lands anywhere else or on a `/#hash` deep link. Any key or
+  click skips it.
 - Blog posts: Norwegian in `content/blog/<slug>.md`, English in
   `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>`; a post
   may exist in one language only. Frontmatter `title`, `description`, `date`
@@ -232,8 +243,10 @@ answered, keep output and replies short.
   metric-matched fallback `@font-face`. Keep `preload: true` with it — without
   the preload the woff2 misses `optional`'s block window and a newcomer's
   first page renders in the system monospace.
-- `app/template.tsx` cross-fades route changes (450ms `animate-page-in`),
-  its wrapper keyed by pathname — a root template alone re-mounts only when
+- `app/template.tsx` cross-fades client-side route changes (450ms
+  `animate-page-in`) — never the document's first page, which must paint at
+  once (an opacity-0 start also hid it from LCP); its wrapper keyed by
+  pathname — a root template alone re-mounts only when
   the top-level segment changes, so `/blogg/` → a post wouldn't fade.
   OPACITY-ONLY — a transform would become a containing block for the
   `position:fixed` intro overlays / sticky header — and both front pages

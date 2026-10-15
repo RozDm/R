@@ -16,6 +16,17 @@ export function geoBucket(count: number | undefined, max: number): GeoBucket | n
   return '1'
 }
 
+// Absolute visit numbers (the map legend, its tooltips, the Trends headline
+// and y-axis) stay hidden until the all-time total reaches this: «6 besøk
+// siste 7d» reads as an empty site to the people the page is for. The map
+// shades and the chart's shape still show where and when — just not how few.
+// Same idea as ViewCounter's MIN_SHOWN, at site scale.
+export const MIN_PUBLIC_VISITS = 500
+
+export function showVisitCounts(total: number | null): boolean {
+  return total !== null && total >= MIN_PUBLIC_VISITS
+}
+
 // One /api/geo request per page view, shared by the map and the Trends "Alt"
 // total (they used to fetch it twice). Re-fetched after the endpoint's own
 // 60 s edge-cache TTL so a client-side navigation back to / isn't stuck on an

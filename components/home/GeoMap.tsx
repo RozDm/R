@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchGeoCountries, geoBucket } from '@/lib/geo'
+import { fetchGeoCountries, geoBucket, showVisitCounts } from '@/lib/geo'
 import { DICT } from '@/data/i18n'
 import { INTL_LOCALE } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
@@ -91,7 +91,9 @@ export default function GeoMap() {
       }
     }
 
-    const max = Math.max(0, ...Object.values(counts ?? {}))
+    const values = Object.values(counts ?? {})
+    const max = Math.max(0, ...values)
+    const showCounts = showVisitCounts(values.reduce((a, b) => a + b, 0))
     root.querySelectorAll<SVGPathElement>('path').forEach((p) => {
       const code = p.id.replace(/^c-/, '')
       const n = counts?.[code]
@@ -104,12 +106,13 @@ export default function GeoMap() {
         title = document.createElementNS('http://www.w3.org/2000/svg', 'title') as SVGTitleElement
         p.appendChild(title)
       }
-      title.textContent = `${countryName(code)}${n ? ` · ${t.visits(n)}` : ''}`
+      title.textContent = `${countryName(code)}${n && showCounts ? ` · ${t.visits(n)}` : ''}`
     })
   }, [svgMarkup, counts, regionNames, t])
 
   const sorted = counts ? Object.entries(counts).sort((a, b) => b[1] - a[1]) : []
   const total = sorted.reduce((sum, [, n]) => sum + n, 0)
+  const showCounts = showVisitCounts(total)
   const countryName = (code: string): string => {
     try {
       return regionNames?.of(code) ?? code
@@ -151,7 +154,8 @@ export default function GeoMap() {
           {sorted.map(([code, count]) => (
             <span key={code} className="inline-flex items-center gap-1.5">
               <span aria-hidden className="font-flag">{flag(code)}</span>
-              {countryName(code)} <span className="text-gray-500 dark:text-gray-400">{count}</span>
+              {countryName(code)}
+              {showCounts && <span className="text-gray-500 dark:text-gray-400">{count}</span>}
             </span>
           ))}
           <span className="ml-auto inline-flex items-center gap-3">
@@ -162,7 +166,7 @@ export default function GeoMap() {
               ))}
               {t.more}
             </span>
-            <span>{t.visits(total)}</span>
+            {showCounts && <span>{t.visits(total)}</span>}
           </span>
         </div>
       )}

@@ -28,6 +28,7 @@ export default function Footer({ lang = 'nb' }: { lang?: Lang }) {
         <div className="flex gap-8 text-sm font-medium pt-2">
           <Link
             href={localePath(lang, '/kontakt/')}
+            prefetch={false}
             className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
           >
             {t.form}
@@ -65,6 +66,7 @@ export default function Footer({ lang = 'nb' }: { lang?: Lang }) {
           {' · '}
           <Link
             href={localePath(lang, '/personvern/')}
+            prefetch={false}
             className="hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
           >
             {t.privacy}

@@ -130,12 +130,13 @@ export default function RootLayout({
             page (a post from search, /kontakt) or on a /#hash deep link (the
             /status redirect, a shared /#skills link) is marked as having seen
             it, so a later click to the home page never hijacks them with the
-            11-second sequence. Only a plain first load of / or /en/ plays it — and
-            never under prefers-reduced-motion (Intro skips it there anyway;
+            11-second sequence. Only a visitor's first plain load of / or /en/
+            plays it (the flag is in localStorage: once per visitor, not per
+            tab) — and never under prefers-reduced-motion (Intro skips it there anyway;
             raising the black cover would only hold it until hydration). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=sessionStorage,p=location.pathname;if((p!=='/'&&p!=='/en/')||location.hash||matchMedia('(prefers-reduced-motion: reduce)').matches){s.setItem('intro-seen','1')}else if(!s.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
+            __html: `(function(){try{var s=localStorage,p=location.pathname;if((p!=='/'&&p!=='/en/')||location.hash||matchMedia('(prefers-reduced-motion: reduce)').matches){s.setItem('intro-seen','1')}else if(!s.getItem('intro-seen')){var d=document.documentElement;d.classList.add('intro-active');setTimeout(function(){d.classList.remove('intro-active')},7500)}}catch(e){}})()`,
           }}
         />
         <script

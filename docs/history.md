@@ -52,7 +52,7 @@ out in the system monospace and then **reflowed** when the web font arrived:
 a visible text-jerk on every cold first paint. `optional` blocks briefly and,
 if the font isn't ready, keeps the fallback for that paint and never swaps
 late — no layout shift ever. The font is immutably cached
-(`cacheControlFor`), so repeat visits and client-side navigations render the
+(`public/_headers`), so repeat visits and client-side navigations render the
 real font with no shift; only a cold first paint may briefly use system mono.
 Don't switch back to `swap` without first adding a hand-built metric-matched
 fallback @font-face.

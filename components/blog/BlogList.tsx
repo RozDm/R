@@ -29,6 +29,7 @@ export default function BlogList({ posts, tags, lang }: { posts: PostMeta[]; tag
               <Link
                 key={tag}
                 href={tagPath(lang, tag)}
+                prefetch={false}
                 className="text-[11px] px-2.5 py-1 rounded-md border font-mono border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               >
                 {tagLabel(tag, lang)} <span>({count})</span>

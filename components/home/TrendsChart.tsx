@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { xTicksFor } from '@/lib/trends-axis'
 import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
-import { fetchGeoCountries } from '@/lib/geo'
+import { fetchGeoCountries, showVisitCounts } from '@/lib/geo'
 import { DICT } from '@/data/i18n'
 import { INTL_LOCALE, type Lang } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
@@ -189,6 +189,9 @@ export default function TrendsChart() {
   const isAll = range === 'all'
   const displayTotal = isAll ? geoTotal : series ? waveTotal : null
   const totalLabel = isAll ? t.total : t.last(rangeLabel)
+  // Below MIN_PUBLIC_VISITS (or until the total is known) the chart keeps its
+  // shape but drops every absolute number: headline, y-axis labels, dot counts.
+  const showCounts = showVisitCounts(geoTotal)
 
   return (
     <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
@@ -214,7 +217,9 @@ export default function TrendsChart() {
         </div>
       </div>
 
-      <div className="flex items-baseline justify-end text-xs font-mono text-gray-500 dark:text-gray-400">
+      {/* invisible, not unmounted: the row keeps its height, so the chart
+          doesn't jump when the total arrives and crosses the threshold. */}
+      <div className={`flex items-baseline justify-end text-xs font-mono text-gray-500 dark:text-gray-400 ${showCounts ? '' : 'invisible'}`}>
         <span className={`tabular-nums ${loading ? 'opacity-50' : ''}`}>
           {/* On `Alt`: the exact D1 total (same number as the map). On the
               windowed tabs: the AE count for that window. '–' until the
@@ -247,16 +252,18 @@ export default function TrendsChart() {
                 className="stroke-gray-200 dark:stroke-gray-800"
                 strokeWidth="1"
               />
-              <text
-                x={PAD_L - 6}
-                y={y + 4}
-                textAnchor="end"
-                className="fill-gray-500 dark:fill-gray-400"
-                fontSize="11"
-                fontFamily="monospace"
-              >
-                {Math.round(v)}
-              </text>
+              {showCounts && (
+                <text
+                  x={PAD_L - 6}
+                  y={y + 4}
+                  textAnchor="end"
+                  className="fill-gray-500 dark:fill-gray-400"
+                  fontSize="11"
+                  fontFamily="monospace"
+                >
+                  {Math.round(v)}
+                </text>
+              )}
             </g>
           )
         })}
@@ -264,7 +271,7 @@ export default function TrendsChart() {
         {!isEmpty &&
           dots.map((d, i) => (
             <circle key={i} cx={d.x} cy={d.y} r="4" className="fill-red-500">
-              <title>{t.dot(formatPoint(d.ts, lang), d.value)}</title>
+              <title>{showCounts ? t.dot(formatPoint(d.ts, lang), d.value) : formatPoint(d.ts, lang)}</title>
             </circle>
           ))}
 

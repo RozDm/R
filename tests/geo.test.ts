@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { geoBucket } from '@/lib/geo'
+import { MIN_PUBLIC_VISITS, geoBucket, showVisitCounts } from '@/lib/geo'
 
 describe('geoBucket', () => {
   it('returns null for countries without visits', () => {
@@ -28,5 +28,14 @@ describe('geoBucket', () => {
 
   it('never exceeds the top bucket when count > max', () => {
     expect(geoBucket(10, 5)).toBe('3')
+  })
+})
+
+describe('showVisitCounts', () => {
+  it('hides numbers until the total is known and reaches the threshold', () => {
+    expect(showVisitCounts(null)).toBe(false)
+    expect(showVisitCounts(0)).toBe(false)
+    expect(showVisitCounts(MIN_PUBLIC_VISITS - 1)).toBe(false)
+    expect(showVisitCounts(MIN_PUBLIC_VISITS)).toBe(true)
   })
 })

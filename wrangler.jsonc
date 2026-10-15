@@ -7,7 +7,13 @@
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
-    "run_worker_first": true
+    // The Worker runs first for HTML (per-request hash CSP), /api/* and the
+    // redirects — but not for static files: each Worker invocation counts
+    // against the free plan's 100k requests/day (past it, every Worker-first
+    // request gets a 429), and a page view pulls ~20 of these. Their headers
+    // live in public/_headers; keep the two lists in sync
+    // (tests/static-assets.test.ts).
+    "run_worker_first": ["/*", "!/_next/static/*", "!/fonts/*", "!/icons/*", "!/world.svg"]
   },
   "kv_namespaces": [
     {

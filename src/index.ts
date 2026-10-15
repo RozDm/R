@@ -1,6 +1,8 @@
 // Cloudflare Worker for the portfolio site.
 //
-// Runs on every request (assets.run_worker_first = true):
+// Runs first for everything except static files (assets.run_worker_first in
+// wrangler.jsonc: /_next/static/*, /fonts/*, /icons/*, /world.svg are served
+// asset-first with headers from public/_headers):
 //   1. Redirects HTTP -> HTTPS and onto the canonical host.
 //   2. Dispatches /api/* to the route handlers in src/routes/.
 //   3. Serves the Next.js static export from the ASSETS binding, adding
@@ -10,7 +12,7 @@
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
 
 import { EmailMessage } from 'cloudflare:email'
-import { CSP_REPORT_GROUP, CSP_REPORT_PATH, ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, cacheControlFor, inlineScriptHashes, readHtml, strictCsp } from './csp'
+import { CSP_REPORT_GROUP, CSP_REPORT_PATH, ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
 import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
 import { CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
 import { handleStatus } from './routes/status'
@@ -151,7 +153,10 @@ export default {
 
     // Clients that ask for /favicon.ico directly (RSS readers, link unfurlers,
     // bookmarks) get the build-time ICO from app/icons/[name]/route.tsx.
-    if (url.pathname === '/favicon.ico') url.pathname = '/icons/favicon.ico'
+    // The only /icons/* file the Worker serves, so it sets that path's week
+    // of cache itself (public/_headers doesn't apply to Worker responses).
+    const favicon = url.pathname === '/favicon.ico'
+    if (favicon) url.pathname = '/icons/favicon.ico'
 
     // Fetch the asset with a clean request: no conditional headers (they make
     // the binding answer 304 with an empty body), identity encoding so we can
@@ -213,12 +218,7 @@ export default {
     applyBaseHeaders(response.headers)
     response.headers.set('Strict-Transport-Security', HSTS)
     response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-    // Let the browser keep content-hashed build output (and the big, stable
-    // world map / flag font) instead of re-downloading them every visit; the
-    // Assets binding otherwise tags everything must-revalidate. HTML is handled
-    // above and stays fresh.
-    const cacheControl = cacheControlFor(url.pathname)
-    if (cacheControl) response.headers.set('Cache-Control', cacheControl)
+    if (favicon) response.headers.set('Cache-Control', 'public, max-age=604800')
     // Next emits OG images as extension-less files (out/opengraph-image), so the
     // static host can't infer the type; force image/png or crawlers ignore them.
     if (url.pathname.includes('opengraph-image')) {

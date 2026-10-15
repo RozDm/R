@@ -5,7 +5,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 
 ## Modules
 
-- `index.ts` — entry: HTTPS + canonical-host 301s (www/workers.dev → apex),
+- `index.ts` — entry (runs first for everything but static files, see
+  Rules below): HTTPS + canonical-host 301s (www/workers.dev → apex),
   `/status/` → `/#status`, dispatches `/api/*` to `routes/`, per-request
   **hash-based CSP** for HTML it can decode (+ a `Reporting-Endpoints`
   header), cron dispatch (5-min health checks + daily contact prune) and the
@@ -16,7 +17,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `??`. Pure logic goes in a top-level `src/*.ts` module, not in a route.
 - `http.ts` — `apiJson()` (JSON + security headers) and the edge-cache pair
   `cachedApiJson()`/`putCachedApiJson()`.
-- `csp.ts` — security headers, CSP and `cacheControlFor()`.
+- `csp.ts` — security headers and CSP.
 - `status.ts` — uptime cron config (`MONITORS`) + pure snapshot/alert logic.
 - `contact.ts` — pure contact/alert mail logic: validation limits, Turnstile
   verify, MIME building, the time windows over `contact`
@@ -113,13 +114,20 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   assets + redirects (no `unsafe-inline` — nothing executes inline there);
   `HTML_FALLBACK_CSP` (keeps `unsafe-inline`) only for HTML that couldn't be
   decoded to hash — effectively unreachable, assets are fetched as identity.
-- Asset caching (`cacheControlFor()`, non-HTML branch): the Assets binding
-  tags every file `max-age=0, must-revalidate` and the Worker re-fetches
-  without `If-None-Match`, so without an override every repeat visit
-  re-downloads in full. `/_next/static/*` (content-hashed) → `immutable`;
-  `/world.svg`, `/fonts/*`, `/icons/*` → 1 week; HTML stays no-cache (the
-  per-request hash-CSP needs a fresh document). `smoke.sh` guards the
-  world.svg header as the canary.
+- Static files skip the Worker: `run_worker_first` is `/*` minus
+  `/_next/static/*`, `/fonts/*`, `/icons/*`, `/world.svg`. Every Worker
+  invocation counts against the free plan's 100k requests/day (past it,
+  Worker-first requests get a 429 — the whole site), and a page view pulled
+  ~20 static files. Asset-first, they cost nothing, get 304s, and take their
+  headers from `public/_headers` (`/_next/static/*` → `immutable`, the rest →
+  1 week, all `nosniff`), which never applies to a Worker response — keep it
+  and the negative patterns in sync (`tests/static-assets.test.ts`). A miss
+  under those paths is answered by the asset server's 404 page, not the
+  Worker. HTML stays no-cache (the per-request hash-CSP needs a fresh
+  document). The one icon the Worker still serves is the `/favicon.ico`
+  alias; it sets that week of cache itself. `smoke.sh` canary: world.svg
+  carries the week's cache AND no `X-Frame-Options` (proof it skipped the
+  Worker).
 - Status alerts are flap-damped (`CONSECUTIVE_FAILS_TO_ALERT = 2`): «nede»
   mails only on the second consecutive failed probe, «oppe igjen» on the
   first success after an alerted outage. `isStale`/`STALE_AFTER_MS` (15 min)

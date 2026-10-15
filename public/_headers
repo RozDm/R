@@ -1,0 +1,25 @@
+# Headers for the static assets served WITHOUT the Worker. These paths are
+# the negative patterns of assets.run_worker_first in wrangler.jsonc (the two
+# lists must match — tests/static-assets.test.ts), so they cost no Worker
+# request and the asset server answers conditional requests with 304. The
+# Worker's own headers never reach them; this file is all they get.
+
+# Content-hashed build output (JS, CSS, next/font woff2): the name changes
+# when the bytes do.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
+
+# Stable URLs (the 96 kB world map, the flag font, the app icons): a week,
+# so a change self-heals within one.
+/world.svg
+  Cache-Control: public, max-age=604800
+  X-Content-Type-Options: nosniff
+
+/fonts/*
+  Cache-Control: public, max-age=604800
+  X-Content-Type-Options: nosniff
+
+/icons/*
+  Cache-Control: public, max-age=604800
+  X-Content-Type-Options: nosniff
