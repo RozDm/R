@@ -91,6 +91,23 @@ real SQL. Fix: windows are ISO cutoffs computed in JS (`CONTACT_WINDOWS_MS`,
 run against real SQLite with the production schema, and three of them fail
 on the old queries.
 
+## 2026-10-15 — static 404s became year-long (`public/_headers` + deploy race)
+
+#165 moved `/_next/static/*`, `/fonts/*`, `/icons/*` and `/world.svg` off
+the Worker (free-plan request budget) and gave them their cache through
+`public/_headers`. The asset server applies `_headers` by path to every
+response it gives there, including a miss: a missing chunk came back 404
+with `public, max-age=31536000, immutable`, and Chrome and Safari keep
+that 404. A deploy propagates edge by edge (the first post-#165 smoke run
+hit the old version 10 s after `wrangler deploy`), so a visitor can get the
+new HTML and then a new chunk from an edge that doesn't have it yet — and
+keep a non-hydrating page until a hard reload. Rare at this traffic, but
+`_headers` can't match on status. Fix: a zone Response Header Transform
+Rule sets `no-store` on every 4xx/5xx, kept as code in
+`.github/workflows/zone-rules.yml`. Write it `ge 400`, never `ne 200`: a
+304's headers update the stored 200, so matching 304s would strip
+`immutable` from every cached chunk and the font.
+
 ## Removed features that must not quietly return
 
 - **Newsletter sign-up** — removed. Its leftover `subscribers` table was
