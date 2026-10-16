@@ -16,6 +16,10 @@ Context is split so a session loads only what its task touches:
   analytics report, metrics reset, D1 repair);
 - `.claude/skills/browser-check` — the Playwright recipe for looking at a
   built page;
+- `docs/cloudflare-security.md` — the zone's edge security on the Free plan
+  (WAF custom rule, rate limiting, Bot Fight Mode, AI bots): the deployed
+  config, verified Free limits, execution order and known pitfalls; read it
+  before touching zone security or when a 403/429 isn't the Worker's;
 - `docs/history.md` — the incidents behind the hard rules; read it only when
   a rule seems wrong or you are tempted to undo one.
 

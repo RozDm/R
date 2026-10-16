@@ -14,7 +14,10 @@ incident background: `docs/history.md`.
   is inlined into the build as `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
 - `status-watchdog.yml` — hourly, outside Cloudflare: fails (GitHub e-mails
   the owner) when the site is down or `/api/status` is older than 20 min —
-  the one failure the Worker can't report about itself. GitHub disables
+  the one failure the Worker can't report about itself. A `403` here (or in
+  `smoke.sh`) whose page says `X-Frame-Options: SAMEORIGIN` is Cloudflare,
+  not the site: Bot Fight Mode challenges GitHub's cloud runners and can't
+  be excepted on Free (`docs/cloudflare-security.md`). GitHub disables
   scheduled workflows after 60 days without repo activity; re-enable it from
   the Actions tab.
 - `analytics-report.yml` — manual, `days` 1–90, read-only: AE breakdowns in
