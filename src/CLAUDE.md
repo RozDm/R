@@ -114,6 +114,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   assets + redirects (no `unsafe-inline` — nothing executes inline there);
   `HTML_FALLBACK_CSP` (keeps `unsafe-inline`) only for HTML that couldn't be
   decoded to hash — effectively unreachable, assets are fetched as identity.
+  Inline scripts the EDGE injects after the Worker (Bot Fight Mode's
+  JavaScript Detections, Rocket Loader, Zaraz) are never in the hash list:
+  the browser refuses them and each refusal is a CSP report — one Worker
+  request (`docs/cloudflare-security.md`).
 - Static files skip the Worker: `run_worker_first` is `/*` minus
   `/_next/static/*`, `/fonts/*`, `/icons/*`, `/world.svg`. Every Worker
   invocation counts against the free plan's 100k requests/day (past it,
