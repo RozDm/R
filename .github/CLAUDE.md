@@ -38,7 +38,8 @@ incident background: `docs/history.md`.
   no-store, a real chunk and its 304 stay immutable. `public/_headers` can't
   match on status, so this is what keeps a deploy-race 404 under the
   asset-first paths from being browser-cached for a year. The token needs
-  Zone: Read + Transform Rules: Edit.
+  Zone: Read + Transform Rules: Edit (Cloudflare's guide also lists Account
+  Rulesets: Read).
 - `d1-bootstrap.yml` — one-shot: creates the metrics D1 (skipped when the
   name is already listed) and applies the schema.
 - Every workflow runs with a read-only `GITHUB_TOKEN`; Cloudflare access comes

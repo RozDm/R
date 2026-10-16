@@ -14,7 +14,9 @@ name: Zone rules
 #
 # Idempotent: the rule is found by its ref and updated in place; other rules
 # in the phase are left alone, a new one goes last. Then it checks prod.
-# The token needs Zone → Zone: Read and Zone → Transform Rules: Edit.
+# The token needs Zone → Zone: Read and Zone → Transform Rules: Edit;
+# Cloudflare's Transform Rules API guide also lists Account → Account
+# Rulesets: Read — add it if a rulesets call still returns 403.
 on:
   workflow_dispatch:
 
@@ -107,7 +109,10 @@ jobs:
           echo "$h" | grep -qi '^cache-control: public, max-age=31536000, immutable$' \
             || { echo "::error::$C lost its immutable cache-control"; echo "$h"; exit 1; }
           etag=$(echo "$h" | grep -i '^etag:' | cut -d' ' -f2-)
+          [ -n "$etag" ] || { echo "::error::$C has no etag — can't probe its 304"; echo "$h"; exit 1; }
           h=$(curl -sS -o /dev/null -D - --max-time 20 -H "If-None-Match: $etag" "$BASE$C" | tr -d '\r')
+          echo "$h" | grep -q '^HTTP/[0-9.]* 304' \
+            || { echo "::error::$C did not answer 304 to If-None-Match"; echo "$h"; exit 1; }
           if echo "$h" | grep -qi '^cache-control:.*no-store'; then
             echo "::error::the 304 for $C carries no-store"; echo "$h"; exit 1
           fi
