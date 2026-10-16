@@ -3,6 +3,9 @@
 # lists must match — tests/static-assets.test.ts), so they cost no Worker
 # request and the asset server answers conditional requests with 304. The
 # Worker's own headers never reach them; this file is all they get.
+# _headers matches on path only, so it also stamps a MISS here (a 404) —
+# the zone rule from .github/workflows/zone-rules.yml turns every 4xx/5xx
+# into no-store, so a deploy-race 404 isn't kept for a year.
 
 # Content-hashed build output (JS, CSS, next/font woff2): the name changes
 # when the bytes do.

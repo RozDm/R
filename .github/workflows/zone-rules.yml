@@ -1,0 +1,114 @@
+name: Zone rules
+
+# Manual: applies the zone-level Cloudflare rule the site relies on outside
+# the Worker — a Response Header Transform Rule that sets
+# `Cache-Control: no-store` on every 4xx/5xx response.
+#
+# Why: static files are served asset-first (run_worker_first negatives in
+# wrangler.jsonc) with their headers from public/_headers, which matches on
+# path only — a MISS there (a chunk requested from an edge still on the
+# previous version during a deploy) comes back 404 with the year-long
+# `immutable`, and the browser keeps that 404. Status-matching needs a zone
+# rule. `ge 400`, never `ne 200`: a 304's headers update the stored 200, so
+# matching 304s would turn every cached chunk and the font into no-store.
+#
+# Idempotent: the rule is found by its ref and updated in place; other rules
+# in the phase are left alone, a new one goes last. Then it checks prod.
+# The token needs Zone → Zone: Read and Zone → Transform Rules: Edit.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: zone-rules
+  cancel-in-progress: false
+
+# Read-only GITHUB_TOKEN: nothing here writes to the repo; Cloudflare access
+# comes from the CLOUDFLARE_API_TOKEN secret.
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      CF_API: https://api.cloudflare.com/client/v4
+      ZONE: rozsoshnykh.no
+      PHASE: http_response_headers_transform
+      REF: error_no_store
+    steps:
+      - name: Apply the 4xx/5xx no-store rule
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          OUT=$(mktemp)
+          call() { # method path [json] -> HTTP status on stdout, body in $OUT
+            curl -sS --max-time 30 -o "$OUT" -w '%{http_code}' -X "$1" "$CF_API$2" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' ${3:+--data "$3"}
+          }
+          fail() { echo "::error::$1"; jq -c '.errors' "$OUT" 2>/dev/null || cat "$OUT"; exit 1; }
+
+          [ "$(call GET "/zones?name=$ZONE")" = 200 ] || fail "zone lookup failed — the token needs Zone: Read"
+          ZONE_ID=$(jq -r '.result[0].id // empty' "$OUT")
+          [ -n "$ZONE_ID" ] || fail "zone $ZONE is not visible to this token"
+
+          RULE=$(jq -nc --arg ref "$REF" '{
+            ref: $ref,
+            description: "4xx/5xx: Cache-Control no-store (.github/workflows/zone-rules.yml)",
+            expression: "http.response.code ge 400",
+            action: "rewrite",
+            action_parameters: { headers: { "Cache-Control": { operation: "set", value: "no-store" } } },
+            enabled: true
+          }')
+
+          code=$(call GET "/zones/$ZONE_ID/rulesets/phases/$PHASE/entrypoint") || true
+          if [ "$code" = 404 ]; then
+            [ "$(call PUT "/zones/$ZONE_ID/rulesets/phases/$PHASE/entrypoint" "$(jq -nc --argjson r "$RULE" '{rules: [$r]}')")" = 200 ] \
+              || fail "creating the $PHASE ruleset failed — the token needs Transform Rules: Edit"
+            echo "Created the $PHASE ruleset with the rule."
+          elif [ "$code" = 200 ]; then
+            RULESET_ID=$(jq -r '.result.id' "$OUT")
+            RULE_ID=$(jq -r --arg ref "$REF" '[.result.rules // [] | .[] | select(.ref == $ref)][0].id // empty' "$OUT")
+            if [ -n "$RULE_ID" ]; then
+              [ "$(call PATCH "/zones/$ZONE_ID/rulesets/$RULESET_ID/rules/$RULE_ID" "$RULE")" = 200 ] \
+                || fail "updating the rule failed — the token needs Transform Rules: Edit"
+              echo "Updated rule $RULE_ID."
+            else
+              [ "$(call POST "/zones/$ZONE_ID/rulesets/$RULESET_ID/rules" "$RULE")" = 200 ] \
+                || fail "adding the rule failed — the token needs Transform Rules: Edit"
+              echo "Added the rule, last in the phase."
+            fi
+          else
+            fail "reading the $PHASE ruleset failed (HTTP $code) — the token needs Transform Rules: Edit"
+          fi
+          echo "Rules in $PHASE now:"
+          jq -c '.result.rules[] | {ref, enabled, expression, description}' "$OUT"
+
+      - name: Check prod
+        run: |
+          set -u
+          BASE="https://$ZONE"
+          # A miss under an asset-first path: 404 + no-store (fresh URL per run,
+          # retried while the rule propagates).
+          MISS="$BASE/_next/static/chunks/zone-rules-probe-$GITHUB_RUN_ID.js"
+          ok=
+          for i in 1 2 3 4 5 6; do
+            h=$(curl -sS -o /dev/null -D - --max-time 20 "$MISS" | tr -d '\r')
+            if echo "$h" | grep -q '^HTTP/[0-9.]* 404' && echo "$h" | grep -qi '^cache-control: no-store$'; then ok=1; break; fi
+            echo "  retry $i: $(echo "$h" | grep -i '^cache-control:' || echo 'no cache-control')"
+            sleep 10
+          done
+          [ -n "$ok" ] || { echo "::error::$MISS is not 404 + no-store — the rule does not reach asset-server responses"; exit 1; }
+          echo "OK   static miss: 404 + no-store"
+          # A real chunk and its 304 keep the year-long immutable cache.
+          C=$(curl -sS --max-time 20 "$BASE/" | grep -o '/_next/static/chunks/[^"]*\.js' | head -1)
+          h=$(curl -sS -o /dev/null -D - --max-time 20 "$BASE$C" | tr -d '\r')
+          echo "$h" | grep -qi '^cache-control: public, max-age=31536000, immutable$' \
+            || { echo "::error::$C lost its immutable cache-control"; echo "$h"; exit 1; }
+          etag=$(echo "$h" | grep -i '^etag:' | cut -d' ' -f2-)
+          h=$(curl -sS -o /dev/null -D - --max-time 20 -H "If-None-Match: $etag" "$BASE$C" | tr -d '\r')
+          if echo "$h" | grep -qi '^cache-control:.*no-store'; then
+            echo "::error::the 304 for $C carries no-store"; echo "$h"; exit 1
+          fi
+          echo "OK   real chunk: immutable, 304 without no-store"

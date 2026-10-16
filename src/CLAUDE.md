@@ -123,7 +123,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   1 week, all `nosniff`), which never applies to a Worker response — keep it
   and the negative patterns in sync (`tests/static-assets.test.ts`). A miss
   under those paths is answered by the asset server's 404 page, not the
-  Worker. HTML stays no-cache (the per-request hash-CSP needs a fresh
+  Worker, still carrying the `_headers` cache — the zone rule from
+  `zone-rules.yml` (`.github/CLAUDE.md`) overrides it to `no-store` on
+  every 4xx/5xx. HTML stays no-cache (the per-request hash-CSP needs a fresh
   document). The one icon the Worker still serves is the `/favicon.ico`
   alias; it sets that week of cache itself. `smoke.sh` canary: world.svg
   carries the week's cache AND no `X-Frame-Options` (proof it skipped the
