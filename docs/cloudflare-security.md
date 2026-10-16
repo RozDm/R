@@ -11,16 +11,21 @@ inline); "measured" means probed live on the same day. Everything here is
 **dashboard-managed** except the response-header rule, which lives in
 `.github/workflows/zone-rules.yml`.
 
-## Deployed configuration (2026-10-16)
+## Deployed configuration (final, 2026-10-16)
 
 | Layer | Where | Setting |
 |---|---|---|
-| WAF custom rule "scanner block" | Security → Security rules → Custom rules | 52 `http.request.uri.path contains …` patterns (below), action Block |
-| Rate limiting rule | Security → Security rules → Rate limiting rules | `http.host ne ""`, 30 requests / 10 s per IP, Block, 10 s timeout, "also apply to cached assets" off |
-| Bot Fight Mode | Security → Settings → Bot traffic | On |
+| WAF custom rule "Block scanners" | Security → Security rules → Custom rules | 52 `http.request.uri.path contains …` patterns (below), Block — 1 of 5 rules used |
+| Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; expression excludes static files by extension (below) |
+| Bot Fight Mode | Security → Settings → Bot traffic | **Off** (see "Lessons") |
 | Block AI bots (legacy toggle) | Security → Settings → Bot traffic | On |
+| Browser Integrity Check | Security → Settings | reported on by default — but a request with no User-Agent still got 200 (measured), so it doesn't challenge that |
 | Free Managed Ruleset, L3–L7 DDoS | default | On (not configurable on Free) |
 | Response Header Transform `error_no_store` | `zone-rules.yml` (code) | 4xx/5xx → `Cache-Control: no-store` |
+
+Changes are made in the dashboard: the `CLOUDFLARE_API_TOKEN` secret (a
+user-owned token) has Zone Read + Transform Rules Edit only — no Zone WAF
+or Bot Management write.
 
 Goal of the set: keep scanner traffic off the Worker's 100,000 requests/day
 (per account, resets 00:00 UTC; past it every `run_worker_first` path —
@@ -29,37 +34,49 @@ reaches the Worker and is not counted
 ([Workers metrics](https://developers.cloudflare.com/workers/observability/metrics-and-analytics/):
 "Requests blocked by WAF or other security features will not count").
 Measured: `/wp-login.php`, `/.env`, `*.php` get Cloudflare's 403 without
-touching the Worker — the custom rule works.
+touching the Worker — the custom rule works. With Bot Fight Mode off, the
+watchdog from GitHub runners is green again (run 38910824580).
 
-## Open problems with the deployed set (measured 2026-10-16)
+## Lessons from rolling it out (2026-10-16)
 
-1. **The rate limiting rule hits real visitors.** One fresh desktop page
-   view is 38 same-origin requests in 10 s: 20 to asset-first static files,
-   ~18 Worker-bound (HTML, RSC `*.txt`, `/api/*`). 4 of them got 429,
-   including a `/_next/static` chunk; browsing three pages in 40 s also got
-   429 on HTML. Free has no cache exclusion, so the "cached assets: off"
-   toggle does nothing — every matching request counts, including the
-   asset-first files that cost the Worker nothing.
-2. **Bot Fight Mode blocks GitHub Actions.** It targets "simple bots from
+1. **Rate limiting at 30/10 s, counting everything, 429'd real visitors.**
+   One fresh desktop page view is 38 same-origin requests in 10 s (20 to
+   asset-first static files); 4 got 429, including a `/_next/static` chunk,
+   and three quick page views 429'd HTML. Free has no cache exclusion, so
+   the "also apply to cached assets: off" toggle does nothing — every
+   request matching the expression counts, asset-first files included (they
+   never touch the Worker; the toggle simply isn't honoured on Free). Fix:
+   exclude static files in the expression and raise the threshold to 60.
+2. **Bot Fight Mode blocked GitHub Actions.** It targets "simple bots from
    cloud hosting providers" and runners are Azure VMs: `status-watchdog`
-   run 38900444897 got `GET / -> 403` (first failure in 51 runs). The next
-   deploy's `scripts/smoke.sh` and the `zone-rules.yml` prod check curl
-   from the same runners, after `wrangler deploy` has already shipped.
-   Nothing on Free can except them (see Bot Fight Mode below).
+   run 38900444897 got `GET / -> 403`; `scripts/smoke.sh` and the
+   `zone-rules.yml` prod check curl from the same runners. Free has no
+   exception for it (see below). Fix: off. On Free, don't use Bot Fight
+   Mode on a site whose CI or monitoring are automated clients.
 3. **Bot Fight Mode fights the hash CSP.** Its JavaScript Detections loader
-   is an inline `<script>` with per-request parameters, injected into the
-   HTML *after* the Worker hashed the page's scripts. The browser refuses
-   it on every page view, each refusal posts a CSP report to
-   `/api/csp-report` (a Worker request), and the detection never runs. JSD
-   also strips the HTML's ETag.
+   is an inline `<script>` with per-request parameters, injected *after*
+   the Worker hashed the page's scripts; the browser refuses it on every
+   page view and each refusal posts a CSP report to `/api/csp-report` (one
+   Worker request). **Still open:** after Bot Fight Mode was switched off,
+   the loader (`window.__CF$cv$params`, `/cdn-cgi/challenge-platform/scripts/jsd/main.js`)
+   is still injected into every HTML page (measured 13:49 UTC). Look for a
+   separate "JavaScript detections" switch under Security → Settings, or the
+   API's `enable_js: false` on `/zones/{zone_id}/bot_management` (needs Bot
+   Management Write; whether Free honours it is undocumented).
 4. **`contains` is path-anywhere and case-sensitive.** Today no exported
-   path matches, but a DevOps blog will: `/blogg/jenkins-pipeline/`,
+   path matches the 52 patterns, but a DevOps blog will: `/blogg/jenkins-pipeline/`,
    `/blogg/tag/docker-compose/`, `/blogg/solr-tuning/`, `/blogg/install.sh/`
-   would all be 403'd — together with their RSC `.txt` payloads, OG image
-   and `/api/views/<slug>` counter. Meanwhile `/WP-LOGIN.PHP` slips through.
-
-Recommended fixes, in order: Bot Fight Mode **off**; rate limiting scoped
-to Worker-bound paths at 60/10 s; the slug-proof custom rule. Each is below.
+   would all be 403'd — with their RSC `.txt` payloads, OG image and
+   `/api/views/<slug>` counter. Meanwhile `/WP-LOGIN.PHP` slips through.
+   Check a new slug or tag against the list before publishing, or switch
+   to the slug-proof rule below.
+5. **The extension-based rate-limit exclusion has a bypass.** Any path
+   *containing* `.js`, `.png`, `.svg`… is uncounted, but only real files
+   under `/_next/static/`, `/fonts/`, `/icons/` and `/world.svg` skip the
+   Worker: `/x.png` or `/blogg/a.css` is a Worker request (measured: 404
+   with the Worker's `X-Frame-Options: DENY`) that the rule never counts. A
+   deliberate flood can use it. The prefix-based expression below has no
+   such hole and stays within Free's documented Path field.
 
 ## Execution order
 
@@ -211,9 +228,24 @@ Source: [rate limiting availability](https://developers.cloudflare.com/waf/rate-
   exceeds 30 per 10 s and is 259,200 requests a day; ~1.2 req/s from one IP
   spends the whole quota. Only per-IP bursts are stopped.
 
-Recommended rule — count only Worker-bound paths (this mirrors the
-negatives of `run_worker_first` in `wrangler.jsonc`, a third copy of that
-list), 60 requests / 10 s, Block:
+Deployed (2026-10-16), 60 requests / 10 s per IP, Block — counts
+everything except paths containing a static extension:
+
+```
+http.host ne "" and not (http.request.uri.path contains ".js" or
+http.request.uri.path contains ".css" or http.request.uri.path contains ".png" or
+http.request.uri.path contains ".jpg" or http.request.uri.path contains ".jpeg" or
+http.request.uri.path contains ".gif" or http.request.uri.path contains ".svg" or
+http.request.uri.path contains ".woff" or http.request.uri.path contains ".woff2" or
+http.request.uri.path contains ".ttf" or http.request.uri.path contains ".ico" or
+http.request.uri.path contains ".map" or http.request.uri.path contains ".webp")
+```
+
+It works, with two caveats: `http.host` is outside Free's documented
+fields, and the extension check leaves Worker-bound paths uncounted (lesson
+5). The tighter equivalent — count only Worker-bound paths, mirroring the
+negatives of `run_worker_first` in `wrangler.jsonc` (a third copy of that
+list) — at the same 60/10 s:
 
 ```
 not starts_with(http.request.uri.path, "/_next/static/")
@@ -228,7 +260,8 @@ browser — fresh home 16, fresh blog index 17, a fast five-page click-through
 18 — and `scripts/smoke.sh` sends ~40 from one runner IP in ~10 s. 60 leaves
 ~3× headroom for visitors (more for carrier-NAT IPs shared by several) and
 ~1.5× for the deploy gate. Counting static files too, the same click-through
-is 64 requests, which is why the deployed 30 trips. If the Free editor
+is 64 requests, which is why the first rule (30, counting everything)
+tripped. If the Free editor
 rejects `starts_with()`, the same rule with operators only:
 `not (http.request.uri.path wildcard "/_next/static/*" or http.request.uri.path wildcard "/fonts/*" or http.request.uri.path wildcard "/icons/*" or http.request.uri.path eq "/world.svg" or http.request.uri.path wildcard "/cdn-cgi/*")`.
 
@@ -261,10 +294,12 @@ Narrower alternative: `starts_with(http.request.uri.path, "/api/")` at
   on HTML (stops injection but also edge compression — this Worker fetches
   HTML identity-encoded, so pages would ship uncompressed).
   `'unsafe-inline'` is no fix: browsers ignore it when hashes are present.
-- **Recommendation for this site: off.** It can't be scoped, its JSD can't
-  run under the CSP, and it blinds the smoke test and the watchdog. The
+- **Off on this zone since 2026-10-16.** It can't be scoped, its JSD can't
+  run under the CSP, and it blinded the smoke test and the watchdog. The
   custom rule, rate limiting, the Free Managed Ruleset and the AI bot
-  policies already cover the scanner traffic it would catch.
+  policies already cover the scanner traffic it would catch. Don't turn it
+  back on without an answer for CI (an IP Access Allow for the runners isn't
+  practical: GitHub's ranges are large and shared).
 
 ## AI bots
 
