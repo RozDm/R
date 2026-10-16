@@ -1,22 +1,26 @@
 name: Zone rules
 
-# Manual: applies the zone-level Cloudflare rule the site relies on outside
-# the Worker — a Response Header Transform Rule that sets
-# `Cache-Control: no-store` on every 4xx/5xx response.
+# Manual: applies the zone-level Cloudflare settings the site relies on
+# outside the Worker, then checks prod.
 #
-# Why: static files are served asset-first (run_worker_first negatives in
-# wrangler.jsonc) with their headers from public/_headers, which matches on
-# path only — a MISS there (a chunk requested from an edge still on the
-# previous version during a deploy) comes back 404 with the year-long
-# `immutable`, and the browser keeps that 404. Status-matching needs a zone
-# rule. `ge 400`, never `ne 200`: a 304's headers update the stored 200, so
-# matching 304s would turn every cached chunk and the font into no-store.
+# 1. A Response Header Transform Rule that sets `Cache-Control: no-store` on
+#    every 4xx/5xx response. Static files are served asset-first
+#    (run_worker_first negatives in wrangler.jsonc) with their headers from
+#    public/_headers, which matches on path only — a MISS there (a chunk
+#    requested from an edge still on the previous version during a deploy)
+#    comes back 404 with the year-long `immutable`, and the browser keeps
+#    that 404. Status-matching needs a zone rule. `ge 400`, never `ne 200`: a
+#    304's headers update the stored 200, so matching 304s would turn every
+#    cached chunk and the font into no-store. Found by its ref and updated in
+#    place; other rules in the phase are left alone, a new one goes last.
+# 2. JavaScript Detections off (`enable_js: false`). The edge injects its
+#    loader into HTML after the Worker hashed the page's scripts, so the CSP
+#    refuses it on every page view (one CSP report — a Worker request — each)
+#    and the HTML loses its ETag. It outlived Bot Fight Mode being switched
+#    off (docs/cloudflare-security.md, lesson 3).
 #
-# Idempotent: the rule is found by its ref and updated in place; other rules
-# in the phase are left alone, a new one goes last. Then it checks prod.
-# The token needs Zone → Zone: Read and Zone → Transform Rules: Edit;
-# Cloudflare's Transform Rules API guide also lists Account → Account
-# Rulesets: Read — add it if a rulesets call still returns 403.
+# The token needs Zone → Zone: Read, Zone → Transform Rules: Edit and
+# Zone → Bot Management: Edit.
 on:
   workflow_dispatch:
 
@@ -65,6 +69,7 @@ jobs:
           [ "$(call GET "/zones?name=$ZONE")" = 200 ] || fail "zone lookup failed — the token needs Zone: Read"
           ZONE_ID=$(jq -r '.result[0].id // empty' "$OUT")
           [ -n "$ZONE_ID" ] || fail "zone $ZONE is not visible to this token"
+          echo "ZONE_ID=$ZONE_ID" >> "$GITHUB_ENV"
 
           RULE=$(jq -nc --arg ref "$REF" '{
             ref: $ref,
@@ -98,6 +103,43 @@ jobs:
           echo "Rules in $PHASE now:"
           jq -c '.result.rules[] | {ref, enabled, expression, description}' "$OUT"
 
+      - name: Turn off JavaScript Detections
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          OUT=$(mktemp)
+          call() { # method path [json] -> HTTP status on stdout, body in $OUT
+            curl -sS --max-time 30 -o "$OUT" -w '%{http_code}' -X "$1" "$CF_API$2" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' ${3:+--data "$3"}
+          }
+          fail() { echo "::error::$1"; jq -c '.errors' "$OUT" 2>/dev/null || cat "$OUT"; exit 1; }
+          BM="/zones/$ZONE_ID/bot_management"
+
+          [ "$(call GET "$BM")" = 200 ] || fail "reading $BM failed — the token needs Zone → Bot Management: Edit"
+          BEFORE=$(jq -c '.result' "$OUT")
+          echo "Before: $BEFORE"
+          if [ "$(jq -r '.enable_js' <<<"$BEFORE")" = false ]; then
+            echo "enable_js is already false."
+            exit 0
+          fi
+          [ "$(call PUT "$BM" '{"enable_js":false}')" = 200 ] \
+            || fail "setting enable_js failed — the token needs Zone → Bot Management: Edit"
+          [ "$(call GET "$BM")" = 200 ] || fail "re-reading $BM failed"
+          AFTER=$(jq -c '.result' "$OUT")
+          echo "After:  $AFTER"
+          [ "$(jq -r '.enable_js' <<<"$AFTER")" = false ] || fail "the PUT answered 200 but enable_js is not false"
+          # The body names one field; anything else that moved is a surprise
+          # to restore from the Before line.
+          CHANGED=$(jq -nc --argjson a "$BEFORE" --argjson b "$AFTER" \
+            '[$a, $b | keys[]] | unique | map(select(. != "enable_js" and $a[.] != $b[.]))')
+          if [ "$CHANGED" != "[]" ]; then
+            echo "::error::the PUT also changed $CHANGED — restore them from the Before line"
+            exit 1
+          fi
+          echo "enable_js is now false; nothing else changed."
+
       - name: Check prod
         run: |
           set -u
@@ -128,3 +170,14 @@ jobs:
             echo "::error::the 304 for $C carries no-store"; echo "$h"; exit 1
           fi
           echo "OK   real chunk: immutable, 304 without no-store"
+          # No edge-injected JavaScript Detections loader in the HTML (retried
+          # while the setting propagates).
+          ok=
+          for i in $(seq 1 12); do
+            h=$(curl -sS -o page.html -D - --max-time 20 "$BASE/" | tr -d '\r')
+            if ! grep -q '/cdn-cgi/challenge-platform/' page.html; then ok=1; break; fi
+            echo "  retry $i: the JSD loader is still injected"
+            sleep 10
+          done
+          [ -n "$ok" ] || { echo "::error::$BASE/ still carries the /cdn-cgi/challenge-platform/ loader"; exit 1; }
+          echo "OK   no JSD loader in $BASE/ ($(echo "$h" | grep -i '^etag:' || echo 'no etag'))"
