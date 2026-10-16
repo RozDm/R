@@ -19,8 +19,8 @@ inline); "measured" means probed live on the same day. Everything here is
 | Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; expression excludes static files by extension (below) |
 | Bot Fight Mode | Security → Settings → Bot traffic | **Off** (see "Lessons") |
 | Block AI bots (legacy toggle) | Security → Settings → Bot traffic | On |
-| Browser Integrity Check | Security → Settings | reported on by default — but a request with no User-Agent still got 200 (measured), so it doesn't challenge that |
-| Free Managed Ruleset, L3–L7 DDoS | default | On (not configurable on Free) |
+| Browser Integrity Check | Security → Settings | on by default per the docs, which say it challenges requests without a User-Agent — yet an empty-UA request got 200 (measured); its actual state is unverified, so don't rely on it |
+| Free Managed Ruleset, L3–L7 DDoS | default | On (a custom rule with Skip → All managed rules can exempt a false positive) |
 | Response Header Transform `error_no_store` | `zone-rules.yml` (code) | 4xx/5xx → `Cache-Control: no-store` |
 
 Changes are made in the dashboard: the `CLOUDFLARE_API_TOKEN` secret (a
@@ -57,12 +57,21 @@ watchdog from GitHub runners is green again (run 38910824580).
    is an inline `<script>` with per-request parameters, injected *after*
    the Worker hashed the page's scripts; the browser refuses it on every
    page view and each refusal posts a CSP report to `/api/csp-report` (one
-   Worker request). **Still open:** after Bot Fight Mode was switched off,
-   the loader (`window.__CF$cv$params`, `/cdn-cgi/challenge-platform/scripts/jsd/main.js`)
-   is still injected into every HTML page (measured 13:49 UTC). Look for a
-   separate "JavaScript detections" switch under Security → Settings, or the
-   API's `enable_js: false` on `/zones/{zone_id}/bot_management` (needs Bot
-   Management Write; whether Free honours it is undocumented).
+   Worker request); it also strips the HTML's ETag, so pages lose 304s.
+   **Still open — switching BFM off did not stop it.** On 2026-10-15 the
+   HTML carried an ETag and no loader; since BFM was switched on, the loader
+   (`window.__CF$cv$params`, `/cdn-cgi/challenge-platform/scripts/jsd/main.js`)
+   is injected and the ETag is gone, and both were still true at 14:02 UTC
+   with BFM off (watchdog green). The docs give Free no JSD switch: for "Bot
+   Fight Mode customers … JavaScript Detections is automatically enabled and
+   cannot be disabled", and "JS detections" is a Super Bot Fight Mode /
+   Bot Management setting. Ways out, in order: try `PUT
+   /zones/{zone_id}/bot_management` with `{"enable_js": false}` (needs Bot
+   Management Write; undocumented whether Free honours it); a per-request
+   `'nonce-…'` in the Worker's `script-src` (Cloudflare copies it onto the
+   loader, so JSD runs and the CSP stops refusing it); or
+   `Cache-Control: no-transform` on HTML (stops injection, but also edge
+   compression).
 4. **`contains` is path-anywhere and case-sensitive.** Today no exported
    path matches the 52 patterns, but a DevOps blog will: `/blogg/jenkins-pipeline/`,
    `/blogg/tag/docker-compose/`, `/blogg/solr-tuning/`, `/blogg/install.sh/`
@@ -82,17 +91,18 @@ watchdog from GitHub runners is green again (run 38910824580).
 
 ```
 IP Access rules
-  → [Bot Fight Mode + AI-bot blocking: separate pipeline, position vs. the phases NOT documented]
+  → [Bot Fight Mode: separate pipeline, position vs. the phases NOT documented; Block AI bots is an auto-updating managed rule whose phase isn't named]
   → Single Redirects → URL normalization → URL Rewrite → Configuration / Origin Rules
   → DDoS L7
   → http_request_firewall_custom   (custom rules — Block = Cloudflare 403)
-  → http_ratelimit                 (rate limiting — Block = 429, error 1015, Retry-After: 30)
+  → http_ratelimit                 (rate limiting — Block = 429, error 1015)
   → http_request_firewall_managed  (Free Managed Ruleset)
   → [http_request_sbfm — Super Bot Fight Mode, Pro+ only, absent on Free]
   → … → Request Header Transforms → Cache Rules
   → Worker (run_worker_first paths) or Workers Static Assets (asset-first paths)
-  → response: Response Header Transforms (error_no_store) — and BFM's JSD
-    script is injected into HTML here, after the Worker set its CSP
+  → response: Response Header Transforms (error_no_store) — and the JSD
+    loader is injected into HTML here, after the Worker set its CSP (still,
+    with BFM off — lesson 3)
 ```
 
 Sources: [phases list](https://developers.cloudflare.com/ruleset-engine/reference/phases-list/)
@@ -125,7 +135,10 @@ not of custom rules.
 Semantics that matter here: `contains` and `eq` are case-sensitive;
 `wildcard` is case-insensitive and matches the whole path (so it is
 root-anchored); `http.request.uri.path.extension` is lowercased without the
-dot and empty for trailing-slash URLs. The export only serves css, html,
+dot; the docs give "" for no dot, a trailing dot or a dot-first last
+segment (`/.env` → "", so only a `/.` path clause catches dotfiles), but
+don't cover trailing-slash URLs like `/blogg/install.sh/` — test one before
+relying on it being empty. The export only serves css, html,
 ico, js, png, svg, txt, webmanifest, woff2 and xml, plus
 `/.well-known/security.txt`.
 
@@ -209,7 +222,7 @@ publishing; nested calls like `starts_with(lower(…))` are undocumented.
 | Fields in the expression | **Path and Verified Bot only** (Host from Pro; method, IP, UA from Business) |
 | Custom counting expression | no |
 | Cache exclusion | no — cached and asset-first responses always count |
-| Response | default 429 (error 1015, `Retry-After: 30`); custom response is Pro+ |
+| Response | default 429 (error 1015; `Retry-After: 30` per a 2026-03-12 changelog entry, not in the rate-limiting docs); custom response is Pro+ |
 
 Source: [rate limiting availability](https://developers.cloudflare.com/waf/rate-limiting-rules/),
 [parameters](https://developers.cloudflare.com/waf/rate-limiting-rules/parameters/),
@@ -224,8 +237,8 @@ Source: [rate limiting availability](https://developers.cloudflare.com/waf/rate-
   the field allowlist, not the literal. The deployed `http.host ne ""` uses
   Host, which the docs list from Pro: it is accepted today but outside the
   documented Free surface. Prefer a Path-only expression.
-- **It cannot protect the 100k/day budget**: 3 req/s from one IP never
-  exceeds 30 per 10 s and is 259,200 requests a day; ~1.2 req/s from one IP
+- **It cannot protect the 100k/day budget**: 5 req/s from one IP never
+  exceeds 60 per 10 s and is 432,000 requests a day; ~1.2 req/s from one IP
   spends the whole quota. Only per-IP bursts are stopped.
 
 Deployed (2026-10-16), 60 requests / 10 s per IP, Block — counts
@@ -281,23 +294,26 @@ Narrower alternative: `starts_with(http.request.uri.path, "/api/")` at
   The one Free lever is an IP Access rule that matches first, and an IP
   Access Allow also bypasses custom rules, rate limiting and managed rules.
   Skip works only on Super Bot Fight Mode (Pro+).
-- **JavaScript Detections are forced on** under BFM ("automatically enabled
-  and cannot be disabled",
-  [JSD](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/javascript-detections/)),
-  injected into HTML page views only.
+- **JavaScript Detections can't be switched off on Free.** "For Bot Fight
+  Mode customers, JavaScript Detections is automatically enabled and cannot
+  be disabled" ([JSD](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/javascript-detections/));
+  the "JS detections" switch exists only for Super Bot Fight Mode / Bot
+  Management. Injected into HTML page views only, and it strips their ETag.
+  Measured here: it started when BFM was switched on and survived switching
+  it off (lesson 3).
 - **CSP**: Cloudflare copies a nonce onto its injected script only if it can
   parse one from the CSP *response header*; it never adds a hash. With this
   Worker's hash-only `strictCsp()` (`src/csp.ts`) the loader is always
-  blocked. Options: turn BFM off; add a per-request
+  blocked. Options (turning BFM off did NOT stop the injection here): add a per-request
   `'nonce-…'` to `script-src` in the Worker (undocumented whether it covers
   the snippet's inner iframe script); or send `Cache-Control: no-transform`
   on HTML (stops injection but also edge compression — this Worker fetches
   HTML identity-encoded, so pages would ship uncompressed).
   `'unsafe-inline'` is no fix: browsers ignore it when hashes are present.
-- **Off on this zone since 2026-10-16.** It can't be scoped, its JSD can't
-  run under the CSP, and it blinded the smoke test and the watchdog. The
-  custom rule, rate limiting, the Free Managed Ruleset and the AI bot
-  policies already cover the scanner traffic it would catch. Don't turn it
+- **Off on this zone since 2026-10-16.** It can't be scoped and it blinded
+  the smoke test and the watchdog. The custom rule, rate limiting and the
+  Free Managed Ruleset already cover the scanner traffic it would catch.
+  (Its JSD loader outlived it — see lesson 3.) Don't turn it
   back on without an answer for CI (an IP Access Allow for the runners isn't
   practical: GitHub's ranges are large and shared).
 
