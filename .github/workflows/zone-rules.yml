@@ -41,6 +41,7 @@ jobs:
       - name: Apply the 4xx/5xx no-store rule
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           OUT=$(mktemp)
@@ -50,6 +51,16 @@ jobs:
               -H 'Content-Type: application/json' ${3:+--data "$3"}
           }
           fail() { echo "::error::$1"; jq -c '.errors' "$OUT" 2>/dev/null || cat "$OUT"; exit 1; }
+
+          # Which token this is — its id, never its value — so a 403 can be
+          # traced to the right one in the dashboard (its edit URL ends in the id).
+          if [ "$(call GET /user/tokens/verify)" = 200 ]; then
+            echo "Token: user-owned (My Profile → API Tokens), id $(jq -r '.result.id' "$OUT")"
+          elif [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && [ "$(call GET "/accounts/$CLOUDFLARE_ACCOUNT_ID/tokens/verify")" = 200 ]; then
+            echo "Token: account-owned (Manage Account → Account API Tokens), id $(jq -r '.result.id' "$OUT")"
+          else
+            echo "Token: could not identify (verify endpoints refused it)"
+          fi
 
           [ "$(call GET "/zones?name=$ZONE")" = 200 ] || fail "zone lookup failed — the token needs Zone: Read"
           ZONE_ID=$(jq -r '.result[0].id // empty' "$OUT")
