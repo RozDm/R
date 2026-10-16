@@ -63,7 +63,7 @@ const nb = {
   trends: {
     eyebrow: 'Trender',
     title: 'Trafikk over tid',
-    lead: 'Samplet tidsserie fra Workers Analytics Engine — hvert punkt er antall besøk i et tidsrom. Tallet gjelder valgt periode; «Alt» viser det eksakte totaltallet fra D1, det samme som kartet over. Ingen informasjonskapsler, ingen sporing av enkeltpersoner.',
+    lead: 'Samplet tidsserie fra Workers Analytics Engine — hvert punkt er antall besøk i et tidsrom. Ingen informasjonskapsler, ingen sporing av enkeltpersoner.',
     loading: 'Kalibrerer AE-35-enheten…',
     cardTitle: 'Besøk over tid',
     periodLabel: 'Periode',
@@ -77,7 +77,10 @@ const nb = {
     chartCapped: (days: number) => `Besøk per tidsrom, siste ${days} dager`,
     chartWindow: (range: string) => `Besøk per tidsrom, siste ${range}`,
     dot: (when: string, n: number) => `${when} — ${n} besøk`,
+    // Under the chart, only while the numbers are shown (MIN_PUBLIC_VISITS).
+    numberNote: 'Tallet gjelder valgt periode; «Alt» viser det eksakte totaltallet fra D1, det samme som kartet over.',
     capped: (days: number) => `Grafen viser de siste ${days} dagene; tallet gjelder hele perioden.`,
+    cappedQuiet: (days: number) => `Grafen viser de siste ${days} dagene.`,
   },
   intro: { greeting: 'HEI %USERNAME%', skip: 'Klikk eller trykk en tast for å fortsette' },
   hal: {
@@ -218,7 +221,7 @@ const en: Dict = {
   trends: {
     eyebrow: 'Trends',
     title: 'Traffic over time',
-    lead: 'A sampled time series from Workers Analytics Engine — each dot is the number of visits in a time slot. The number covers the selected period; “All” shows the exact total from D1, the same as the map above. No cookies, no tracking of individuals.',
+    lead: 'A sampled time series from Workers Analytics Engine — each dot is the number of visits in a time slot. No cookies, no tracking of individuals.',
     loading: 'Calibrating the AE-35 unit…',
     cardTitle: 'Visits over time',
     periodLabel: 'Period',
@@ -232,7 +235,9 @@ const en: Dict = {
     chartCapped: (days) => `Visits per time slot, last ${days} days`,
     chartWindow: (range) => `Visits per time slot, last ${range}`,
     dot: (when, n) => `${when} — ${n} ${n === 1 ? 'visit' : 'visits'}`,
+    numberNote: 'The number covers the selected period; “All” shows the exact total from D1, the same as the map above.',
     capped: (days) => `The chart shows the last ${days} days; the number covers the whole period.`,
+    cappedQuiet: (days) => `The chart shows the last ${days} days.`,
   },
   intro: { greeting: 'HELLO %USERNAME%', skip: 'Click or press any key to continue' },
   hal: {

@@ -192,6 +192,15 @@ export default function TrendsChart() {
   // Below MIN_PUBLIC_VISITS (or until the total is known) the chart keeps its
   // shape but drops every absolute number: headline, y-axis labels, dot counts.
   const showCounts = showVisitCounts(geoTotal)
+  // What the headline means sits next to it, so it only shows with the
+  // numbers; the static lead above the card stays true either way.
+  const note = showCounts
+    ? allCapped
+      ? `${t.numberNote} ${t.capped(ALL_MAX_DAYS)}`
+      : t.numberNote
+    : allCapped
+      ? t.cappedQuiet(ALL_MAX_DAYS)
+      : null
 
   return (
     <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
@@ -303,9 +312,9 @@ export default function TrendsChart() {
         )}
       </svg>
 
-      {allCapped && (
+      {note && (
         <p className="-mt-2 text-[11px] font-mono text-gray-500 dark:text-gray-400">
-          {t.capped(ALL_MAX_DAYS)}
+          {note}
         </p>
       )}
     </div>

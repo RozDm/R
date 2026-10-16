@@ -21,7 +21,7 @@ export function geoBucket(count: number | undefined, max: number): GeoBucket | n
 // siste 7d» reads as an empty site to the people the page is for. The map
 // shades and the chart's shape still show where and when — just not how few.
 // Same idea as ViewCounter's MIN_SHOWN, at site scale.
-export const MIN_PUBLIC_VISITS = 500
+export const MIN_PUBLIC_VISITS = 100
 
 export function showVisitCounts(total: number | null): boolean {
   return total !== null && total >= MIN_PUBLIC_VISITS
