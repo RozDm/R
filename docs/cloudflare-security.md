@@ -223,6 +223,15 @@ and http.request.uri.path ne "/world.svg"
 and not starts_with(http.request.uri.path, "/cdn-cgi/")
 ```
 
+Why 60: measured worst 10 s windows of Worker-bound requests from one
+browser — fresh home 16, fresh blog index 17, a fast five-page click-through
+18 — and `scripts/smoke.sh` sends ~40 from one runner IP in ~10 s. 60 leaves
+~3× headroom for visitors (more for carrier-NAT IPs shared by several) and
+~1.5× for the deploy gate. Counting static files too, the same click-through
+is 64 requests, which is why the deployed 30 trips. If the Free editor
+rejects `starts_with()`, the same rule with operators only:
+`not (http.request.uri.path wildcard "/_next/static/*" or http.request.uri.path wildcard "/fonts/*" or http.request.uri.path wildcard "/icons/*" or http.request.uri.path eq "/world.svg" or http.request.uri.path wildcard "/cdn-cgi/*")`.
+
 Narrower alternative: `starts_with(http.request.uri.path, "/api/")` at
 ~20/10 s (writes are already capped per IP by the Worker's
 `WRITE_LIMITER`).
