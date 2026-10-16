@@ -16,7 +16,7 @@ inline); "measured" means probed live on the same day. Everything here is
 | Layer | Where | Setting |
 |---|---|---|
 | WAF custom rule "Block scanners" | Security → Security rules → Custom rules | 52 `http.request.uri.path contains …` patterns (below), Block — 1 of 5 rules used |
-| Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; expression excludes static files by extension (below) |
+| Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; counts every path except the asset-first static prefixes (below) |
 | Bot Fight Mode | Security → Settings → Bot traffic | **Off** (see "Lessons") |
 | Block AI bots (legacy toggle) | Security → Settings → Bot traffic | On |
 | Browser Integrity Check | Security → Settings | on by default per the docs, which say it challenges requests without a User-Agent — yet an empty-UA request got 200 (measured); its actual state is unverified, so don't rely on it |
@@ -79,13 +79,17 @@ watchdog from GitHub runners is green again (run 38910824580).
    `/api/views/<slug>` counter. Meanwhile `/WP-LOGIN.PHP` slips through.
    Check a new slug or tag against the list before publishing, or switch
    to the slug-proof rule below.
-5. **The extension-based rate-limit exclusion has a bypass.** Any path
-   *containing* `.js`, `.png`, `.svg`… is uncounted, but only real files
-   under `/_next/static/`, `/fonts/`, `/icons/` and `/world.svg` skip the
-   Worker: `/x.png` or `/blogg/a.css` is a Worker request (measured: 404
-   with the Worker's `X-Frame-Options: DENY`) that the rule never counts. A
-   deliberate flood can use it. The prefix-based expression below has no
-   such hole and stays within Free's documented Path field.
+5. **Exclude static files by path prefix, not by extension.** The second
+   version excluded any path *containing* `.js`, `.png`, `.svg`… (and kept
+   `http.host ne ""`). But only real files under `/_next/static/`,
+   `/fonts/`, `/icons/` and `/world.svg` skip the Worker: `/x.png` or
+   `/blogg/a.css` is a Worker request (measured: 404 with the Worker's
+   `X-Frame-Options: DENY`) the rule never counted, so a flood could append
+   an extension and bypass it. Replaced the same day by the prefix
+   expression below; a fresh page view then got no 429 (39 requests in 10 s,
+   22 of them static). `/favicon.ico`, `/icon.svg`, `/robots.txt`,
+   `/sitemap.xml`, the feeds, the manifest, OG images and RSC `*.txt` are
+   Worker-served here and must stay counted.
 
 ## Execution order
 
@@ -241,31 +245,20 @@ Source: [rate limiting availability](https://developers.cloudflare.com/waf/rate-
   exceeds 60 per 10 s and is 432,000 requests a day; ~1.2 req/s from one IP
   spends the whole quota. Only per-IP bursts are stopped.
 
-Deployed (2026-10-16), 60 requests / 10 s per IP, Block — counts
-everything except paths containing a static extension:
+Deployed (2026-10-16), 60 requests / 10 s per IP, Block — counts only
+Worker-bound paths. The excluded prefixes are the negatives of
+`run_worker_first` in `wrangler.jsonc` (plus Cloudflare's own `/cdn-cgi/`),
+a third copy of that list next to `public/_headers` — change all three
+together. `starts_with` is a function, not an infix operator:
 
 ```
-http.host ne "" and not (http.request.uri.path contains ".js" or
-http.request.uri.path contains ".css" or http.request.uri.path contains ".png" or
-http.request.uri.path contains ".jpg" or http.request.uri.path contains ".jpeg" or
-http.request.uri.path contains ".gif" or http.request.uri.path contains ".svg" or
-http.request.uri.path contains ".woff" or http.request.uri.path contains ".woff2" or
-http.request.uri.path contains ".ttf" or http.request.uri.path contains ".ico" or
-http.request.uri.path contains ".map" or http.request.uri.path contains ".webp")
-```
-
-It works, with two caveats: `http.host` is outside Free's documented
-fields, and the extension check leaves Worker-bound paths uncounted (lesson
-5). The tighter equivalent — count only Worker-bound paths, mirroring the
-negatives of `run_worker_first` in `wrangler.jsonc` (a third copy of that
-list) — at the same 60/10 s:
-
-```
-not starts_with(http.request.uri.path, "/_next/static/")
-and not starts_with(http.request.uri.path, "/fonts/")
-and not starts_with(http.request.uri.path, "/icons/")
-and http.request.uri.path ne "/world.svg"
-and not starts_with(http.request.uri.path, "/cdn-cgi/")
+not (
+  starts_with(http.request.uri.path, "/_next/static/")
+  or starts_with(http.request.uri.path, "/fonts/")
+  or starts_with(http.request.uri.path, "/icons/")
+  or http.request.uri.path eq "/world.svg"
+  or starts_with(http.request.uri.path, "/cdn-cgi/")
+)
 ```
 
 Why 60: measured worst 10 s windows of Worker-bound requests from one
