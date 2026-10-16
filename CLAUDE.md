@@ -106,7 +106,9 @@ answered, keep output and replies short.
   `/world.svg`) skip it — every Worker invocation counts against the free
   plan's 100k requests/day, and past it Worker-first requests get a 429 — and
   take their headers from `public/_headers`; the two lists must match
-  (`tests/static-assets.test.ts`). `_headers` can't match on status, so a
+  (`tests/static-assets.test.ts`), and the zone's rate limiting rule excludes
+  the same prefixes by hand (`docs/cloudflare-security.md`) — change all three
+  together. `_headers` can't match on status, so a
   zone Response Header Transform Rule (`.github/workflows/zone-rules.yml`)
   makes every 4xx/5xx `no-store`. Stores: KV `STATUS` (uptime snapshot only), D1
   `rozsoshnykh-metrics-v2` (`METRICS`: view/geo counters, contact log),

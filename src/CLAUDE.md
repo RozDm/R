@@ -125,7 +125,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   ~20 static files. Asset-first, they cost nothing, get 304s, and take their
   headers from `public/_headers` (`/_next/static/*` → `immutable`, the rest →
   1 week, all `nosniff`), which never applies to a Worker response — keep it
-  and the negative patterns in sync (`tests/static-assets.test.ts`). A miss
+  and the negative patterns in sync (`tests/static-assets.test.ts`); the zone's
+  rate limiting rule is a third, dashboard-only copy of the list
+  (`docs/cloudflare-security.md`). A miss
   under those paths is answered by the asset server's 404 page, not the
   Worker, still carrying the `_headers` cache — the zone rule from
   `zone-rules.yml` (`.github/CLAUDE.md`) overrides it to `no-store` on
