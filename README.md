@@ -60,8 +60,8 @@ One-shot maintenance workflows (manual `workflow_dispatch`): `d1-bootstrap`
 storage outage),
 `reset-metrics` (type `RESET` to wipe the `views` + `geo` counters, prints
 before/after counts — supersedes the older geo-only `geo-reset`). There is no
-off-platform backup: Cloudflare's built-in 30-day D1 Time Travel is the only
-restore path — an accepted risk, since the counters are cosmetic and contact
+off-platform backup: Cloudflare's built-in D1 Time Travel (7 days on Workers
+Free) is the only restore path — an accepted risk, since the counters are cosmetic and contact
 submissions are delivered by e-mail anyway (the D1 row is a secondary copy).
 A weekly encrypted-dump workflow existed briefly and was removed as not worth
 the upkeep.
@@ -161,8 +161,9 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
   (24t/7d/30d) show the AE count for their window; the **Alt** (all-time)
   tab shows the exact D1 total — the same number as the map — so the grand
   total never drifts from the map under AE sampling. Only Besøk is graphed
-  even though the API still accepts the `view` channel. Free tier: 10M
-  writes/day, sampled reads. Reading needs two runtime secrets
+  even though the API still accepts the `view` channel. Free tier: 100,000
+  data points written and 10,000 read queries per day, 3 months' retention;
+  reads are sampled. Reading needs two runtime secrets
   (`CF_ACCOUNT_ID` + `AE_API_TOKEN`, the latter with `Account
   Analytics:Read`); without them the route degrades to an empty series
   and the Trends card shows "Ingen data ennå". AE is append-only —

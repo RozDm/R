@@ -31,9 +31,10 @@
       "database_id": "4f40b727-fe8f-4dbb-87ab-d6438dfda711"
     }
   ],
-  // Time-series sink for view/geo events. Sampled, append-only, 10M writes/day
-  // free. D1 still holds the current totals (cheap to read); AE keeps history
-  // so we can draw "visits over time" graphs that D1 counters can't answer.
+  // Time-series sink for view/geo events. Sampled, append-only, 100k data
+  // points/day on Free (3 months' retention). D1 still holds the current
+  // totals (cheap to read); AE keeps history so we can draw "visits over
+  // time" graphs that D1 counters can't answer.
   //
   // Reading from AE needs an API token (Account Analytics:Read) and the
   // account id; both are runtime secrets, not in this file:

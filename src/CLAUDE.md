@@ -32,7 +32,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - KV `STATUS` holds only the uptime snapshot (`status` key), written only by
   the 5-minute cron. The free tier is 1000 KV writes/day: never add a
   per-request KV write — per-request data goes to D1 (100k writes/day) or AE
-  (10M points/day).
+  (100k points/day on Free, shared by every channel).
 - D1 `rozsoshnykh-metrics-v2` (`METRICS`, schema `schema/metrics.sql`):
   `views(slug, count)`, `geo(country, count)`,
   `contact(id, at, ip, name, email, message)`. Counters are atomic
