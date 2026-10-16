@@ -116,7 +116,8 @@ Rule sets `no-store` on every 4xx/5xx, kept as code in
   its own schema, consent flow and a line in `/personvern`.
 - **`d1-backup.yml`** — a weekly gpg-encrypted D1 dump to a GitHub artifact
   (with a `BACKUP_PASSPHRASE` secret) existed briefly and was removed as not
-  worth the upkeep. D1 Time Travel (30 days, Cloudflare-side) is the only
+  worth the upkeep. D1 Time Travel (7 days on Workers Free, Cloudflare-side;
+  this note said 30 — the Paid figure — until 2026-10-16) is the only
   restore path — an accepted risk, since `views`/`geo` are cosmetic and
   `contact` rows are secondary copies of e-mails already delivered (a send
   that fails deletes its row, so every stored row was mailed). Don't

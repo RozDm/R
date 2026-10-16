@@ -238,8 +238,8 @@ answered, keep output and replies short.
 - `package.json` is NOT `"type": "module"` — that breaks the Next 16 /
   turbopack config load. Standalone Node scripts use `.mjs`.
 - No R2 (it needs a card even on the free tier) and no off-platform metrics
-  backup: D1 Time Travel (30 days) is the only restore path, an accepted
-  risk. Don't add a backup unless asked.
+  backup: D1 Time Travel (7 days on Workers Free; 30 is the Paid figure) is
+  the only restore path, an accepted risk. Don't add a backup unless asked.
 - Country flags in the GeoMap legend use a self-hosted Twemoji subset
   (`public/fonts/TwemojiCountryFlags.woff2`, `unicode-range:
   U+1F1E6-1F1FF`, class `.font-flag`) — Windows has no regional-indicator
