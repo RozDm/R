@@ -37,9 +37,11 @@ incident background: `docs/history.md`.
   the cached chunks' `immutable`), then checks prod: a static miss is 404 +
   no-store, a real chunk and its 304 stay immutable. `public/_headers` can't
   match on status, so this is what keeps a deploy-race 404 under the
-  asset-first paths from being browser-cached for a year. The token needs
-  Zone: Read + Transform Rules: Edit (Cloudflare's guide also lists Account
-  Rulesets: Read).
+  asset-first paths from being browser-cached for a year. `smoke.sh` checks
+  it on every deploy (a static miss is no-store, a real chunk immutable).
+  Applied 2026-10-16. The token (a user-owned one, My Profile → API Tokens;
+  the run prints its id) needs Zone: Read + Zone → Transform Rules: Edit —
+  enough in practice; the Account Rulesets: Read some docs list wasn't.
 - `d1-bootstrap.yml` — one-shot: creates the metrics D1 (skipped when the
   name is already listed) and applies the schema.
 - Every workflow runs with a read-only `GITHUB_TOKEN`; Cloudflare access comes

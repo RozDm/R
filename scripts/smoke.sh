@@ -160,6 +160,15 @@ echo "== Caching =="
 # Worker sets on everything it serves) proves no Worker request was spent.
 check_header    "cache world.svg"    "$BASE/world.svg" "^cache-control: public, max-age=604800"
 check_no_header "world.svg no Worker" "$BASE/world.svg" "^x-frame-options:"
+# _headers stamps a static MISS with the same year-long immutable; the zone
+# rule from .github/workflows/zone-rules.yml makes every 4xx/5xx no-store.
+# Both directions: a miss (fresh URL per run) must be no-store, and a real
+# chunk must keep its immutable — a rule widened to 200s would strip it.
+MISS="$BASE/_next/static/chunks/smoke-miss-$$.js"
+check        "static miss"          "$MISS" 404
+check_header "static miss no-store" "$MISS" "^cache-control: no-store"
+CHUNK=$(curl -sS --max-time 20 -A "$UA" "$BASE/" | grep -o '/_next/static/chunks/[^"]*\.js' | head -1)
+check_header "chunk immutable" "$BASE$CHUNK" "^cache-control: public, max-age=31536000, immutable"
 
 if [ "$FAIL" = "1" ]; then
   echo; echo "Smoke test FAILED"
