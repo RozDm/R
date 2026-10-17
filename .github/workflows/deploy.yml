@@ -37,6 +37,8 @@ jobs:
           # empty string keeps the widget off, matching the worker gate.
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
         run: npm run build
+      # Needs out/: the WAF expression must block no URL the build serves.
+      - run: npm run check:waf
 
       # The UI dictionary stays in one shared chunk (same check as ci.yml).
       - run: npm run check:dict

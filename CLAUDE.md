@@ -120,7 +120,9 @@ answered, keep output and replies short.
   Endpoints: `/api/status`, `/api/views/<slug>`, `/api/geo`, `/api/visit`,
   `/api/timeseries`, `/api/contact`, `/api/csp-report`. Details:
   `src/CLAUDE.md`. Every client fetch of `/api/*` uses `cache: 'no-store'` —
-  keep it (the zone's Browser Cache TTL rewrites `max-age`).
+  keep it (the zone's Browser Cache TTL rewrote `max-age`; `zone-rules.yml`
+  now sets it to Respect Existing Headers, but a drifted setting would
+  bring the rewrite back).
 - Visit counting: `components/effects/VisitBeacon.tsx` (mounted by
   `app/layout.tsx`) fires one `POST /api/visit` per sessionStorage session
   (per tab), which writes the D1 `geo` row and an AE point — the map and the
@@ -166,7 +168,9 @@ answered, keep output and replies short.
 ## Commands
 
 - `npm run check` (lint + typecheck + tests) must pass before a PR;
-  `npm run build` exports to `out/`.
+  `npm run build` exports to `out/`. CI and deploy then run
+  `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
+  `.github/waf/scanner-block.expr` must block no URL the build serves.
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (checks,
   build, secrets sync, `npx wrangler deploy`, `scripts/smoke.sh` against the
   live site; details in `.github/CLAUDE.md`). Never deploy from a sandbox —

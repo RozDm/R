@@ -108,6 +108,19 @@ Rule sets `no-store` on every 4xx/5xx, kept as code in
 304's headers update the stored 200, so matching 304s would strip
 `immutable` from every cached chunk and the font.
 
+## 2026-10-17 — the legacy "Block AI bots" field is not a separate switch
+
+`zone-rules.yml` first tried to retire the deprecated toggle with
+`PUT /zones/{id}/bot_management {"ai_bots_protection":"disabled"}` (since
+2026-09-15 Cloudflare says its block also stops Googlebot, Bingbot and
+Applebot). The API also reset `ai_training` from `disallow` to `disabled`
+— AI training crawlers allowed — and the workflow's own "nothing else
+moved" check stopped the run (38992445763). The next run (38992547397) set
+`ai_training: disallow` back, which left `ai_bots_protection` at
+`disabled`: the coupling is one way. Training crawlers were let through for
+about a minute. Rule: write only `ai_training` (the workflow owns
+`disallow`), never `ai_bots_protection`.
+
 ## Removed features that must not quietly return
 
 - **Newsletter sign-up** — removed. Its leftover `subscribers` table was

@@ -82,6 +82,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `/api/csp-report` — POST → always 204, AE only, never D1/KV (anyone can
   POST to it); `parseCspReports` keeps own-origin reports only (origin +
   path; no query, UA or IP). GET → 405, which the smoke test checks.
+- A new `/api/*/<slug>` route must be added to the WAF rule's exemptions
+  (`.github/waf/scanner-block.expr`, like `/api/views/`): its word patterns
+  would 403 a slug such as `jenkins-pipeline`, and `check-waf` sees only
+  built pages, not Worker routes.
 
 ## Rules
 
@@ -107,8 +111,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   (and so bypass) the cache. A cache hit re-sets the stored TTL
   (`withStoredTtl`) because the zone's Browser Cache TTL (4 h default)
   rewrites `max-age` on edge HITs (`s-maxage` is untouched); clients also
-  fetch with `cache: 'no-store'`. Keep both. Dashboard-side fix: Browser
-  Cache TTL → "Respect Existing Headers".
+  fetch with `cache: 'no-store'`. Keep both. `zone-rules.yml` now sets
+  Browser Cache TTL → "Respect Existing Headers" (`browser_cache_ttl: 0`),
+  which stops the rewrite; `withStoredTtl` stays as the backstop.
 - CSP: three policies sharing `COMMON_DIRECTIVES` (incl.
   `upgrade-insecure-requests`): `strictCsp(hashes)` for readable HTML (with
   `report-uri`/`report-to` → `/api/csp-report`); `ENFORCED_CSP` for non-HTML
