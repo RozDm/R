@@ -133,13 +133,14 @@ jobs:
           [ "$(call GET "$BM")" = 200 ] || fail "reading $BM failed — the token needs Zone → Bot Management: Edit"
           BEFORE=$(jq -c '.result' "$OUT")
           echo "Before: $BEFORE"
-          # Owned here: JavaScript Detections off, and the legacy "Block AI
-          # bots" toggle off. That toggle was deprecated on 2026-09-15 for the
-          # AI bot policies (ai_training "disallow" keeps the training crawlers
-          # blocked at the edge — Check prod probes GPTBot), and Cloudflare
-          # says its block now also stops mixed-use crawlers: Googlebot,
-          # Bingbot, Applebot.
-          WANT='{"enable_js":false,"ai_bots_protection":"disabled"}'
+          # Owned here: JavaScript Detections off, and AI training crawlers
+          # "disallow" — blocked at the edge while search crawlers pass (Check
+          # prod probes GPTBot); "block" would also stop Googlebot, Bingbot and
+          # Applebot. The legacy "Block AI bots" field (ai_bots_protection) is
+          # a mirror of this policy, not a separate switch: setting it to
+          # "disabled" turned ai_training "disallow" into "disabled" (run
+          # 38992445763), so it is never written and may move with ai_training.
+          WANT='{"enable_js":false,"ai_training":"disallow"}'
           BODY=$(jq -c --argjson w "$WANT" '. as $b | $w | with_entries(select($b[.key] != .value))' <<<"$BEFORE")
           if [ "$BODY" = "{}" ]; then
             echo "Already as wanted: $WANT"
@@ -152,24 +153,22 @@ jobs:
             echo "After:  $AFTER"
             jq -e --argjson w "$WANT" '. as $a | $w | to_entries | all($a[.key] == .value)' <<<"$AFTER" >/dev/null \
               || fail "the PUT answered 200 but the settings are not $WANT"
-            # The body names only those fields; anything else that moved is a
-            # surprise to restore from the Before line.
+            # The body names only those fields; anything else that moved (but
+            # the legacy mirror) is a surprise to restore from the Before line.
             CHANGED=$(jq -nc --argjson a "$BEFORE" --argjson b "$AFTER" --argjson w "$WANT" \
-              '[$a, $b | keys[]] | unique | map(select(. as $k | ($w | has($k) | not) and $a[$k] != $b[$k]))')
+              '[$a, $b | keys[]] | unique | map(select(. as $k | ($w | has($k) | not)
+                and $k != "ai_bots_protection" and $a[$k] != $b[$k]))')
             if [ "$CHANGED" != "[]" ]; then
               echo "::error::the PUT also changed $CHANGED — restore them from the Before line"
               exit 1
             fi
             echo "Set $BODY; nothing else changed."
           fi
-          # Read-only guards on what the dashboard owns (AI bot policies): each
-          # of these would block search engines or CI. Training "block" also
-          # stops Googlebot, Bingbot and Applebot since 2026-09-15 — use
-          # "disallow"; Bot Fight Mode and content-bot blocking challenge
-          # GitHub's runners; AI Labyrinth rewrites HTML after the Worker.
+          # Read-only guards on what the dashboard owns: each of these would
+          # block search engines or CI. Search "block" stops search crawlers;
+          # Bot Fight Mode and content-bot blocking challenge GitHub's runners;
+          # AI Labyrinth rewrites HTML after the Worker.
           BAD=$(jq -r '[(select(.fight_mode == true) | "fight_mode"),
-            (select(.ai_bots_protection == "block") | "ai_bots_protection=block"),
-            (select(.ai_training == "block") | "ai_training=block"),
             (select(.ai_search == "block") | "ai_search=block"),
             (select(.content_bots_protection == "block") | "content_bots_protection=block"),
             (select(.crawler_protection == "enabled") | "crawler_protection=enabled")] | join(", ")' <<<"$AFTER")
