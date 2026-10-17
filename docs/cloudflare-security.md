@@ -21,7 +21,7 @@ that would block search engines or CI.
 | Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; counts every path except the asset-first static prefixes (below) |
 | Bot Fight Mode | Security → Settings → Bot traffic | **Off** (see "Lessons") |
 | JavaScript Detections | `zone-rules.yml` (code; no dashboard switch on Free) | **Off** — `enable_js: false` (lesson 3) |
-| AI bot policies | Security → Settings → Configure AI bot policies | Training **Disallow** (`ai_training: disallow`), Search and Agent Allow, Bot Preference Sync on (read 2026-10-16); the legacy `ai_bots_protection: block` is still set. GPTBot/ClaudeBot/CCBot UAs get Cloudflare's 403 (measured). `zone-rules.yml` fails if Training or Search becomes Block (see "AI bots") |
+| AI bot policies | Security → Settings → Configure AI bot policies | Training **Disallow** (`ai_training: disallow`), Search and Agent Allow, Bot Preference Sync on (read 2026-10-16); the deprecated legacy toggle (`ai_bots_protection`) is switched off by `zone-rules.yml` — since 2026-09-15 its block also stops mixed-use crawlers (Googlebot, Bingbot, Applebot). GPTBot/ClaudeBot/CCBot UAs get Cloudflare's 403 (measured; Check prod probes GPTBot). `zone-rules.yml` fails if Training or Search becomes Block or the legacy toggle comes back (see "AI bots") |
 | Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
@@ -168,7 +168,7 @@ Testing on Free: there is no Log action. Deploy a new rule as Managed
 Challenge, watch Security → Analytics → Events, then switch to Block.
 Since 2026-09-17 the Rulesets API accepts `?dry_run=true` on mutations
 (syntax, fields, plan entitlements, quotas; saves nothing) —
-`zone-rules.yml` dry-runs every change first.
+`zone-rules.yml` dry-runs the WAF rule change first.
 
 ### Deployed: slug-safe scanner block
 

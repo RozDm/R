@@ -133,36 +133,47 @@ jobs:
           [ "$(call GET "$BM")" = 200 ] || fail "reading $BM failed — the token needs Zone → Bot Management: Edit"
           BEFORE=$(jq -c '.result' "$OUT")
           echo "Before: $BEFORE"
+          # Owned here: JavaScript Detections off, and the legacy "Block AI
+          # bots" toggle off. That toggle was deprecated on 2026-09-15 for the
+          # AI bot policies (ai_training "disallow" keeps the training crawlers
+          # blocked at the edge — Check prod probes GPTBot), and Cloudflare
+          # says its block now also stops mixed-use crawlers: Googlebot,
+          # Bingbot, Applebot.
+          WANT='{"enable_js":false,"ai_bots_protection":"disabled"}'
+          BODY=$(jq -c --argjson w "$WANT" '. as $b | $w | with_entries(select($b[.key] != .value))' <<<"$BEFORE")
+          if [ "$BODY" = "{}" ]; then
+            echo "Already as wanted: $WANT"
+            AFTER=$BEFORE
+          else
+            [ "$(call PUT "$BM" "$BODY")" = 200 ] \
+              || fail "setting $BODY failed — the token needs Zone → Bot Management: Edit"
+            [ "$(call GET "$BM")" = 200 ] || fail "re-reading $BM failed"
+            AFTER=$(jq -c '.result' "$OUT")
+            echo "After:  $AFTER"
+            jq -e --argjson w "$WANT" '. as $a | $w | to_entries | all($a[.key] == .value)' <<<"$AFTER" >/dev/null \
+              || fail "the PUT answered 200 but the settings are not $WANT"
+            # The body names only those fields; anything else that moved is a
+            # surprise to restore from the Before line.
+            CHANGED=$(jq -nc --argjson a "$BEFORE" --argjson b "$AFTER" --argjson w "$WANT" \
+              '[$a, $b | keys[]] | unique | map(select(. as $k | ($w | has($k) | not) and $a[$k] != $b[$k]))')
+            if [ "$CHANGED" != "[]" ]; then
+              echo "::error::the PUT also changed $CHANGED — restore them from the Before line"
+              exit 1
+            fi
+            echo "Set $BODY; nothing else changed."
+          fi
           # Read-only guards on what the dashboard owns (AI bot policies): each
           # of these would block search engines or CI. Training "block" also
           # stops Googlebot, Bingbot and Applebot since 2026-09-15 — use
           # "disallow"; Bot Fight Mode and content-bot blocking challenge
           # GitHub's runners; AI Labyrinth rewrites HTML after the Worker.
           BAD=$(jq -r '[(select(.fight_mode == true) | "fight_mode"),
+            (select(.ai_bots_protection == "block") | "ai_bots_protection=block"),
             (select(.ai_training == "block") | "ai_training=block"),
             (select(.ai_search == "block") | "ai_search=block"),
             (select(.content_bots_protection == "block") | "content_bots_protection=block"),
-            (select(.crawler_protection == "enabled") | "crawler_protection=enabled")] | join(", ")' <<<"$BEFORE")
+            (select(.crawler_protection == "enabled") | "crawler_protection=enabled")] | join(", ")' <<<"$AFTER")
           [ -z "$BAD" ] || fail "bot settings that break search engines or CI: $BAD (docs/cloudflare-security.md)"
-          if [ "$(jq -r '.enable_js' <<<"$BEFORE")" = false ]; then
-            echo "enable_js is already false."
-            exit 0
-          fi
-          [ "$(call PUT "$BM" '{"enable_js":false}')" = 200 ] \
-            || fail "setting enable_js failed — the token needs Zone → Bot Management: Edit"
-          [ "$(call GET "$BM")" = 200 ] || fail "re-reading $BM failed"
-          AFTER=$(jq -c '.result' "$OUT")
-          echo "After:  $AFTER"
-          [ "$(jq -r '.enable_js' <<<"$AFTER")" = false ] || fail "the PUT answered 200 but enable_js is not false"
-          # The body names one field; anything else that moved is a surprise
-          # to restore from the Before line.
-          CHANGED=$(jq -nc --argjson a "$BEFORE" --argjson b "$AFTER" \
-            '[$a, $b | keys[]] | unique | map(select(. != "enable_js" and $a[.] != $b[.]))')
-          if [ "$CHANGED" != "[]" ]; then
-            echo "::error::the PUT also changed $CHANGED — restore them from the Before line"
-            exit 1
-          fi
-          echo "enable_js is now false; nothing else changed."
 
       - name: Zone settings
         env:
@@ -364,7 +375,7 @@ jobs:
           probe() { curl -sS -o /dev/null -D - --max-time 20 --path-as-is "$BASE$1" | tr -d '\r'; }
           cf403() { echo "$1" | grep -q '^HTTP/[0-9.]* 403' && echo "$1" | grep -qi '^x-frame-options: SAMEORIGIN' \
             && ! echo "$1" | grep -qi '^content-security-policy:'; }
-          worker() { echo "$1" | grep -q "^HTTP/[0-9.]* $2" && echo "$1" | grep -qi '^x-frame-options: DENY'; }
+          worker() { echo "$1" | grep -Eq "^HTTP/[0-9.]* ($2)" && echo "$1" | grep -qi '^x-frame-options: DENY'; }
           # Only the new rule blocks upper case: wait for it to propagate.
           ok=
           for i in $(seq 1 12); do
@@ -379,11 +390,12 @@ jobs:
                    /backup.zip /index.php/api/index; do
             if cf403 "$(probe "$p")"; then echo "OK   CF 403      $p"; else echo "::error::$p is not blocked by Cloudflare"; bad=1; fi
           done
-          # Slugs the old path-anywhere rule 403'd must reach the Worker now.
+          # Slugs the old path-anywhere rule 403'd must reach the Worker now
+          # (404 today; 200 once a post by that name exists — either is fine).
           for p in /blogg/jenkins-pipeline/ /blogg/tag/docker-compose/ /en/blog/solr-tuning/ /en/blog/tag/wp-cli/ \
                    /blogg/pmap-command/ /blogg/jenkins-pipeline/opengraph-image \
                    /blogg/jenkins-pipeline/__next.blogg.%24d%24slug.__PAGE__.txt; do
-            if worker "$(probe "$p")" 404; then echo "OK   Worker 404  $p"; else echo "::error::$p: expected the Worker's 404"; bad=1; fi
+            if worker "$(probe "$p")" '200|404'; then echo "OK   Worker      $p"; else echo "::error::$p: expected the Worker's 200/404"; bad=1; fi
           done
           for p in / /blogg/ /blogg/velkommen/ /en/blog/welcome/ /.well-known/security.txt /favicon.ico /feed.xml \
                    /api/status /api/views/jenkins-pipeline; do

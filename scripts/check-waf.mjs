@@ -216,21 +216,28 @@ function blockedUnder(ast, raw) {
 // --- Self-test: the docs' own examples, so a broken evaluator can't pass ----
 function selfTest() {
   const bad = []
-  const eq = (got, want, what) => got === want || bad.push(`${what}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`)
+  const eq = (got, want, what) =>
+    got === want || bad.push(`${what}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`)
   // The extension field's table (fields/reference), then the trailing slash.
-  const ext = { '/foo': '', '/foo.mp3': 'mp3', '/.mp3': '', '/.foo.mp3': 'mp3', '/foo.tar.bz2': 'bz2', '/foo.': '', '/foo.MP3': 'mp3' }
+  const ext = {
+    '/foo': '', '/foo.mp3': 'mp3', '/.mp3': '', '/.foo.mp3': 'mp3', '/foo.tar.bz2': 'bz2', '/foo.': '', '/foo.MP3': 'mp3',
+  }
   for (const [p, want] of Object.entries({ ...ext, '/articles/index.html': 'html', '/articles/index.': '' })) {
     for (const r of READINGS) eq(extension(p, r), want, `extension ${r} ${p}`)
   }
-  for (const [r, want] of [['A', ''], ['B', 'sh/'], ['C', 'sh']]) eq(extension('/a.sh/', r), want, `extension ${r} /a.sh/`)
+  for (const [r, want] of [['A', ''], ['B', 'sh/'], ['C', 'sh']]) {
+    eq(extension('/a.sh/', r), want, `extension ${r} /a.sh/`)
+  }
   // The operators page's wildcard examples A and B: [matches, non-matches].
   const wc = {
     'http*://example.com/a/*': [
-      'https://example.com/a/ http://example.com/a/ https://example.com/a/page.html https://example.com/a/sub/folder/?name=value',
+      'https://example.com/a/ http://example.com/a/ https://example.com/a/page.html ' +
+        'https://example.com/a/sub/folder/?name=value',
       'https://example.com/ab/ https://example.com/b/page.html https://sub.example.com/a/',
     ],
     '*.example.com/*/page.html': [
-      'http://sub.example.com/folder/page.html https://admin.example.com/team/page.html https://admin.example.com/team/subteam/page.html',
+      'http://sub.example.com/folder/page.html https://admin.example.com/team/page.html ' +
+        'https://admin.example.com/team/subteam/page.html',
       'https://example.com/ab/page.html https://sub.example.com/folder2/page.html?s=value https://sub.example.com/a/',
     ],
   }
@@ -241,7 +248,8 @@ function selfTest() {
   eq(wildcardRe('/ADMIN*').test('/admin/x'), true, 'wildcard is case-insensitive')
   eq(wildcardRe('/ADMIN*', true).test('/admin/x'), false, 'strict wildcard is case-sensitive')
   eq(wildcardRe('/a\\*').test('/a*') && !wildcardRe('/a\\*').test('/ab'), true, 'wildcard \\* is a literal star')
-  const norm = [['/%77p-login.php', 'rfc', '/wp-login.php'], ['/a%2fb', 'rfc', '/a%2Fb'], ['/a/../b/./c', 'rfc', '/b/c'],
+  const norm = [['/%77p-login.php', 'rfc', '/wp-login.php'], ['/a%2fb', 'rfc', '/a%2Fb'],
+    ['/a/../b/./c', 'rfc', '/b/c'],
     ['/%2e%2e/etc', 'rfc', '/etc'], ['/a/..', 'rfc', '/'], ['//a', 'rfc', '//a'], ['//a\\b', 'cf', '/a/b'],
     ['/\\wp', 'rfc+bs', '//wp'], ['/\\wp', 'rfc', '/%5Cwp'], ['/blogg/ø/', 'rfc', '/blogg/%C3%B8/']]
   for (const [raw, model, want] of norm) eq(normalize(raw, model), want, `normalize ${model} ${raw}`)
@@ -252,7 +260,8 @@ function selfTest() {
   eq(run(`${P} eq "/x" or ${P} eq "/x" xor ${P} contains "x"`, '/x'), true, 'xor binds tighter than or')
   eq(run(`not starts_with(${P}, "/blogg/") && ${EXT} in {"php" "sh"}`, '/a/B.PHP'), true, 'starts_with, in, extension')
   eq(run(`lower(${P}) contains "/wp-" and ends_with(${P}, "x")`, '/WP-x'), true, 'lower(), ends_with()')
-  const invalid = [`${P} matches "^/a"`, `${P} CONTAINS "a"`, `${P} wildcard "/a**"`, 'http.host eq "a"', `(${P} eq "/a"`,
+  const invalid = [`${P} matches "^/a"`, `${P} CONTAINS "a"`, `${P} wildcard "/a**"`, 'http.host eq "a"',
+    `(${P} eq "/a"`,
     `${P} eq "\\d"`, `${P} eq "/a" ${P}`, `${P} strict eq "/a"`]
   const throws = (src) => {
     try {
@@ -292,13 +301,23 @@ function servedUrls() {
   }
   // /api/views/<viewKey> (lib/blog.ts): the Norwegian twin's slug, else the
   // post's own. Drafts too — they go public later.
-  const slugs = (dir) => fs.readdirSync(path.join(ROOT, dir)).filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3))
+  const slugs = (dir) =>
+    fs.readdirSync(path.join(ROOT, dir)).filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3))
   const nb = slugs('content/blog')
   for (const slug of nb) urls.add(`/api/views/${slug}`)
   for (const slug of slugs('content/blog/en')) {
     const md = fs.readFileSync(path.join(ROOT, 'content/blog/en', `${slug}.md`), 'utf8')
     const twin = /^translationOf:\s*["']?([^"'\s]+)/m.exec(/^---\r?\n([\s\S]*?)\r?\n---/.exec(md)?.[1] ?? '')?.[1]
     urls.add(`/api/views/${twin && nb.includes(twin) ? twin : slug}`)
+  }
+  // Future content: scanner words as slugs under every exempt prefix. The
+  // exemptions are what keeps the word patterns off slugs, so dropping one
+  // must fail here, not on the first post that happens to use such a word.
+  for (const s of ['jenkins-pipeline', 'wp-cli', 'owasp-zap', 'backup-strategy', 'mysql-tuning', 'aws-console']) {
+    for (const base of ['/blogg/', '/en/blog/', '/blogg/tag/', '/en/blog/tag/']) {
+      urls.add(`${base}${s}/`).add(`${base}${s}`).add(`${base}${s}/index.txt`).add(`${base}${s}/opengraph-image`)
+    }
+    urls.add(`/api/views/${s}`).add(`/_next/static/chunks/${s}_0x.js`)
   }
   // Everything the post-deploy smoke test fetches.
   for (const [, p] of fs.readFileSync(path.join(ROOT, 'scripts/smoke.sh'), 'utf8').matchAll(/"\$BASE(\/[^"?]*)/g)) {
@@ -332,12 +351,16 @@ const list = (combos) => (combos.length === COMBOS.length ? 'every model' : comb
 const problems = []
 if (expr.length > MAX_CHARS) problems.push(`${expr.length} chars after folding (limit ${MAX_CHARS})`)
 if (rule.wildcards > MAX_WILDCARDS) problems.push(`${rule.wildcards} wildcard operators (limit ${MAX_WILDCARDS})`)
-for (const s of rule.strings.filter((x) => /\s/.test(x))) problems.push(`"${s}" has whitespace the folding would change`)
+for (const s of rule.strings.filter((x) => /\s/.test(x))) {
+  problems.push(`"${s}" has whitespace the folding would change`)
+}
 if (!fs.existsSync(path.join(ROOT, 'out'))) fail('out/ is missing — run `npm run build` first', problems)
 const served = servedUrls()
 for (const u of served) {
   const hits = blockedUnder(rule.ast, u)
-  if (hits.length) problems.push(`blocks served URL ${u} [${list(hits.map((h) => h.combo))}]: ${hits[0].why.join(', ')}`)
+  if (hits.length) {
+    problems.push(`blocks served URL ${u} [${list(hits.map((h) => h.combo))}]: ${hits[0].why.join(', ')}`)
+  }
 }
 for (const u of MUST_BLOCK) {
   const hits = blockedUnder(rule.ast, u).map((h) => h.combo)

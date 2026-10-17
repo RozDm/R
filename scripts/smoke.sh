@@ -155,9 +155,9 @@ check_header "CSP report" "$BASE/" "^reporting-endpoints: csp-endpoint="
 # word patterns off blog paths, so a slug naming a scanner target reaches the
 # Worker (its 404 says X-Frame-Options DENY) instead of Cloudflare's 403
 # (SAMEORIGIN). Catches a dashboard edit that brings path-anywhere
-# `contains` patterns back.
-check        "WAF slug-safe"        "$BASE/blogg/jenkins-pipeline/" 404
-check_header "WAF slug-safe Worker" "$BASE/blogg/jenkins-pipeline/" "^x-frame-options: DENY"
+# `contains` patterns back. A synthetic slug, and only the header asserted,
+# so a real post by that name can't turn this red.
+check_header "WAF slug-safe" "$BASE/blogg/wp-jenkins-canary/" "^x-frame-options: DENY"
 
 echo "== Caching =="
 # Static files skip the Worker (run_worker_first in wrangler.jsonc) and take

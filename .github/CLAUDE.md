@@ -51,7 +51,10 @@ incident background: `docs/history.md`.
   Applied 2026-10-16. It also sets `enable_js: false` on
   `/zones/{id}/bot_management` (JavaScript Detections: an edge-injected
   inline loader the hash CSP refuses, one CSP report per page view; it
-  outlived Bot Fight Mode — `docs/cloudflare-security.md` lesson 3), failing
+  outlived Bot Fight Mode — `docs/cloudflare-security.md` lesson 3) and
+  `ai_bots_protection: disabled` (the deprecated "Block AI bots" toggle,
+  whose block now also stops Googlebot; the AI bot policies' Training
+  "disallow" keeps the training crawlers out — the prod check probes GPTBot), failing
   if the PUT moved any other field or if a dashboard bot setting would
   block search engines or CI (Bot Fight Mode, AI Training/Search "block",
   AI Labyrinth…); sets the zone settings (Browser Cache TTL "Respect
@@ -60,7 +63,8 @@ incident background: `docs/history.md`.
   — dry run first, then a PATCH of that one rule in place (found by ref,
   else by name; the old expression is printed for a rollback; other custom
   rules are never touched). The prod check then wants `/` free of the
-  `/cdn-cgi/challenge-platform/` loader, TLS 1.1 refused, scanner paths
+  `/cdn-cgi/challenge-platform/` loader, TLS 1.1 refused, a GPTBot UA
+  blocked, scanner paths
   answered by Cloudflare's 403 and scanner-word slugs by the Worker. The
   token (a user-owned one, My Profile → API Tokens; the run prints its id)
   needs Zone: Read + Zone → Transform Rules: Edit + Zone → Bot Management:
