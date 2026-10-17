@@ -82,6 +82,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `/api/csp-report` — POST → always 204, AE only, never D1/KV (anyone can
   POST to it); `parseCspReports` keeps own-origin reports only (origin +
   path; no query, UA or IP). GET → 405, which the smoke test checks.
+- A new `/api/*/<slug>` route must be added to the WAF rule's exemptions
+  (`.github/waf/scanner-block.expr`, like `/api/views/`): its word patterns
+  would 403 a slug such as `jenkins-pipeline`, and `check-waf` sees only
+  built pages, not Worker routes.
 
 ## Rules
 

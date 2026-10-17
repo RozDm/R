@@ -9,15 +9,15 @@ pages carry `X-Frame-Options: SAMEORIGIN`; the Worker's say `DENY`).
 Facts verified against developers.cloudflare.com on 2026-10-16 (sources
 inline); "measured" means probed live on the same day. Everything here is
 **dashboard-managed** except what `.github/workflows/zone-rules.yml` applies:
-the response-header rule, the JavaScript Detections switch and the zone
-settings marked "code" below. The same run fails on dashboard bot settings
+the "Block scanners" WAF rule, the response-header rule, the JavaScript
+Detections switch and the zone settings marked "code" below. The same run fails on dashboard bot settings
 that would block search engines or CI.
 
 ## Deployed configuration (final, 2026-10-16)
 
 | Layer | Where | Setting |
 |---|---|---|
-| WAF custom rule "Block scanners" | Security → Security rules → Custom rules | 52 `http.request.uri.path contains …` patterns (below), Block — 1 of 5 rules used |
+| WAF custom rule "Block scanners" | `zone-rules.yml` (code: `.github/waf/scanner-block.expr`, PATCHed in place; `scripts/check-waf.mjs` guards it in CI) | ~3.7k chars: extension list + dot-segment clause + global `*.php/*` and `*/wlwmanifest.xml` + word wildcards that skip `/blogg/`, `/en/blog/`, `/api/views/`, `/_next/static/` (below), Block — 1 of 5 rules used |
 | Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; counts every path except the asset-first static prefixes (below) |
 | Bot Fight Mode | Security → Settings → Bot traffic | **Off** (see "Lessons") |
 | JavaScript Detections | `zone-rules.yml` (code; no dashboard switch on Free) | **Off** — `enable_js: false` (lesson 3) |
@@ -84,8 +84,18 @@ watchdog from GitHub runners is green again (run 38910824580).
    `/blogg/tag/docker-compose/`, `/blogg/solr-tuning/`, `/blogg/install.sh/`
    would all be 403'd — with their RSC `.txt` payloads, OG image and
    `/api/views/<slug>` counter. Meanwhile `/WP-LOGIN.PHP` slips through.
-   Check a new slug or tag against the list before publishing, or switch
-   to the slug-proof rule below.
+   The extension-like patterns hide a second trap: Next names a page's RSC
+   payload after its route, so `contains ".pl"` already 403s
+   `/planer/__next.planer.__PAGE__.txt` (measured) — and `.py`, `.php`,
+   `.old`, `.bak`, `.orig`, `.rb`, `.asp`, `.jsp`, `.cgi`, `.swp` do the
+   same to any future page whose name starts with those letters (`/python/`,
+   `/bakgrunn/`, `/en/origins/`…). Fix: the slug-safe rule below, which
+   tests `.extension` (only what follows the last dot: "txt" there) and
+   keeps its word patterns off the blog paths. That safety holds **only
+   under the exempt prefixes**: a new section that carries slugs
+   (`/prosjekter/<slug>/`) or an `/api/*/<slug>` route (`/api/likes/<slug>`)
+   must be added to the exemptions. `scripts/check-waf.mjs` catches a
+   blocked built page (it reads `out/`), not a new API route.
 5. **Exclude static files by path prefix, not by extension.** The second
    version excluded any path *containing* `.js`, `.png`, `.svg`… (and kept
    `http.host ne ""`). But only real files under `/_next/static/`,
@@ -148,16 +158,84 @@ Semantics that matter here: `contains` and `eq` are case-sensitive;
 root-anchored); `http.request.uri.path.extension` is lowercased without the
 dot; the docs give "" for no dot, a trailing dot or a dot-first last
 segment (`/.env` → "", so only a `/.` path clause catches dotfiles), but
-don't cover trailing-slash URLs like `/blogg/install.sh/` — test one before
-relying on it being empty. The export only serves css, html,
+don't cover trailing-slash URLs like `/blogg/install.sh/` — moot while
+slugs have no dot (`tests/blog-pairs.test.ts`), and `check-waf` tries every
+reading. The export only serves css, html,
 ico, js, png, svg, txt, webmanifest, woff2 and xml, plus
 `/.well-known/security.txt`.
 
 Testing on Free: there is no Log action. Deploy a new rule as Managed
 Challenge, watch Security → Analytics → Events, then switch to Block.
-Since 2026-09-17 the Rulesets API accepts `?dry_run=true` on mutations.
+Since 2026-09-17 the Rulesets API accepts `?dry_run=true` on mutations
+(syntax, fields, plan entitlements, quotas; saves nothing) —
+`zone-rules.yml` dry-runs every change first.
 
-### Deployed: scanner block, 52 `contains` patterns
+### Deployed: slug-safe scanner block
+
+The expression is `.github/waf/scanner-block.expr`, one condition per line.
+`zone-rules.yml` folds its whitespace to single spaces, prints the rule it
+replaces (the rollback copy), validates the change with `?dry_run=true` and
+PATCHes the dashboard-made rule in place (found by ref `scanner_block`,
+else by the name "Block scanners"). CI and deploy run
+`scripts/check-waf.mjs` after the build (below). About 3.7k of 4,096
+characters, 60 `wildcard`s, four parts:
+
+1. **Extensions** — `http.request.uri.path.extension in {…}`: server-side
+   code (`php`…`phar`, `asp(x)`, `jsp(a/x)`, `do`, `action`, `cgi`, `pl`,
+   `py(c)`, `rb`, `sh`…), config and secrets (`env`, `ini`, `conf`,
+   `config`, `yml`, `toml`, `tfstate`, `pem`, `key`…), backups, dumps and
+   archives (`bak`, `old`, `orig`, `swp`, `sql`, `db`, `log`, `zip`,
+   `tar`, `gz`…). Lowercased by Cloudflare, so `/WP-LOGIN.PHP` matches.
+2. **Dot segments** — any path containing `/.` (`/.env`, `/.git/config`,
+   `/blogg/.env`), except under `/.well-known/`, where only dot-files are
+   blocked (`/.well-known/.env`).
+3. **Two global patterns** — `*.php/*` (PHP path-info:
+   `/index.php/api/index`) and `*/wlwmanifest.xml` (the WordPress probe,
+   under any prefix, blog paths included).
+4. **Word wildcards** — case-insensitive, match-anywhere (`*/wp-*`,
+   `*phpmyadmin*`, `*/jenkins*`, `*/actuator*`, `*/owa*`, `*/backup*`,
+   `*-console*`, `*/swagger*`…), evaluated only outside `/blogg/`,
+   `/en/blog/`, `/api/views/` and `/_next/static/` (hashed chunk and font
+   names could collide).
+
+Why it can't hit a slug: post slugs (`isValidSlug`, enforced by
+`tests/blog-pairs.test.ts`) and tags (`tagToSlug`) are `[a-z0-9-]`, so a
+content URL's extension is "" or "txt" and it never contains `/.`; the RSC
+payload names use the route's param (`$d$slug`), not the slug; and part 4
+never runs under the blog prefixes. `scripts/check-waf.mjs` proves it for
+the build: it evaluates the expression over every file in `out/` as a URL
+(directory URLs with and without the slash, RSC names with `$` and `%24`),
+the Worker routes, `/api/views/<viewKey>` for every post and the
+`smoke.sh` paths — none may be blocked — and over a must-block list of
+scanner paths, under 3 normalization models (RFC 3986, Cloudflare, and the
+measured mix: a literal `\` acts as `/`, `//` kept) × 3 readings of the
+extension for a trailing slash, after a self-test against the docs'
+examples. It also fails past 4,096 characters or 64 wildcards.
+
+Lets through, on purpose: names that could become real pages or are cheap
+404s (`/login`, `/install/`, `/setup/`, `/graphql`, `/license.txt`,
+`/readme.html`), rare paths left out to save characters (`/dbadmin/`,
+`/jolokia/`, `/aspnet_client/`), `.php~`/`.php.txt`/`;`-suffix tricks,
+and — the price of the exemption — word probes under the blog prefixes
+(`/blogg/wp-admin/`; `.php` and dotfiles there are still blocked). Of a
+313-path scanner corpus it blocks 251; the old rule blocked 166. Files
+with a listed extension (`.sh`, `.zip`, `.yml`…) are blocked everywhere: if
+the site ever offers downloads, put them under one folder and exempt it in
+part 1.
+
+Limits: 4,096 characters (the folded expression). A rule allows 64 regexes;
+whether wildcards count is undocumented, so `check-waf` keeps them ≤ 64.
+Whether Free accepts the whole expression (`wildcard`, `not
+starts_with(…)`) is proven only by the workflow's dry run — the docs gate
+neither. The zone's normalization type and the trailing-slash extension
+are unconfirmed, which is why `check-waf` tries every combination.
+
+### Rollback copy: the old 52 `contains` patterns
+
+The dashboard version before `zone-rules.yml` took the rule over. Not
+slug-safe (lesson 4). For an emergency rollback paste it into the
+dashboard rule; the next `zone-rules.yml` run puts the file's expression
+back.
 
 ```
 (http.request.uri.path contains ".php") or (http.request.uri.path contains ".asp") or
@@ -195,32 +273,6 @@ WordPress (`/wp- /xmlrpc`), DB admin (`/phpmyadmin /pma /adminer
 /administrator`), web shells (`/c99 /r57`), SQL dumps, package/DevOps
 files, exploit targets (`/actuator /jenkins /solr /struts /cgi-bin /owa/`),
 installers, Exchange (`/autodiscover`), file managers/editors.
-
-### Recommended: slug-proof rewrite
-
-Same intent, but extension checks and root-anchored `wildcard` can't match a
-blog slug, and they are case-insensitive. About 1 KB:
-
-```
-(http.request.uri.path.extension in {"php" "php5" "phtml" "asp" "aspx" "ashx" "jsp" "jspx" "cgi" "pl"
-  "env" "ini" "sql" "bak" "old" "orig" "swp" "conf" "cfg" "log" "yml" "yaml" "toml" "sh" "tar" "gz"
-  "tgz" "zip" "rar" "7z" "db" "sqlite" "mdb" "pem" "key" "war" "jar"})
-or (http.request.uri.path contains "/." and not starts_with(http.request.uri.path, "/.well-known/"))
-or http.request.uri.path wildcard "/wp-*" or http.request.uri.path wildcard "/wordpress*"
-or http.request.uri.path wildcard "/xmlrpc*" or http.request.uri.path wildcard "/cgi-bin/*"
-or http.request.uri.path wildcard "/phpmyadmin*" or http.request.uri.path wildcard "/vendor/*"
-or http.request.uri.path wildcard "/actuator*" or http.request.uri.path wildcard "/jenkins*"
-or http.request.uri.path wildcard "/solr/*" or http.request.uri.path wildcard "/server-status*"
-```
-
-Minimal alternative that keeps the 52 patterns: wrap them as
-`(<52 patterns>) and not ((starts_with(http.request.uri.path, "/blogg/") or
-starts_with(http.request.uri.path, "/en/blog/") or
-starts_with(http.request.uri.path, "/api/views/")) and
-(http.request.uri.path.extension eq "" or http.request.uri.path.extension eq "txt"))`
-— content pages and their RSC payloads pass, `/blogg/wp-login.php` still
-blocks. Validate with `?dry_run=true` or the dashboard editor before
-publishing; nested calls like `starts_with(lower(…))` are undocumented.
 
 ## Rate limiting rules on Free
 
@@ -378,9 +430,11 @@ HSTS header (the Worker never sees them) — harmless, the document sets it.
   Detections (applied by `zone-rules.yml`; a PUT naming one field leaves the
   rest as they were — measured); `ai_bots_protection` is the legacy field. Set AI bot policies in the dashboard — the API's `ai_*`
   fields are described as robots.txt policy.
-- Response header rule: `.github/workflows/zone-rules.yml` (phase
-  `http_response_headers_transform`), the pattern to copy if the WAF rules
-  move into code (the token would then need Zone WAF Write).
+- Response header rule and the "Block scanners" custom rule:
+  `.github/workflows/zone-rules.yml` (phases
+  `http_response_headers_transform` and `http_request_firewall_custom`):
+  find the rule by ref, dry-run, PATCH in place; never PUT an existing
+  entrypoint.
 
 ## Dashboard paths
 

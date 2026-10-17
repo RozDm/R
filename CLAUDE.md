@@ -168,7 +168,9 @@ answered, keep output and replies short.
 ## Commands
 
 - `npm run check` (lint + typecheck + tests) must pass before a PR;
-  `npm run build` exports to `out/`.
+  `npm run build` exports to `out/`. CI and deploy then run
+  `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
+  `.github/waf/scanner-block.expr` must block no URL the build serves.
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (checks,
   build, secrets sync, `npx wrangler deploy`, `scripts/smoke.sh` against the
   live site; details in `.github/CLAUDE.md`). Never deploy from a sandbox —

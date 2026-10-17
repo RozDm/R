@@ -6,9 +6,10 @@ incident background: `docs/history.md`.
 - `ci.yml` — job `check` on PRs: lint, typecheck (starting with
   `wrangler types --check`), test, build, then `check:dict` (the UI
   dictionary sits in exactly one chunk — `turbopackChunking`, CLAUDE.md
-  Gotchas). It is the one
+  Gotchas) and `check:waf` (`scripts/check-waf.mjs`: the WAF expression
+  must block no URL in `out/` and still block its scanner list). It is the one
   required status check on `main`, so its result decides the auto-merge.
-- `deploy.yml` — on push to `main`: the same checks → build → one
+- `deploy.yml` — on push to `main`: the same checks → build → check:waf → one
   `wrangler secret bulk` syncing `TURNSTILE_SECRET`, `CF_ACCOUNT_ID` and
   `AE_API_TOKEN` from GitHub secrets (unset ones are skipped, never blanked)
   → `npx wrangler deploy` with the repo's pinned wrangler (not
@@ -51,11 +52,20 @@ incident background: `docs/history.md`.
   `/zones/{id}/bot_management` (JavaScript Detections: an edge-injected
   inline loader the hash CSP refuses, one CSP report per page view; it
   outlived Bot Fight Mode — `docs/cloudflare-security.md` lesson 3), failing
-  if the PUT moved any other field, and checks that `/` carries no
-  `/cdn-cgi/challenge-platform/` loader. The token (a user-owned one, My
-  Profile → API Tokens; the run prints its id) needs Zone: Read + Zone →
-  Transform Rules: Edit + Zone → Bot Management: Edit — enough in practice;
-  the Account Rulesets: Read some docs list wasn't.
+  if the PUT moved any other field or if a dashboard bot setting would
+  block search engines or CI (Bot Fight Mode, AI Training/Search "block",
+  AI Labyrinth…); sets the zone settings (Browser Cache TTL "Respect
+  Existing Headers", 0-RTT on, minimum TLS raised to 1.2 if lower); and
+  applies the "Block scanners" WAF rule from `.github/waf/scanner-block.expr`
+  — dry run first, then a PATCH of that one rule in place (found by ref,
+  else by name; the old expression is printed for a rollback; other custom
+  rules are never touched). The prod check then wants `/` free of the
+  `/cdn-cgi/challenge-platform/` loader, TLS 1.1 refused, scanner paths
+  answered by Cloudflare's 403 and scanner-word slugs by the Worker. The
+  token (a user-owned one, My Profile → API Tokens; the run prints its id)
+  needs Zone: Read + Zone → Transform Rules: Edit + Zone → Bot Management:
+  Edit + Zone → Zone Settings: Edit + Zone → Zone WAF: Edit — enough in
+  practice; the Account Rulesets: Read some docs list wasn't.
 - `d1-bootstrap.yml` — one-shot: creates the metrics D1 (skipped when the
   name is already listed) and applies the schema.
 - `dependabot.yml` — weekly (Monday, Europe/Oslo, 7-day cooldown) grouped

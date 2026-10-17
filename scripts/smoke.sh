@@ -151,6 +151,13 @@ check_header "HSTS"       "$BASE/" "^strict-transport-security:"
 check_header "CSP (hash)" "$BASE/" "^content-security-policy:.*sha256-"
 check_header "COOP"       "$BASE/" "^cross-origin-opener-policy: same-origin"
 check_header "CSP report" "$BASE/" "^reporting-endpoints: csp-endpoint="
+# The "Block scanners" WAF rule (.github/waf/scanner-block.expr) keeps its
+# word patterns off blog paths, so a slug naming a scanner target reaches the
+# Worker (its 404 says X-Frame-Options DENY) instead of Cloudflare's 403
+# (SAMEORIGIN). Catches a dashboard edit that brings path-anywhere
+# `contains` patterns back.
+check        "WAF slug-safe"        "$BASE/blogg/jenkins-pipeline/" 404
+check_header "WAF slug-safe Worker" "$BASE/blogg/jenkins-pipeline/" "^x-frame-options: DENY"
 
 echo "== Caching =="
 # Static files skip the Worker (run_worker_first in wrangler.jsonc) and take

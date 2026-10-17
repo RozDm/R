@@ -32,3 +32,5 @@ jobs:
       # (next.config.js turbopackChunking — an experimental key a Next
       # upgrade can drop with only a warning).
       - run: npm run check:dict
+      # Needs out/: the WAF expression must block no URL the build serves.
+      - run: npm run check:waf
