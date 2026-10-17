@@ -12,6 +12,7 @@
     "test": "vitest run",
     "cf-typegen": "wrangler types",
     "cf-typecheck": "wrangler types --check",
+    "check:dict": "n=$(grep -l 'Hopp til hovedinnhold' out/_next/static/chunks/*.js | wc -l); [ \"$n\" -eq 1 ] || { echo \"UI dictionary in $n chunks, want 1 (CLAUDE.md Gotchas: turbopackChunking)\"; exit 1; }",
     "predeploy": "npm run check",
     "deploy": "next build && wrangler deploy",
     "check": "npm run lint && npm run typecheck && npm test"

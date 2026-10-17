@@ -4,7 +4,9 @@ Loaded when working under `.github/`. Site-wide rules: root `CLAUDE.md`;
 incident background: `docs/history.md`.
 
 - `ci.yml` — job `check` on PRs: lint, typecheck (starting with
-  `wrangler types --check`), test, build. It is the one
+  `wrangler types --check`), test, build, then `check:dict` (the UI
+  dictionary sits in exactly one chunk — `turbopackChunking`, CLAUDE.md
+  Gotchas). It is the one
   required status check on `main`, so its result decides the auto-merge.
 - `deploy.yml` — on push to `main`: the same checks → build → one
   `wrangler secret bulk` syncing `TURNSTILE_SECRET`, `CF_ACCOUNT_ID` and
