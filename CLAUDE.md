@@ -240,6 +240,14 @@ answered, keep output and replies short.
   Worker 301 them). The D1 database is `rozsoshnykh-metrics-v2`; never try to
   reclaim the old `rozsoshnykh-metrics` name — the dead original's deleted
   entry still locks it.
+- `next.config.js` sets the experimental
+  `turbopackChunking: { minChunkSize: 15000 }`: Turbopack's default (50 kB)
+  copied shared client modules — Header/Footer client parts, `next/link`,
+  the dictionary — into every page chunk, and viewport prefetch downloads
+  the prefetched routes' chunks, so a first view fetched them 3–5 times.
+  20 kB cost the no-prefetch path ~2 KB, 10 kB added 8 scripts. Re-measure
+  with prefetch on (Chromium, desktop + mobile) after every Next upgrade;
+  drop it if the default stops duplicating.
 - ESLint stays on 9 (with `eslint-config-next` 16's flat config); the React
   plugin it pulls in is not ESLint-10-compatible yet.
 - `package.json` is NOT `"type": "module"` — that breaks the Next 16 /
