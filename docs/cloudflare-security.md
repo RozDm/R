@@ -72,10 +72,14 @@ Open as of 2026-10-17; tick them off here when done.
   verified search crawlers, should show no blocks of Googlebot/Bingbot.
 - [ ] **Web Analytics off** — account → Web Analytics → the `rozsoshnykh.no`
   site → Manage site → **Disable** (delete any other site there, e.g. an old
-  `d.rozsoshnykh.workers.dev` one). Check: `curl -s -H 'Accept: text/html'
-  https://rozsoshnykh.no/ | grep -c data-cf-beacon` prints 0. Until then each
-  page view the edge injects into is one refused script, one CSP report and
-  a red "no edge script" smoke check.
+  `d.rozsoshnykh.workers.dev` one). Check from OUTSIDE the EU/EEA (the
+  "excluding EU" mode never injects for Norway, so a check from there reads
+  0 whatever the setting; GitHub runners and the agent sandbox are US):
+  `curl -s -H 'Accept: text/html' https://rozsoshnykh.no/ | grep -c
+  'beacon.min.js/v'` prints 0 — it matches only the injected tag, not the
+  old build's own snippet. Until then each page view the edge injects into
+  is one refused script, one CSP report and a red "no edge script" smoke
+  check.
 
 ## Lessons from rolling it out (2026-10-16)
 

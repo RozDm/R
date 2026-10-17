@@ -127,7 +127,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   JavaScript Detections is off zone-wide (`enable_js: false`, applied by
   `zone-rules.yml`) and Web Analytics is gone (no `cloudflareinsights` host,
   `docs/history.md`); turn nothing on that injects a script — `smoke.sh`
-  fails when HTML fetched as a browser carries one. Turnstile's iframe logs `Refused to connect to
+  ("no edge script") fails when `/`, fetched as a browser, carries an
+  injected `<script>` (`data-cf-beacon` or a `/cdn-cgi/` src) or the JSD
+  loader. Turnstile's iframe logs `Refused to connect to
   'data:,'` (2–3× per widget run) on `/kontakt/` + `/en/contact/`: that is
   Cloudflare's own iframe CSP (its `connect-src` lists
   `hagen.challenges.cloudflare.com` …), which has no report directives, and

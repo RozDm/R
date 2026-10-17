@@ -89,24 +89,28 @@ check_no_header() { # name url header_pattern — the header must be absent
 }
 
 check_no_edge_script() { # name url — no script injected into the HTML after the Worker
-  # The edge injects only into responses to an `Accept: text/html` request
-  # (fetch() sends */*), so ask like a browser. Web Analytics' automatic
-  # setup adds a <script data-cf-beacon>, JavaScript Detections a
-  # /cdn-cgi/challenge-platform/ loader: the hash CSP refuses both, each
+  # The hash CSP refuses any script the edge adds after the Worker; each
   # refusal is a CSP report (one Worker request per page view), and the
   # injection strips the HTML's ETag. Off in the dashboard is the only fix.
-  local name=$1 url=$2 code i
-  for i in 1 2 3; do
+  # Web Analytics' automatic setup injects only for `Accept: text/html`
+  # (fetch() sends */*; JSD injected into */* too), so ask like a browser.
+  # The pattern matches injected tags only — a <script> whose attributes
+  # carry data-cf-beacon or a /cdn-cgi/ src (beacon, Rocket Loader, Zaraz,
+  # email-decode) or the inline JSD loader — not the bare string, which the
+  # pre-2026-10-17 build carried in its RSC payload. Retried on a hit: right
+  # after a deploy some edges still serve that build.
+  local name=$1 url=$2 pat='<script[^>]*(data-cf-beacon|/cdn-cgi/)|/cdn-cgi/challenge-platform/' code i
+  for i in 1 2 3 4 5 6; do
     code=$(curl -sS -o "$TMP" -w '%{http_code}' --max-time 20 -A "$UA" -H 'Accept: text/html' "$url" 2>/dev/null)
-    [ "$code" = "200" ] && break
-    echo "  retry $i: $url -> ${code:-ERR}, want 200"
+    [ "$code" = "200" ] && ! grep -qE -- "$pat" "$TMP" && break
+    echo "  retry $i: $url -> ${code:-ERR}$( [ "$code" = "200" ] && echo ', edge-injected script present')"
     sleep 15
   done
   if [ "$code" != "200" ]; then
     echo "FAIL $name: $url -> $code (want 200)"
     FAIL=1
-  elif grep -qE 'data-cf-beacon|/cdn-cgi/challenge-platform/' "$TMP"; then
-    echo "FAIL $name: $url carries an edge-injected script (Web Analytics beacon or JSD loader)"
+  elif grep -qE -- "$pat" "$TMP"; then
+    echo "FAIL $name: $url carries an edge-injected script: $(grep -oE -- "$pat" "$TMP" | head -1)"
     FAIL=1
   else
     echo "OK   $name"
