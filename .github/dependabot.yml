@@ -1,0 +1,59 @@
+# Dependabot: one weekly batch per ecosystem, so a normal week brings one or
+# two PRs. Each runs the required `check` (ci.yml needs no repo secrets).
+# Merge by enabling squash auto-merge as the owner, so the merge push is the
+# owner's and deploy.yml gets its secrets (.github/CLAUDE.md).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Oslo
+    # A release must be a week old before it is proposed (supply-chain
+    # buffer). Security updates are not delayed by the cooldown.
+    cooldown:
+      default-days: 7
+    # Carets get their floor raised; exact pins (next, react, eslint,
+    # typescript, eslint-config-next) stay exact.
+    versioning-strategy: increase
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: deps
+    groups:
+      # wrangler pins an exact workerd, and a workerd bump changes the
+      # generated worker-configuration.d.ts: `wrangler types --check` (in
+      # `npm run typecheck`) stays red until `npm run cf-typegen` is committed
+      # on the PR. Kept apart so the main batch can merge on green.
+      wrangler:
+        patterns: [wrangler]
+      npm-minor-patch:
+        patterns: ["*"]
+        exclude-patterns: [wrangler]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      # Majors are migrations, done by hand in a session, never a weekly bump:
+      # eslint 10 (the React plugin eslint-config-next pulls in isn't
+      # ESLint-10-ready, see CLAUDE.md), typescript 7, next 17 / react 20 with
+      # @types/react* and eslint-config-next, @types/node past the .nvmrc
+      # Node major, vitest 5, world-map-country-shapes 2 (the prebuild map).
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Oslo
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]

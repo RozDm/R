@@ -12,9 +12,11 @@ description: Look at a built page in headless Chromium (Playwright) before it sh
    `chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-proxy-server'] })`.
    Localhost must bypass the agent proxy — it answers plain-HTTP localhost
    with 405. For the LIVE site instead, use
-   `proxy: { server: process.env.HTTPS_PROXY }` and
-   `args: ['--ssl-version-max=tls1.2']` (the proxy's TLS terminator resets
-   Chromium's TLS 1.3 hello).
+   `proxy: { server: process.env.HTTPS_PROXY }` with Chromium's default TLS:
+   the zone accepts TLS 1.3 only, so a `--ssl-version-max=tls1.2` cap fails
+   with `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`. To watch CSP reports there,
+   strip `report-to` (the browser then POSTs `report-uri`, which `page.route`
+   can intercept) or use CDP `Network.enableReportingApi`.
 3. Stub `/api/*` with `page.route` — the LAST registered matching route wins,
    so register the catch-all first. Stub `window.turnstile` via
    `addInitScript`; the real widget can't load from the sandbox.

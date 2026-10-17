@@ -120,6 +120,49 @@ describe('parseCspReports', () => {
     expect(out).toEqual([])
   })
 
+  it("drops Turnstile iframe violations — they are Cloudflare's, not ours", () => {
+    // Seen live on /kontakt/ + /en/contact/: the widget iframe probes
+    // fetch('data:,') under Cloudflare's own CSP, whose policy has no
+    // report-uri/report-to, so browsers never send these here. Should one be
+    // POSTed anyway, the own-origin check drops it.
+    const frame =
+      'https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/f/av0/rch/oxo4a/0x4AAAAAADkVmlHmIw8pZ9b5/auto/fbE/new/normal'
+    const out = parseCspReports(
+      [
+        {
+          type: 'csp-violation',
+          body: { documentURL: `${frame}?lang=auto`, blockedURL: 'data', effectiveDirective: 'connect-src', sourceFile: frame },
+        },
+      ],
+      ORIGIN,
+    )
+    expect(out).toEqual([])
+  })
+
+  it('keeps a data: connect-src violation from our own document', () => {
+    // Chromium's body for fetch('data:,…') blocked on our page: a real
+    // problem (our connect-src has no data:), so it must still be logged.
+    const out = parseCspReports(
+      [
+        {
+          type: 'csp-violation',
+          body: {
+            documentURL: `${ORIGIN}/kontakt/`,
+            blockedURL: 'data',
+            effectiveDirective: 'connect-src',
+            disposition: 'enforce',
+            lineNumber: 2,
+            columnNumber: 19,
+            statusCode: 200,
+            sample: '',
+          },
+        },
+      ],
+      ORIGIN,
+    )
+    expect(out).toEqual([{ directive: 'connect-src', blocked: 'data', page: '/kontakt/' }])
+  })
+
   it('caps the batch and survives junk', () => {
     const one = { type: 'csp-violation', body: { documentURL: `${ORIGIN}/`, blockedURL: 'eval', effectiveDirective: 'script-src' } }
     expect(parseCspReports(Array(50).fill(one), ORIGIN)).toHaveLength(10)

@@ -3,7 +3,8 @@
 Loaded when working under `.github/`. Site-wide rules: root `CLAUDE.md`;
 incident background: `docs/history.md`.
 
-- `ci.yml` — job `check` on PRs: lint, typecheck, test, build. It is the one
+- `ci.yml` — job `check` on PRs: lint, typecheck (starting with
+  `wrangler types --check`), test, build. It is the one
   required status check on `main`, so its result decides the auto-merge.
 - `deploy.yml` — on push to `main`: the same checks → build → one
   `wrangler secret bulk` syncing `TURNSTILE_SECRET`, `CF_ACCOUNT_ID` and
@@ -55,5 +56,14 @@ incident background: `docs/history.md`.
   the Account Rulesets: Read some docs list wasn't.
 - `d1-bootstrap.yml` — one-shot: creates the metrics D1 (skipped when the
   name is already listed) and applies the schema.
+- `dependabot.yml` — weekly (Monday, Europe/Oslo, 7-day cooldown) grouped
+  PRs: npm minor+patch in one, wrangler alone, GitHub Actions in one; every
+  semver-major is ignored (migrations are done by hand — ESLint stays 9).
+  Dependabot PRs get no repo secrets, which `check` doesn't need. Merge one
+  by enabling squash auto-merge as the owner, so the merge push is the
+  owner's and `deploy.yml` runs with its secrets (never a GITHUB_TOKEN merge
+  workflow). The wrangler PR stays red until `npm run cf-typegen` is
+  committed on it (`wrangler types --check` compares the workerd version);
+  pushing to a Dependabot branch stops Dependabot rebasing it.
 - Every workflow runs with a read-only `GITHUB_TOKEN`; Cloudflare access comes
   from the `CLOUDFLARE_API_TOKEN` secret.

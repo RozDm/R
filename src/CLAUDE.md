@@ -87,7 +87,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 
 - Two tsconfigs: `src/` type-checks under `tsconfig.worker.json` (Workers
   types from the generated `worker-configuration.d.ts` — run
-  `npm run cf-typegen` after any `wrangler.jsonc` change and commit it).
+  `npm run cf-typegen` after any `wrangler.jsonc` change or wrangler bump and
+  commit it; `wrangler types --check` in `npm run typecheck` enforces it).
   `csp.ts`, `contact.ts`, `status.ts`, `metrics.ts` and `timeseries.ts` are
   ALSO checked under the app tsconfig — tests import them, and the app
   imports `status.ts` (`isStale`, `HISTORY_LIMIT`) and `timeseries.ts`
@@ -119,7 +120,13 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   the browser refuses them and each refusal is a CSP report — one Worker
   request (`docs/cloudflare-security.md`). JavaScript Detections is off
   zone-wide (`enable_js: false`, applied by `zone-rules.yml`); turn nothing
-  on that injects a script.
+  on that injects a script. Turnstile's iframe logs `Refused to connect to
+  'data:,'` (2–3× per widget run) on `/kontakt/` + `/en/contact/`: that is
+  Cloudflare's own iframe CSP (its `connect-src` lists
+  `hagen.challenges.cloudflare.com` …), which has no report directives, and
+  our policy can't reach a cross-origin iframe — nothing arrives at
+  `/api/csp-report`. Neither a `parseCspReports` filter nor `data:` in our
+  `connect-src` would change it; leave it (tested in `tests/csp.test.ts`).
 - Static files skip the Worker: `run_worker_first` is `/*` minus
   `/_next/static/*`, `/fonts/*`, `/icons/*`, `/world.svg`. Every Worker
   invocation counts against the free plan's 100k requests/day (past it,
