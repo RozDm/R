@@ -154,7 +154,10 @@ answered, keep output and replies short.
   keeps the typed text.
 - TypeScript is split: app `tsconfig.json` (lib.dom), Worker
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
-  `wrangler.jsonc` change run `npm run cf-typegen` and commit the result.
+  `wrangler.jsonc` change or wrangler bump run `npm run cf-typegen` and commit
+  the result — `npm run typecheck` starts with `wrangler types --check`
+  (`cf-typecheck`), which fails while the file is stale (it compares the env
+  hash and the installed workerd version, so every wrangler bump trips it).
 
 ## Commands
 

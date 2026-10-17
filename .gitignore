@@ -28,9 +28,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files (.dev.vars too: `wrangler types` would read its secret names into
+# the committed worker-configuration.d.ts, and `wrangler types --check` fails)
 .env*
 !.env.example
+.dev.vars*
 
 # typescript
 *.tsbuildinfo
