@@ -28,3 +28,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # After the build: the UI dictionary must stay in one shared chunk
+      # (next.config.js turbopackChunking — an experimental key a Next
+      # upgrade can drop with only a warning).
+      - run: npm run check:dict

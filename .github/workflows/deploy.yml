@@ -38,6 +38,9 @@ jobs:
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
         run: npm run build
 
+      # The UI dictionary stays in one shared chunk (same check as ci.yml).
+      - run: npm run check:dict
+
       # Push runtime secrets before deploy so the new code sees them on the
       # next request. One `secret bulk` call = one new Worker version (three
       # `secret put`s made three). Secrets whose GH secret isn't configured are

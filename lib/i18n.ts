@@ -1,6 +1,7 @@
 // Two languages: Norwegian at the root (the canonical site, every existing URL
 // unchanged) and English under /en/. Blog posts may exist in one language or
-// both (lib/blog.ts pairs them). Strings live in data/i18n.ts.
+// both (lib/blog.ts pairs them). Strings live in data/i18n.ts (the error
+// boundary's in data/i18n-error.ts).
 
 export type Lang = 'nb' | 'en'
 

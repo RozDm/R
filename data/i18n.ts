@@ -1,4 +1,5 @@
 import type { Lang } from '@/lib/i18n'
+import { ERROR_COPY } from '@/data/i18n-error'
 
 // UI copy for both languages. `nb` defines the shape; `en` is typed against
 // it, so a key added in one language and forgotten in the other fails the
@@ -6,7 +7,8 @@ import type { Lang } from '@/lib/i18n'
 
 const nb = {
   skipToContent: 'Hopp til hovedinnhold',
-  backHome: 'Tilbake til forsiden',
+  // backHome + error: shared with app/error.tsx (see i18n-error.ts).
+  ...ERROR_COPY.nb,
   nav: {
     label: 'Hovednavigasjon',
     mobileLabel: 'Mobilnavigasjon',
@@ -155,18 +157,13 @@ const nb = {
     ogLabel: 'BLOGG',
     ogAlt: 'Artikkel',
   },
-  error: {
-    eyebrow: 'Systemfeil',
-    title: 'Noe gikk galt. Jeg er redd jeg ikke kan fortsette akkurat nå.',
-    retry: 'Prøv på nytt',
-  },
 }
 
 export type Dict = typeof nb
 
 const en: Dict = {
   skipToContent: 'Skip to main content',
-  backHome: 'Back to the home page',
+  ...ERROR_COPY.en,
   nav: {
     label: 'Main navigation',
     mobileLabel: 'Mobile navigation',
@@ -310,11 +307,6 @@ const en: Dict = {
     copied: 'Copied!',
     ogLabel: 'BLOG',
     ogAlt: 'Article',
-  },
-  error: {
-    eyebrow: 'System error',
-    title: 'Something went wrong. I’m afraid I can’t continue right now.',
-    retry: 'Try again',
   },
 }
 

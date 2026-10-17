@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { DICT } from '@/data/i18n'
+import { ERROR_COPY } from '@/data/i18n-error'
 import { languageAlternates, langFromPath, localePath, pick, switchPath } from '@/lib/i18n'
 
 describe('langFromPath', () => {
@@ -66,6 +68,22 @@ describe('dictionary', () => {
     const strings = (v: unknown): string[] =>
       typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []
     expect(strings(DICT.en).filter((s) => !s.trim())).toEqual([])
+  })
+
+  it('takes the error boundary copy from its one source, same keys in both languages', () => {
+    expect(shape(ERROR_COPY.en)).toEqual(shape(ERROR_COPY.nb))
+    for (const lang of ['nb', 'en'] as const) {
+      expect(DICT[lang].backHome).toBe(ERROR_COPY[lang].backHome)
+      expect(DICT[lang].error).toBe(ERROR_COPY[lang].error)
+    }
+  })
+
+  it('keeps app/error.tsx off the full dictionary', () => {
+    // error.tsx renders on every page: importing DICT put both languages in a
+    // chunk every page loads.
+    const from = [...readFileSync('app/error.tsx', 'utf8').matchAll(/from ['"]([^'"]+)['"]/g)].map((m) => m[1])
+    expect(from.filter((s) => /data\/i18n$/.test(s))).toEqual([])
+    expect(from).toContain('@/data/i18n-error')
   })
 
   it('picks a localized value or passes a neutral one through', () => {

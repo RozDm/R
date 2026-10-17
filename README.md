@@ -89,7 +89,8 @@ content/blog/       Markdown posts (frontmatter: title, description, date, tags)
                     English twins in content/blog/en/ (translationOf)
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, tag canon + aliases (tags.ts), UI
-                    copy in both languages (i18n.ts)
+                    copy in both languages (i18n.ts; the error boundary's in
+                    i18n-error.ts)
 docs/               history.md — incident history, the "why" behind CLAUDE.md's
                     hard rules (agent docs: CLAUDE.md sitewide, src/CLAUDE.md worker,
                     .github/CLAUDE.md workflows)
