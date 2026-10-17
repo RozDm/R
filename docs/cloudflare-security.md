@@ -8,8 +8,10 @@ pages carry `X-Frame-Options: SAMEORIGIN`; the Worker's say `DENY`).
 
 Facts verified against developers.cloudflare.com on 2026-10-16 (sources
 inline); "measured" means probed live on the same day. Everything here is
-**dashboard-managed** except the response-header rule and the JavaScript
-Detections switch, which live in `.github/workflows/zone-rules.yml`.
+**dashboard-managed** except what `.github/workflows/zone-rules.yml` applies:
+the response-header rule, the JavaScript Detections switch and the zone
+settings marked "code" below. The same run fails on dashboard bot settings
+that would block search engines or CI.
 
 ## Deployed configuration (final, 2026-10-16)
 
@@ -19,14 +21,19 @@ Detections switch, which live in `.github/workflows/zone-rules.yml`.
 | Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; counts every path except the asset-first static prefixes (below) |
 | Bot Fight Mode | Security → Settings → Bot traffic | **Off** (see "Lessons") |
 | JavaScript Detections | `zone-rules.yml` (code; no dashboard switch on Free) | **Off** — `enable_js: false` (lesson 3) |
-| Block AI bots (legacy toggle) | Security → Settings → Bot traffic | On |
+| AI bot policies | Security → Settings → Configure AI bot policies | Training **Disallow** (`ai_training: disallow`), Search and Agent Allow, Bot Preference Sync on (read 2026-10-16); the legacy `ai_bots_protection: block` is still set. GPTBot/ClaudeBot/CCBot UAs get Cloudflare's 403 (measured). `zone-rules.yml` fails if Training or Search becomes Block (see "AI bots") |
+| Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
+| 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
+| Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
+| Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the token lacks) | owner to switch on + add an e-mail |
 | Browser Integrity Check | Security → Settings | on by default per the docs, which say it challenges requests without a User-Agent — yet an empty-UA request got 200 (measured); its actual state is unverified, so don't rely on it |
 | Free Managed Ruleset, L3–L7 DDoS | default | On (a custom rule with Skip → All managed rules can exempt a false positive) |
 | Response Header Transform `error_no_store` | `zone-rules.yml` (code) | 4xx/5xx → `Cache-Control: no-store` |
 
-Changes are made in the dashboard: the `CLOUDFLARE_API_TOKEN` secret (a
-user-owned token) has Zone Read + Transform Rules Edit + Bot Management
-Edit — no Zone WAF write.
+The `CLOUDFLARE_API_TOKEN` secret (a user-owned token) has Zone Read +
+Transform Rules Edit + Bot Management Edit + Zone Settings Edit + Zone WAF
+Edit — no SSL and Certificates, and no account-level Notifications, so CT
+Monitoring and Notifications stay dashboard work.
 
 Goal of the set: keep scanner traffic off the Worker's 100,000 requests/day
 (per account, resets 00:00 UTC; past it every `run_worker_first` path —
@@ -316,11 +323,22 @@ The legacy "Block AI bots" toggle is deprecated as of 2026-09-15. The
 current control is Security → Settings → **Configure AI bot policies**
 (Free since 2026-07-01): Search, Agent and Training, each Block / Block on
 pages with ads / Allow (Training also Disallow, with Bot Preference Sync).
-Recommended: Training = Block, Search = Allow, Agent = owner's choice.
-Training covers GPTBot, ClaudeBot, CCBot, Bytespider, Amazonbot and
-similar; `Google-Extended` is only a robots.txt token, not a crawler, so the
-edge can't block it. Whether mixed Search+Training crawlers are blocked is
-documented both ways — check Events. AI Crawl Control (`/ai` in the zone)
+API fields on `/zones/{id}/bot_management`: `ai_search`, `ai_user` (Agent),
+`ai_training` (`disabled` = Allow, `block`, `only_on_ad_pages`; Training
+also `disallow`) and `bot_preference_sync_enabled`.
+Recommended (and set): Training = **Disallow**, Search = Allow, Agent =
+Allow. **Never Training = Block**: since 2026-09-15 Block also stops
+Applebot, Bingbot and Googlebot — search included ("Have it both ways",
+Cloudflare blog); Disallow edge-blocks the training crawlers (GPTBot,
+ClaudeBot, CCBot, Bytespider, Amazonbot…) and keeps accountable mixed-use
+crawlers for search. `zone-rules.yml` fails on `ai_training`/`ai_search`
+= `block`. `Google-Extended` and `Applebot-Extended` are robots.txt tokens,
+not crawlers, so the edge can't block them — and the Cloudflare-managed
+robots.txt content is **not served** here (measured: `/robots.txt` is the
+Worker's, `app/robots.ts`, with no prepended block despite
+`is_robots_txt_managed: true`); opting them out would take a rule in
+`app/robots.ts`. A spoofed Googlebot UA gets 200; whether the verified one
+passes can only be seen in Security → Events (check before launch). AI Crawl Control (`/ai` in the zone)
 is a separate per-crawler product; blocking there uses one custom rule.
 Source: [block AI bots](https://developers.cloudflare.com/bots/additional-configurations/block-ai-bots/).
 

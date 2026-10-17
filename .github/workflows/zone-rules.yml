@@ -17,10 +17,14 @@ name: Zone rules
 #    loader into HTML after the Worker hashed the page's scripts, so the CSP
 #    refuses it on every page view (one CSP report — a Worker request — each)
 #    and the HTML loses its ETag. It outlived Bot Fight Mode being switched
-#    off (docs/cloudflare-security.md, lesson 3).
+#    off (docs/cloudflare-security.md, lesson 3). The same step fails on bot
+#    settings that would block search engines or CI (Bot Fight Mode, AI
+#    training "block", AI Labyrinth…) — those stay dashboard-owned.
+# 3. Zone settings: Browser Cache TTL "Respect Existing Headers" (0), 0-RTT
+#    on, minimum TLS raised to 1.2 if below it (a stricter 1.3 is kept).
 #
-# The token needs Zone → Zone: Read, Zone → Transform Rules: Edit and
-# Zone → Bot Management: Edit.
+# The token needs Zone → Zone: Read, Zone → Transform Rules: Edit,
+# Zone → Bot Management: Edit and Zone → Zone Settings: Edit.
 on:
   workflow_dispatch:
 
@@ -103,7 +107,7 @@ jobs:
           echo "Rules in $PHASE now:"
           jq -c '.result.rules[] | {ref, enabled, expression, description}' "$OUT"
 
-      - name: Turn off JavaScript Detections
+      - name: Bot settings
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
@@ -120,6 +124,17 @@ jobs:
           [ "$(call GET "$BM")" = 200 ] || fail "reading $BM failed — the token needs Zone → Bot Management: Edit"
           BEFORE=$(jq -c '.result' "$OUT")
           echo "Before: $BEFORE"
+          # Read-only guards on what the dashboard owns (AI bot policies): each
+          # of these would block search engines or CI. Training "block" also
+          # stops Googlebot, Bingbot and Applebot since 2026-09-15 — use
+          # "disallow"; Bot Fight Mode and content-bot blocking challenge
+          # GitHub's runners; AI Labyrinth rewrites HTML after the Worker.
+          BAD=$(jq -r '[(select(.fight_mode == true) | "fight_mode"),
+            (select(.ai_training == "block") | "ai_training=block"),
+            (select(.ai_search == "block") | "ai_search=block"),
+            (select(.content_bots_protection == "block") | "content_bots_protection=block"),
+            (select(.crawler_protection == "enabled") | "crawler_protection=enabled")] | join(", ")' <<<"$BEFORE")
+          [ -z "$BAD" ] || fail "bot settings that break search engines or CI: $BAD (docs/cloudflare-security.md)"
           if [ "$(jq -r '.enable_js' <<<"$BEFORE")" = false ]; then
             echo "enable_js is already false."
             exit 0
@@ -139,6 +154,49 @@ jobs:
             exit 1
           fi
           echo "enable_js is now false; nothing else changed."
+
+      - name: Zone settings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          OUT=$(mktemp)
+          call() { # method path [json] -> HTTP status on stdout, body in $OUT
+            curl -sS --max-time 30 -o "$OUT" -w '%{http_code}' -X "$1" "$CF_API$2" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' ${3:+--data "$3"}
+          }
+          # stderr: get() runs inside $(…), which would swallow stdout.
+          fail() { echo "::error::$1" >&2; jq -c '.errors' "$OUT" 1>&2 2>/dev/null || cat "$OUT" >&2; exit 1; }
+          S="/zones/$ZONE_ID/settings"
+          get() { # setting -> its JSON value
+            [ "$(call GET "$S/$1")" = 200 ] || fail "reading $1 failed — the token needs Zone → Zone Settings: Edit"
+            jq -c '.result.value' "$OUT"
+          }
+          set_to() { # setting json_value — write, then read back
+            [ "$(call PATCH "$S/$1" "$(jq -nc --argjson v "$2" '{value: $v}')")" = 200 ] \
+              || fail "setting $1 failed — the token needs Zone → Zone Settings: Edit"
+            [ "$(get "$1")" = "$2" ] || fail "$1 answered 200 but does not read back as $2"
+          }
+          ensure() { # setting json_value
+            local v; v=$(get "$1")
+            if [ "$v" = "$2" ]; then echo "$1: $v (already)"; else set_to "$1" "$2"; echo "$1: $v → $2"; fi
+          }
+
+          # 0 = Respect Existing Headers: the edge stops rewriting max-age on
+          # Cache API hits (withStoredTtl in src/http.ts undoes it; kept as a
+          # backstop). Every response here already sets its own Cache-Control.
+          ensure browser_cache_ttl 0
+          # 0-RTT resumption: Cloudflare takes only GET/HEAD/OPTIONS in early
+          # data, and every write here is a POST, so a replay changes nothing.
+          ensure 0rtt '"on"'
+          # Raise-only: 1.2 is the floor; a stricter 1.3 is the owner's choice
+          # and is kept (measured 1.3 on 2026-10-16: TLS 1.2 was refused).
+          v=$(get min_tls_version)
+          case "$v" in
+            '"1.2"'|'"1.3"') echo "min_tls_version: $v (kept)" ;;
+            *) set_to min_tls_version '"1.2"'; echo "min_tls_version: $v → \"1.2\"" ;;
+          esac
 
       - name: Check prod
         run: |
@@ -181,3 +239,21 @@ jobs:
           done
           [ -n "$ok" ] || { echo "::error::$BASE/ still carries the /cdn-cgi/challenge-platform/ loader"; exit 1; }
           echo "OK   no JSD loader in $BASE/ ($(echo "$h" | grep -i '^etag:' || echo 'no etag'))"
+          # TLS 1.1 is refused by the edge (OpenSSL 3 needs SECLEVEL=0 even to
+          # offer it; plain curl --tls-max 1.1 fails client-side and proves nothing).
+          if echo | openssl s_client -connect "$ZONE:443" -servername "$ZONE" -tls1_1 -cipher 'DEFAULT:@SECLEVEL=0' 2>&1 \
+              | grep -q 'alert protocol version'; then
+            echo "OK   TLS 1.1 refused"
+          else
+            echo "::error::$ZONE accepted (or never answered) a TLS 1.1 handshake"; exit 1
+          fi
+          # AI training crawlers are blocked at the edge (Cloudflare's 403 page,
+          # X-Frame-Options SAMEORIGIN — the Worker's say DENY).
+          h=$(curl -sS -o /dev/null -D - --max-time 20 \
+            -A 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)' \
+            "$BASE/" | tr -d '\r')
+          if echo "$h" | grep -q '^HTTP/[0-9.]* 403' && echo "$h" | grep -qi '^x-frame-options: SAMEORIGIN'; then
+            echo "OK   GPTBot gets Cloudflare's 403"
+          else
+            echo "::error::a GPTBot UA was not blocked at the edge"; echo "$h" | head -3; exit 1
+          fi

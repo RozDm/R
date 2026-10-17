@@ -107,8 +107,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   (and so bypass) the cache. A cache hit re-sets the stored TTL
   (`withStoredTtl`) because the zone's Browser Cache TTL (4 h default)
   rewrites `max-age` on edge HITs (`s-maxage` is untouched); clients also
-  fetch with `cache: 'no-store'`. Keep both. Dashboard-side fix: Browser
-  Cache TTL → "Respect Existing Headers".
+  fetch with `cache: 'no-store'`. Keep both. `zone-rules.yml` now sets
+  Browser Cache TTL → "Respect Existing Headers" (`browser_cache_ttl: 0`),
+  which stops the rewrite; `withStoredTtl` stays as the backstop.
 - CSP: three policies sharing `COMMON_DIRECTIVES` (incl.
   `upgrade-insecure-requests`): `strictCsp(hashes)` for readable HTML (with
   `report-uri`/`report-to` → `/api/csp-report`); `ENFORCED_CSP` for non-HTML

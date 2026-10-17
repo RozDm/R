@@ -45,11 +45,12 @@ export async function cachedApiJson(
 }
 
 // On a cache HIT, Cloudflare's zone-level Browser Cache TTL (4 h by default)
-// rewrites the stored max-age (60 → 14400) while leaving s-maxage alone.
+// rewrote the stored max-age (60 → 14400) while leaving s-maxage alone.
 // Restore the TTL we put in so browsers and shared caches don't hold a
-// 60-second status snapshot for four hours. (If the zone rewrites again on
-// egress, the dashboard fix is Browser Cache TTL → "Respect Existing
-// Headers"; the front end is safe either way — it fetches with no-store.)
+// 60-second status snapshot for four hours. zone-rules.yml now sets Browser
+// Cache TTL → "Respect Existing Headers", which stops the rewrite; this stays
+// as the backstop if that setting drifts (the front end fetches with
+// no-store either way).
 function withStoredTtl(hit: Response): Response {
   const ttl = /s-maxage=(\d+)/.exec(hit.headers.get('Cache-Control') ?? '')?.[1]
   if (!ttl) return hit
