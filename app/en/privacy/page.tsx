@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           Privacy notice
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-4">
-          Last updated: 4 October 2026
+          Last updated: 17 October 2026
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-10 max-w-xl">
           This is a translation for convenience. The{' '}
@@ -88,10 +88,6 @@ export default function PrivacyPage() {
             data centre — used to tell bots from people), both derived by Cloudflare at the edge of
             its network, and how many times a blog post has been read. The figures cannot be linked
             to individuals, and no IP addresses are stored in the statistics.
-          </p>
-          <p>
-            Cloudflare Web Analytics is also used: privacy-friendly measurement without cookies and
-            without cross-site tracking.
           </p>
           <p>
             If your browser blocks something on a page for security reasons (a so-called Content

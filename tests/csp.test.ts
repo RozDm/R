@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CSP_REPORT_GROUP, CSP_REPORT_PATH, inlineScriptHashes, parseCspReports, strictCsp } from '@/src/csp'
+import { CSP_REPORT_GROUP, CSP_REPORT_PATH, ENFORCED_CSP, HTML_FALLBACK_CSP, inlineScriptHashes, parseCspReports, strictCsp } from '@/src/csp'
 
 describe('inlineScriptHashes', () => {
   it('hashes a single inline script', async () => {
@@ -50,7 +50,13 @@ describe('inlineScriptHashes', () => {
 describe('strictCsp', () => {
   it('embeds hashes in the script-src directive', () => {
     const csp = strictCsp(["'sha256-abc='", "'sha256-def='"])
-    expect(csp).toContain("script-src 'self' 'sha256-abc=' 'sha256-def=' https://static.cloudflareinsights.com")
+    expect(csp).toContain("script-src 'self' 'sha256-abc=' 'sha256-def=' https://challenges.cloudflare.com;")
+  })
+
+  it('allows no Cloudflare Web Analytics host (removed; an edge-injected beacon must be refused)', () => {
+    for (const csp of [strictCsp([]), ENFORCED_CSP, HTML_FALLBACK_CSP]) {
+      expect(csp).not.toContain('cloudflareinsights')
+    }
   })
 
   it('does not include unsafe-inline in script-src', () => {

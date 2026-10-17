@@ -88,6 +88,31 @@ check_no_header() { # name url header_pattern — the header must be absent
   fi
 }
 
+check_no_edge_script() { # name url — no script injected into the HTML after the Worker
+  # The edge injects only into responses to an `Accept: text/html` request
+  # (fetch() sends */*), so ask like a browser. Web Analytics' automatic
+  # setup adds a <script data-cf-beacon>, JavaScript Detections a
+  # /cdn-cgi/challenge-platform/ loader: the hash CSP refuses both, each
+  # refusal is a CSP report (one Worker request per page view), and the
+  # injection strips the HTML's ETag. Off in the dashboard is the only fix.
+  local name=$1 url=$2 code i
+  for i in 1 2 3; do
+    code=$(curl -sS -o "$TMP" -w '%{http_code}' --max-time 20 -A "$UA" -H 'Accept: text/html' "$url" 2>/dev/null)
+    [ "$code" = "200" ] && break
+    echo "  retry $i: $url -> ${code:-ERR}, want 200"
+    sleep 15
+  done
+  if [ "$code" != "200" ]; then
+    echo "FAIL $name: $url -> $code (want 200)"
+    FAIL=1
+  elif grep -qE 'data-cf-beacon|/cdn-cgi/challenge-platform/' "$TMP"; then
+    echo "FAIL $name: $url carries an edge-injected script (Web Analytics beacon or JSD loader)"
+    FAIL=1
+  else
+    echo "OK   $name"
+  fi
+}
+
 # Warm-up: right after a deploy the custom-domain TLS bindings can take a few
 # minutes to propagate (curl exits with code 000 until then). Wait for the
 # edge to answer at all before judging individual checks.
@@ -151,6 +176,7 @@ check_header "HSTS"       "$BASE/" "^strict-transport-security:"
 check_header "CSP (hash)" "$BASE/" "^content-security-policy:.*sha256-"
 check_header "COOP"       "$BASE/" "^cross-origin-opener-policy: same-origin"
 check_header "CSP report" "$BASE/" "^reporting-endpoints: csp-endpoint="
+check_no_edge_script "no edge script" "$BASE/"
 # The "Block scanners" WAF rule (.github/waf/scanner-block.expr) keeps its
 # word patterns off blog paths, so a slug naming a scanner target reaches the
 # Worker (its 404 says X-Frame-Options DENY) instead of Cloudflare's 403

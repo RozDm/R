@@ -29,6 +29,7 @@ that would block search engines or CI.
 | Browser Integrity Check | Security → Settings | on by default per the docs, which say it challenges requests without a User-Agent — yet an empty-UA request got 200 (measured); its actual state is unverified, so don't rely on it |
 | Free Managed Ruleset, L3–L7 DDoS | default | On (a custom rule with Skip → All managed rules can exempt a false positive) |
 | Response Header Transform `error_no_store` | `zone-rules.yml` (code) | 4xx/5xx → `Cache-Control: no-store` |
+| Web Analytics (RUM) | account → Web Analytics → rozsoshnykh.no → Manage site (dashboard; the CI token has no account Analytics scope) | **Disable** (owner to-do below). Its automatic setup injects a second beacon into browser HTML after the Worker and strips the ETag; the site counts visits itself (`/api/visit`). The CSP no longer lists `cloudflareinsights`, so a returning injection is refused, and `smoke.sh` ("no edge script") fails on it (`docs/history.md`) |
 
 The `CLOUDFLARE_API_TOKEN` secret (a user-owned token) has Zone Read +
 Transform Rules Edit + Bot Management Edit + Zone Settings Edit + Zone WAF
@@ -69,6 +70,12 @@ Open as of 2026-10-17; tick them off here when done.
   confirm Training = "Disallow AI training" (never "Block": it stops
   Googlebot), Search and Agent Allow; then Security → Events, filtered to
   verified search crawlers, should show no blocks of Googlebot/Bingbot.
+- [ ] **Web Analytics off** — account → Web Analytics → the `rozsoshnykh.no`
+  site → Manage site → **Disable** (delete any other site there, e.g. an old
+  `d.rozsoshnykh.workers.dev` one). Check: `curl -s -H 'Accept: text/html'
+  https://rozsoshnykh.no/ | grep -c data-cf-beacon` prints 0. Until then each
+  page view the edge injects into is one refused script, one CSP report and
+  a red "no edge script" smoke check.
 
 ## Lessons from rolling it out (2026-10-16)
 
