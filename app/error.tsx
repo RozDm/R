@@ -6,7 +6,7 @@
 
 import Link from 'next/link'
 import { useEffect } from 'react'
-import { DICT } from '@/data/i18n'
+import { ERROR_COPY } from '@/data/i18n-error'
 import { localePath } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
 
@@ -18,7 +18,7 @@ export default function Error({
   reset: () => void
 }) {
   const lang = useLang()
-  const t = DICT[lang]
+  const t = ERROR_COPY[lang]
   useEffect(() => {
     // Surface the digest in DevTools without leaking the stack to users.
     if (process.env.NODE_ENV !== 'production') console.error(error)

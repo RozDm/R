@@ -81,12 +81,16 @@ answered, keep output and replies short.
   «Systemfeil» boundaries.
 - Languages: ALL UI copy lives in `data/i18n.ts` — `nb` defines the shape,
   `en` is typed against it, `tests/i18n.test.ts` checks parity; never
-  hard-code copy in a component. Server components take `lang` from their
-  page (both languages share `HomePage`, `ContactPage` and the blog page
-  components); client components call `useLang()`. Links between pages go
-  through `localePath()` (`lib/i18n.ts`, the static pairs); blog posts and
-  tags pair dynamically and pass their twin as `Header alternate` (the NO/EN
-  switch) + `pageMetadata({ languages })` (hreflang). Bilingual data uses
+  hard-code copy in a component. One exception: `app/error.tsx` reads
+  `ERROR_COPY` from `data/i18n-error.ts` (spread into `nb`/`en`, so one
+  source) — it renders on every page, and importing `DICT` there put the
+  whole two-language dictionary in a chunk every page loads. Server
+  components take `lang` from their page (both languages share `HomePage`,
+  `ContactPage` and the blog page components); client components call
+  `useLang()`. Links between pages go through `localePath()`
+  (`lib/i18n.ts`, the static pairs); blog posts and tags pair dynamically
+  and pass their twin as `Header alternate` (the NO/EN switch) +
+  `pageMetadata({ languages })` (hreflang). Bilingual data uses
   `Localized` + `pick()`. The export always says `<html lang="nb">`: the
   Worker rewrites `/en/` documents to `en`, `HtmlLang` keeps it right on
   client navigation. `/en/privacy/` translates `/personvern/` (the Norwegian
