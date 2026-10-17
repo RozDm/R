@@ -25,7 +25,7 @@ that would block search engines or CI.
 | Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
-| Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the token lacks) | owner to switch on + add an e-mail |
+| Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the token lacks) | owner to switch on + add an e-mail (see "Owner to-do") |
 | Browser Integrity Check | Security → Settings | on by default per the docs, which say it challenges requests without a User-Agent — yet an empty-UA request got 200 (measured); its actual state is unverified, so don't rely on it |
 | Free Managed Ruleset, L3–L7 DDoS | default | On (a custom rule with Skip → All managed rules can exempt a false positive) |
 | Response Header Transform `error_no_store` | `zone-rules.yml` (code) | 4xx/5xx → `Cache-Control: no-store` |
@@ -44,6 +44,31 @@ reaches the Worker and is not counted
 Measured: `/wp-login.php`, `/.env`, `*.php` get Cloudflare's 403 without
 touching the Worker — the custom rule works. With Bot Fight Mode off, the
 watchdog from GitHub runners is green again (run 38910824580).
+
+## Owner to-do (dashboard only — the CI token can't do these)
+
+Open as of 2026-10-17; tick them off here when done.
+
+- [ ] **Certificate Transparency Monitoring** — SSL/TLS → Edge Certificates →
+  Certificate Transparency Monitoring → On, add an e-mail. Mails when a CA
+  outside Cloudflare logs a certificate for the zone (mis-issuance, a hijack).
+  Free on every plan. (API: `PATCH /zones/{id}/ct/alerting {"enabled":true}`
+  needs SSL and Certificates: Edit — deliberately not on the CI token.)
+- [ ] **Notifications** (account level: Notifications → Add), e-mail to the
+  owner. All on Free:
+  - HTTP DDoS Attack Alert (`dos_attack_l7`);
+  - Universal SSL Alert (`universal_ssl_event_type`) and Advanced Certificate
+    Alert (the www custom-domain certificate);
+  - Incident Alerts, filtered to Workers, Workers Assets, Workers KV, D1,
+    Email Routing, Turnstile, SSL Certificate Provisioning, Authoritative DNS;
+  - Abuse Report (`abuse_report_alert`) and Trust & Safety new-block
+    notification (a false phishing block of a URL);
+  - Security Insights.
+  Free has no alert for the Workers 100k/day limit.
+- [ ] **AI bot policies** — Security → Settings → Configure AI bot policies:
+  confirm Training = "Disallow AI training" (never "Block": it stops
+  Googlebot), Search and Agent Allow; then Security → Events, filtered to
+  verified search crawlers, should show no blocks of Googlebot/Bingbot.
 
 ## Lessons from rolling it out (2026-10-16)
 

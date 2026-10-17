@@ -18,8 +18,9 @@ Context is split so a session loads only what its task touches:
   built page;
 - `docs/cloudflare-security.md` — the zone's edge security on the Free plan
   (WAF custom rule, rate limiting, Bot Fight Mode, AI bots): the deployed
-  config, verified Free limits, execution order and known pitfalls; read it
-  before touching zone security or when a 403/429 isn't the Worker's;
+  config, verified Free limits, execution order, known pitfalls and the
+  owner's open dashboard to-do; read it before touching zone security or
+  when a 403/429 isn't the Worker's;
 - `docs/history.md` — the incidents behind the hard rules; read it only when
   a rule seems wrong or you are tempted to undo one.
 
