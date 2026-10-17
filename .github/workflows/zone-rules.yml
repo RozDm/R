@@ -259,18 +259,17 @@ jobs:
           echo "Custom rules before:"
           jq -c '.[] | {id, ref, description, action, enabled, chars: (.expression | length)}' <<<"$BEFORE"
 
-          # Ours by ref; the first run finds the dashboard-made rule by its name.
+          # Ours by ref, else by our name. The first run adopts the dashboard
+          # rule ("Security rules для rozsoshnykh.no") by the old 52-pattern
+          # expression's signature — never a second rule next to it, which
+          # would stay first and keep blocking slugs.
           pick='if length == 1 then .[0].id elif length == 0 then "" else "MANY" end'
           ID=$(jq -r --arg r "$WAF_REF" "[.[] | select(.ref == \$r)] | $pick" <<<"$BEFORE")
           [ -n "$ID" ] || ID=$(jq -r "[.[] | select(.action == \"block\" and
             ((.description // \"\") | ascii_downcase | startswith(\"block scanners\")))] | $pick" <<<"$BEFORE")
+          [ -n "$ID" ] || ID=$(jq -r --arg sig 'http.request.uri.path contains ".php"' \
+            "[.[] | select(.action == \"block\" and (.expression | contains(\$sig)))] | $pick" <<<"$BEFORE")
           [ "$ID" != MANY ] || fail "more than one candidate rule — merge them by hand, then re-run"
-          # Never add a second rule next to the old one under another name: it
-          # would stay first and keep blocking slugs.
-          if [ -z "$ID" ] && jq -e 'any(.[]; .action == "block" and
-              (.expression | contains("http.request.uri.path contains \".php\"")))' <<<"$BEFORE" >/dev/null; then
-            fail "the old scanner rule exists under another name — rename it to \"Block scanners\" in the dashboard and re-run"
-          fi
 
           if [ -n "$ID" ]; then
             OLD=$(jq -c --arg id "$ID" '.[] | select(.id == $id)' <<<"$BEFORE")
