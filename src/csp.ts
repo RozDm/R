@@ -1,7 +1,7 @@
 // Security headers and CSP helpers for the Worker.
 //
 // For HTML the Worker can read, it ships a strict hash-based CSP:
-//   script-src 'self' 'sha256-<each inline script>'… <beacon-host>
+//   script-src 'self' 'sha256-<each inline script>'… <Turnstile host>
 // 'self' covers the /_next/*.js chunks; the per-response hashes cover the
 // inline scripts. Hashes are computed from the exact HTML being served, so
 // they are always self-consistent and independent of build determinism.
@@ -18,8 +18,10 @@
 // renders the contact form, and the extra origin is harmless elsewhere.
 const TURNSTILE_HOST = 'https://challenges.cloudflare.com'
 
-// Trailing script origins shared by every policy (beacon + Turnstile).
-const SCRIPT_TAIL = `https://static.cloudflareinsights.com ${TURNSTILE_HOST}`
+// Trailing script origin shared by every policy. Cloudflare Web Analytics
+// (static.cloudflareinsights.com) is deliberately absent: it was removed
+// 2026-10-17 (docs/history.md), so a beacon the edge injects is refused.
+const SCRIPT_TAIL = TURNSTILE_HOST
 
 // Directives identical across all three policies; only script-src varies.
 // upgrade-insecure-requests lives here so strictCsp — the policy real HTML
@@ -32,7 +34,7 @@ const COMMON_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
-  `connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com ${TURNSTILE_HOST}`,
+  `connect-src 'self' ${TURNSTILE_HOST}`,
   `frame-src ${TURNSTILE_HOST}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",

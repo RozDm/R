@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { Intel_One_Mono } from 'next/font/google'
-import Script from 'next/script'
 import './globals.css'
 import { ThemeProvider } from '@/context/ThemeContext'
 import VisitBeacon from '@/components/effects/VisitBeacon'
@@ -159,11 +158,6 @@ export default function RootLayout({
           <VisitBeacon />
           <HtmlLang />
         </ThemeProvider>
-        <Script
-          src="https://static.cloudflareinsights.com/beacon.min.js"
-          data-cf-beacon='{"token": "2f353dc40f0546b1962abda8ee34537d"}'
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   )

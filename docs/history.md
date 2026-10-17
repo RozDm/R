@@ -121,7 +121,31 @@ moved" check stopped the run (38992445763). The next run (38992547397) set
 about a minute. Rule: write only `ai_training` (the workflow owns
 `disallow`), never `ai_bots_protection`.
 
+## 2026-10-17 — Web Analytics: a dead token and a second, injected beacon
+
+The owner's console showed `POST https://cloudflareinsights.com/cdn-cgi/rum`
+→ 404 plus a CORS error. Probed with curl: the token hard-coded in
+`app/layout.tsx` (issued in June, likely for the old workers.dev site) was
+unknown to the collector — the same 404 as an all-zero fake token, while
+four public sites' tokens got 204 for the same minimal Web Vitals body. The
+CORS line was only a side effect: Cloudflare's 404 page has no
+`Access-Control-Allow-Origin` (the preflight passed). Meanwhile the zone's
+own Web Analytics site was in automatic mode: for any `Accept: text/html`
+request the edge injected a second `beacon.min.js` (another token) after the
+Worker and dropped the HTML ETag. Only the first beacon to run on a page
+reports; in the default "excluding EU visitors" mode a visitor in Norway
+gets no injected one, so the dead manual beacon was all that ran. Web
+Analytics duplicated `/api/visit` anyway, so it was removed: the snippet,
+both `cloudflareinsights` CSP hosts and the privacy-notice paragraph went,
+the owner disables the site in the dashboard, and `smoke.sh` ("no edge
+script") fails while HTML served to a browser carries an injected script.
+
 ## Removed features that must not quietly return
+
+- **Cloudflare Web Analytics** — removed 2026-10-17 (above). Visits are
+  counted by `/api/visit`; bringing RUM back means a CSP host, a privacy
+  paragraph and a manual snippet whose token is checked live — never the
+  automatic setup, which injects after the Worker.
 
 - **Newsletter sign-up** — removed. Its leftover `subscribers` table was
   confirmed empty and dropped from prod on 2026-10-04 (`d1-repair` sql mode),

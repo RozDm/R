@@ -32,7 +32,7 @@ export default function PersonvernPage() {
           Personvernerklæring
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-10">
-          Sist oppdatert: 4. oktober 2026
+          Sist oppdatert: 17. oktober 2026
         </p>
 
         <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold">
@@ -76,10 +76,6 @@ export default function PersonvernPage() {
             datasenter — brukt til å skille roboter fra mennesker), begge avledet av Cloudflare
             på kanten av nettverket, og hvor mange ganger et blogginnlegg er lest. Tallene kan
             ikke knyttes til enkeltpersoner, og ingen IP-adresser lagres i statistikken.
-          </p>
-          <p>
-            I tillegg brukes Cloudflare Web Analytics, en personvernvennlig måling uten
-            informasjonskapsler og uten sporing på tvers av nettsteder.
           </p>
           <p>
             Hvis nettleseren din blokkerer noe på en side av sikkerhetshensyn (såkalt

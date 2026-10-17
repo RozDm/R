@@ -120,12 +120,16 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   assets + redirects (no `unsafe-inline` — nothing executes inline there);
   `HTML_FALLBACK_CSP` (keeps `unsafe-inline`) only for HTML that couldn't be
   decoded to hash — effectively unreachable, assets are fetched as identity.
-  Inline scripts the EDGE injects after the Worker (Bot Fight Mode's
-  JavaScript Detections, Rocket Loader, Zaraz) are never in the hash list:
-  the browser refuses them and each refusal is a CSP report — one Worker
-  request (`docs/cloudflare-security.md`). JavaScript Detections is off
-  zone-wide (`enable_js: false`, applied by `zone-rules.yml`); turn nothing
-  on that injects a script. Turnstile's iframe logs `Refused to connect to
+  Scripts the EDGE injects after the Worker (Bot Fight Mode's JavaScript
+  Detections, Rocket Loader, Zaraz, Web Analytics' automatic setup) are never
+  in the hash list or on the host list: the browser refuses them and each
+  refusal is a CSP report — one Worker request (`docs/cloudflare-security.md`).
+  JavaScript Detections is off zone-wide (`enable_js: false`, applied by
+  `zone-rules.yml`) and Web Analytics is gone (no `cloudflareinsights` host,
+  `docs/history.md`); turn nothing on that injects a script — `smoke.sh`
+  ("no edge script") fails when `/`, fetched as a browser, carries an
+  injected `<script>` (`data-cf-beacon` or a `/cdn-cgi/` src) or the JSD
+  loader. Turnstile's iframe logs `Refused to connect to
   'data:,'` (2–3× per widget run) on `/kontakt/` + `/en/contact/`: that is
   Cloudflare's own iframe CSP (its `connect-src` lists
   `hagen.challenges.cloudflare.com` …), which has no report directives, and
