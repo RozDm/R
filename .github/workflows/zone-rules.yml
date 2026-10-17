@@ -136,10 +136,11 @@ jobs:
           # Owned here: JavaScript Detections off, and AI training crawlers
           # "disallow" — blocked at the edge while search crawlers pass (Check
           # prod probes GPTBot); "block" would also stop Googlebot, Bingbot and
-          # Applebot. The legacy "Block AI bots" field (ai_bots_protection) is
-          # a mirror of this policy, not a separate switch: setting it to
-          # "disabled" turned ai_training "disallow" into "disabled" (run
-          # 38992445763), so it is never written and may move with ai_training.
+          # Applebot. The deprecated "Block AI bots" field (ai_bots_protection)
+          # is coupled to it one way: writing it "disabled" also reset
+          # ai_training to "disabled" (run 38992445763), while setting
+          # ai_training back to "disallow" left it "disabled" (38992547397).
+          # So it is never written here, and not compared below.
           WANT='{"enable_js":false,"ai_training":"disallow"}'
           BODY=$(jq -c --argjson w "$WANT" '. as $b | $w | with_entries(select($b[.key] != .value))' <<<"$BEFORE")
           if [ "$BODY" = "{}" ]; then

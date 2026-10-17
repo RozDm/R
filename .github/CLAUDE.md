@@ -52,17 +52,19 @@ incident background: `docs/history.md`.
   `/zones/{id}/bot_management` (JavaScript Detections: an edge-injected
   inline loader the hash CSP refuses, one CSP report per page view; it
   outlived Bot Fight Mode — `docs/cloudflare-security.md` lesson 3) and
-  `ai_bots_protection: disabled` (the deprecated "Block AI bots" toggle,
-  whose block now also stops Googlebot; the AI bot policies' Training
-  "disallow" keeps the training crawlers out — the prod check probes GPTBot), failing
-  if the PUT moved any other field or if a dashboard bot setting would
-  block search engines or CI (Bot Fight Mode, AI Training/Search "block",
-  AI Labyrinth…); sets the zone settings (Browser Cache TTL "Respect
-  Existing Headers", 0-RTT on, minimum TLS raised to 1.2 if lower); and
-  applies the "Block scanners" WAF rule from `.github/waf/scanner-block.expr`
-  — dry run first, then a PATCH of that one rule in place (found by ref,
-  else by name; the old expression is printed for a rollback; other custom
-  rules are never touched). The prod check then wants `/` free of the
+  AI Training "disallow" (training crawlers blocked at the edge, search
+  crawlers pass; the prod check probes GPTBot). It never writes the
+  deprecated `ai_bots_protection`: writing it reset Training to Allow
+  (`docs/history.md`). It fails if the PUT moved any other field or if a
+  dashboard bot setting would block search engines or CI (Bot Fight Mode,
+  AI Search "block", AI Labyrinth…); sets the zone settings (Browser Cache
+  TTL "Respect Existing Headers", 0-RTT on, minimum TLS raised to 1.2 if
+  lower — it is 1.3); and applies the "Block scanners" WAF rule from
+  `.github/waf/scanner-block.expr` — dry run first, then a PATCH of that one
+  rule in place (found by ref, else by name, else — first run only — by the
+  old rule's signature; PATCH can't set a ref, so the name finds it; the
+  old expression is printed for a rollback; other custom rules are never
+  touched). Applied 2026-10-17 (run 38992597687). The prod check then wants `/` free of the
   `/cdn-cgi/challenge-platform/` loader, TLS 1.1 refused, a GPTBot UA
   blocked, scanner paths
   answered by Cloudflare's 403 and scanner-word slugs by the Worker. The

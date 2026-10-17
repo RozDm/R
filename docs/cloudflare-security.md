@@ -17,11 +17,11 @@ that would block search engines or CI.
 
 | Layer | Where | Setting |
 |---|---|---|
-| WAF custom rule "Block scanners" | `zone-rules.yml` (code: `.github/waf/scanner-block.expr`, PATCHed in place; `scripts/check-waf.mjs` guards it in CI) | ~3.7k chars: extension list + dot-segment clause + global `*.php/*` and `*/wlwmanifest.xml` + word wildcards that skip `/blogg/`, `/en/blog/`, `/api/views/`, `/_next/static/` (below), Block — 1 of 5 rules used |
+| WAF custom rule "Block scanners" | `zone-rules.yml` (code: `.github/waf/scanner-block.expr`, PATCHed in place — applied 2026-10-17, run 38992597687, replacing the dashboard rule "Security rules для rozsoshnykh.no"; `scripts/check-waf.mjs` guards it in CI) | ~3.7k chars: extension list + dot-segment clause + global `*.php/*` and `*/wlwmanifest.xml` + word wildcards that skip `/blogg/`, `/en/blog/`, `/api/views/`, `/_next/static/` (below), Block — 1 of 5 rules used |
 | Rate limiting rule | Security → Security rules → Rate limiting rules | 60 requests / 10 s per IP, Block, 10 s timeout; counts every path except the asset-first static prefixes (below) |
 | Bot Fight Mode | Security → Settings → Bot traffic | **Off** (see "Lessons") |
 | JavaScript Detections | `zone-rules.yml` (code; no dashboard switch on Free) | **Off** — `enable_js: false` (lesson 3) |
-| AI bot policies | Security → Settings → Configure AI bot policies | Training **Disallow** (`ai_training: disallow`), Search and Agent Allow, Bot Preference Sync on (read 2026-10-16); the deprecated legacy toggle (`ai_bots_protection`) is switched off by `zone-rules.yml` — since 2026-09-15 its block also stops mixed-use crawlers (Googlebot, Bingbot, Applebot). GPTBot/ClaudeBot/CCBot UAs get Cloudflare's 403 (measured; Check prod probes GPTBot). `zone-rules.yml` fails if Training or Search becomes Block or the legacy toggle comes back (see "AI bots") |
+| AI bot policies | Security → Settings → Configure AI bot policies | Training **Disallow** (`ai_training: disallow`), Search and Agent Allow, Bot Preference Sync on (read 2026-10-16); `zone-rules.yml` owns Training = Disallow. The deprecated legacy toggle (`ai_bots_protection`) is off since 2026-10-17 — and must never be written: writing it `disabled` also reset Training to Allow for a minute (`docs/history.md`). GPTBot/ClaudeBot/CCBot UAs get Cloudflare's 403 (measured; Check prod probes GPTBot). `zone-rules.yml` fails if Search becomes Block (see "AI bots") |
 | Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
@@ -383,8 +383,9 @@ Allow. **Never Training = Block**: since 2026-09-15 Block also stops
 Applebot, Bingbot and Googlebot — search included ("Have it both ways",
 Cloudflare blog); Disallow edge-blocks the training crawlers (GPTBot,
 ClaudeBot, CCBot, Bytespider, Amazonbot…) and keeps accountable mixed-use
-crawlers for search. `zone-rules.yml` fails on `ai_training`/`ai_search`
-= `block`. `Google-Extended` and `Applebot-Extended` are robots.txt tokens,
+crawlers for search. `zone-rules.yml` keeps `ai_training: disallow` and
+fails on `ai_search: block`; it never writes the legacy
+`ai_bots_protection` (writing it resets Training — `docs/history.md`). `Google-Extended` and `Applebot-Extended` are robots.txt tokens,
 not crawlers, so the edge can't block them — and the Cloudflare-managed
 robots.txt content is **not served** here (measured: `/robots.txt` is the
 Worker's, `app/robots.ts`, with no prepended block despite
