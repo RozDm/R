@@ -7,7 +7,9 @@ import { SITE_COPY } from '@/lib/site'
 export default function Hero({ lang }: { lang: Lang }) {
   const t = DICT[lang].hero
   return (
-    <section id="about" className="flex flex-col gap-6 pt-8 animate-fade-in">
+    // No fade-in here, unlike the sections below: this is the first screen, and
+    // an opacity-0 start holds back its paint and so the LCP (CLAUDE.md).
+    <section id="about" className="flex flex-col gap-6 pt-8">
       <div>
         <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-3">
           {SITE_COPY[lang].roles.join(' · ')}
