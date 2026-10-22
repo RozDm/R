@@ -424,12 +424,13 @@ request.
   off, and `enable_js: false` (API, BFM off) removed it — lesson 3.
   Turning BFM back on would likely turn it back on.
 - **CSP**: Cloudflare copies a nonce onto its injected script only if it can
-  parse one from the CSP *response header*; it never adds a hash. With this
-  Worker's hash-only `strictCsp()` (`src/csp.ts`) the loader is always
-  blocked — which is why JSD is off (`enable_js: false`, lesson 3) rather
-  than allowed in. A per-request nonce would let it run;
+  parse one from the CSP *response header*; it never adds a hash. With the
+  hash-only page policy (`metaCsp()`, `src/csp.ts`, baked into each page at
+  build) the loader is always blocked — which is why JSD is off
+  (`enable_js: false`, lesson 3) rather than allowed in. A nonce would need
+  a per-request policy, i.e. the Worker back in front of every page;
   `Cache-Control: no-transform` on HTML stops injection but also edge
-  compression (this Worker fetches HTML identity-encoded).
+  compression.
   `'unsafe-inline'` is no fix: browsers ignore it when hashes are present.
 - **Off on this zone since 2026-10-16.** It can't be scoped and it blinded
   the smoke test and the watchdog. The custom rule, rate limiting and the

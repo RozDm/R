@@ -292,8 +292,9 @@ function servedUrls() {
   const outDir = path.join(ROOT, 'out')
   for (const e of fs.readdirSync(outDir, { recursive: true, withFileTypes: true })) {
     const u = `/${path.relative(outDir, path.join(e.parentPath, e.name)).split(path.sep).join('/')}`
-    if (!e.isFile() || u === '/_headers') continue // _headers: the asset server's config, never served
-    urls.add(u).add(u.replaceAll('$', '%24')) // the Worker 301s an RSC payload's `$` to %24
+    // _headers / _redirects: the asset server's config, never served.
+    if (!e.isFile() || u === '/_headers' || u === '/_redirects') continue
+    urls.add(u).add(u.replaceAll('$', '%24')) // the asset server 307s an RSC payload's `$` to %24
     if (u.endsWith('/index.html')) {
       const dir = u.slice(0, -'index.html'.length)
       urls.add(dir).add(dir.slice(0, -1) || '/')

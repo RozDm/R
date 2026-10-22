@@ -28,7 +28,8 @@ Live: https://rozsoshnykh.no
 | | |
 |--|--|
 | `npm run dev` | Next dev server with Turbopack |
-| `npm run build` | `prebuild` emits `public/world.svg`, then static export to `out/` |
+| `npm run build` | `prebuild` emits `public/world.svg`, then static export to `out/`, then `postbuild` (`scripts/finalize-export.mjs`): each page's hash CSP `<meta>`, `lang="en"`, `/favicon.ico`, slash-less 301s |
+| `npm run check:waf` / `check:csp` | After a build: the WAF rule blocks no served URL (`scripts/check-waf.mjs`); every inline script is hashed in its page's CSP (`scripts/check-csp.mjs`) |
 | `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
 | `npm run typecheck` | `wrangler types --check` (`cf-typecheck`: is `worker-configuration.d.ts` current?), then `tsc --noEmit` for app **and** worker (`tsconfig.worker.json`) |
 | `npm test` | Vitest — CSP hashing + violation-report parsing, status history + alert damping + staleness, tags, metrics, contact, reading time, page metadata, map buckets, time-series (epoch boundary, AE parsing, bucket fill), and the Worker route handlers (`tests/worker/`, D1 as real SQLite) |
@@ -37,10 +38,13 @@ Live: https://rozsoshnykh.no
 
 ### CI/CD
 
-Push to `main` triggers `.github/workflows/deploy.yml`: lint → typecheck → test →
-build → sync runtime secrets (one `wrangler secret bulk`) → `npx wrangler
-deploy` (the repo's pinned wrangler) → **`scripts/smoke.sh`** against
-production (pages, APIs, redirects, security headers, caching, noindex).
+Push to `main` triggers `.github/workflows/deploy.yml`, two jobs: a
+secret-free build (lint → typecheck → test → build → `check:waf`,
+`check:dict`, `check:csp`) and a deploy job with the `production`
+environment's secrets: sync runtime secrets (one `wrangler secret bulk`) →
+`npx wrangler deploy` (the repo's pinned wrangler) → **`scripts/smoke.sh`**
+against production (pages, APIs, redirects, security headers and the live
+page CSPs, caching, noindex).
 Push to live takes ~2.5 minutes. If the
 smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs as
 the `check` status check.
@@ -108,9 +112,12 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     language), og-site-card.tsx, og-post-card.tsx, geo.ts,
                     timeseries-fill.ts, trends-axis.ts
 schema/             metrics.sql (views, geo, contact)
-scripts/            smoke.sh, build-world-svg.mjs, check-docs.mjs (docs drift)
-src/                Cloudflare Worker (index.ts, csp.ts, http.ts, status.ts,
-                    metrics.ts, contact.ts, timeseries.ts, routes/*)
+scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
+                    (postbuild), check-csp.mjs, check-waf.mjs, check-docs.mjs
+                    (docs drift)
+src/                Cloudflare Worker for /api/* (index.ts, csp.ts, http.ts,
+                    ip.ts, status.ts, metrics.ts, contact.ts, timeseries.ts,
+                    routes/*)
 tests/              Vitest
 wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, CONTACT_EMAIL, cron, routes)
 ```
@@ -206,7 +213,8 @@ own ids). Then `npm run deploy` — `predeploy` runs lint/typecheck/test first.
 
 ### Status (soft launch)
 
-The site is live at `rozsoshnykh.no` (with 301 from `www` and
-`d.rozsoshnykh.workers.dev`). DNSSEC is active. `robots: { index: false }` stays
+The site is live at `rozsoshnykh.no` (`www` and plain HTTP 301 at the edge;
+`d.rozsoshnykh.workers.dev` serves the same pages with the apex canonical, its
+`/api/*` 301s). DNSSEC is active. `robots: { index: false }` stays
 until the first posts are published — flip `robots.index` to `true` in
 `app/layout.tsx` and submit the sitemap in Google Search Console then.

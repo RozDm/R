@@ -5,7 +5,7 @@ import { ImageResponse } from 'next/og'
 // and iOS's home-screen icon (apple-touch-icon). Emitted at build time as
 // real .png files under /icons/, so the static host serves them with the
 // right type — unlike the extension-less opengraph-image outputs. Also
-// favicon.ico (16/32/48), which the Worker serves at /favicon.ico for
+// favicon.ico (16/32/48), which the build copies to /favicon.ico for
 // clients that request it directly instead of reading <link rel=icon>.
 export const dynamic = 'force-static'
 
