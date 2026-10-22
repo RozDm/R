@@ -53,7 +53,9 @@ export default function PersonvernPage() {
           <p>
             Meldingen leveres til e-postinnboksen min hos Gmail, og en kopi lagres i en database
             hos Cloudflare. Databasekopien slettes automatisk etter 30 dager. Hvis e-posten ikke
-            kan leveres, slettes kopien med en gang, og du får beskjed om å prøve igjen.
+            kan leveres, slettes kopien med en gang, og du får beskjed om å prøve igjen. Selve
+            e-posten slettes senest tre måneder etter siste kontakt om henvendelsen, med mindre
+            den fører til et oppdrag eller en avtale som krever at den oppbevares lenger.
           </p>
           <p>
             Skjemaet er beskyttet av Cloudflare Turnstile, som skiller mennesker fra roboter.

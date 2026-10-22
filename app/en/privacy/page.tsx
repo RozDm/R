@@ -65,7 +65,9 @@ export default function PrivacyPage() {
           <p>
             The message is delivered to my Gmail inbox, and a copy is stored in a database at
             Cloudflare. The database copy is deleted automatically after 30 days. If the email
-            cannot be delivered, the copy is deleted at once and you are asked to try again.
+            cannot be delivered, the copy is deleted at once and you are asked to try again. The
+            email itself is deleted no later than three months after our last contact about the
+            enquiry, unless it leads to an assignment or contract that requires keeping it longer.
           </p>
           <p>
             The form is protected by Cloudflare Turnstile, which tells humans from bots. To do that,
