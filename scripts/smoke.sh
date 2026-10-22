@@ -141,7 +141,7 @@ check "tag"         "$BASE/blogg/tag/velkommen/" 200 "Velkommen"
 check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"
 check "personvern"  "$BASE/personvern/"      200 "Personvernerklæring"
 check "404"         "$BASE/finnes-ikke/"     404
-# English twins (/en/): the Worker must rewrite <html lang> for them.
+# English twins (/en/): the build must set <html lang="en"> on them.
 check "en home"     "$BASE/en/"              200 '<html lang="en"' "Service status" "Where readers come from" 'hrefLang="nb"'
 check "en contact"  "$BASE/en/contact/"      200 '<html lang="en"' "Contact form"
 check "en privacy"  "$BASE/en/privacy/"      200 '<html lang="en"' "Privacy notice"
@@ -169,22 +169,44 @@ check "world-svg"   "$BASE/world.svg"        200 "<svg"
 check "security.txt" "$BASE/.well-known/security.txt" 200 "Contact: mailto:"
 check "icon-512"    "$BASE/icons/icon-512.png" 200
 check "favicon.ico" "$BASE/favicon.ico"      200
+# Next exports the OG cards without an extension; public/_headers types them.
+check_header "og-image png"      "$BASE/opengraph-image"                    "^content-type: image/png"
+check_header "post og-image png" "$BASE/blogg/velkommen/opengraph-image"    "^content-type: image/png"
 
-echo "== Canonical host =="
+echo "== Canonical host and redirects =="
+# www and plain HTTP: the edge (zone-rules.yml). Slash-less pages and
+# /status: out/_redirects, so their Location is a path.
 check_redirect "www"         "https://www.rozsoshnykh.no/"        "$BASE/"
-check_redirect "workers.dev" "https://d.rozsoshnykh.workers.dev/" "$BASE/"
-check_redirect "no-slash"    "$BASE/blogg"                         "$BASE/blogg/"
+check_redirect "http"        "http://rozsoshnykh.no/"             "$BASE/"
+check_redirect "no-slash"    "$BASE/blogg"                         "/blogg/"
+check_redirect "status"      "$BASE/status"                        "/#status"
+# workers.dev isn't our zone, so no edge rule can redirect it: its pages are
+# served as-is with the apex canonical; only the Worker's /api/* still 301s.
+check "workers.dev page" "https://d.rozsoshnykh.workers.dev/blogg/" 200 '<link rel="canonical" href="https://rozsoshnykh.no/blogg/"'
+check_redirect "workers.dev api" "https://d.rozsoshnykh.workers.dev/api/status" "$BASE/api/status"
 
 echo "== Security headers =="
 check_header "HSTS"       "$BASE/" "^strict-transport-security:"
-check_header "CSP (hash)" "$BASE/" "^content-security-policy:.*sha256-"
+check_header "XFO"        "$BASE/" "^x-frame-options: DENY"
+check_header "CSP header" "$BASE/" "^content-security-policy: frame-ancestors 'none'"
 check_header "COOP"       "$BASE/" "^cross-origin-opener-policy: same-origin"
 check_header "CSP report" "$BASE/" "^reporting-endpoints: csp-endpoint="
+# Each page's own hash policy (a <meta> baked in at build) must cover every
+# inline script it ships — else the page renders but none of it runs. Retried:
+# right after a deploy some edges still serve the previous version.
+for i in 1 2 3 4 5 6; do
+  if node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-csp.mjs --live "$BASE" \
+      / /en/ /blogg/velkommen/ /en/blog/welcome/ /kontakt/; then
+    echo "OK   CSP (hash) on 5 pages"; break
+  fi
+  [ "$i" = 6 ] && { echo "FAIL CSP (hash)"; FAIL=1; break; }
+  echo "  retry $i: CSP (hash)"; sleep 15
+done
 check_no_edge_script "no edge script" "$BASE/"
 # The "Block scanners" WAF rule (.github/waf/scanner-block.expr) keeps its
 # word patterns off blog paths, so a slug naming a scanner target reaches the
-# Worker (its 404 says X-Frame-Options DENY) instead of Cloudflare's 403
-# (SAMEORIGIN). Catches a dashboard edit that brings path-anywhere
+# site's 404 (X-Frame-Options DENY, public/_headers) instead of Cloudflare's
+# 403 (SAMEORIGIN). Catches a dashboard edit that brings path-anywhere
 # `contains` patterns back. A synthetic slug, and only the header asserted,
 # so a real post by that name can't turn this red.
 check_header "WAF slug-safe" "$BASE/blogg/wp-jenkins-canary/" "^x-frame-options: DENY"
@@ -194,7 +216,8 @@ echo "== Caching =="
 # their browser cache from public/_headers, so repeat visits and client-side
 # navigations don't re-download every chunk. world.svg is the canary: its
 # cache header proves _headers applied, and no X-Frame-Options (which the
-# Worker sets on everything it serves) proves no Worker request was spent.
+# Worker sets on everything it serves, _headers only on page paths) proves
+# no Worker request was spent.
 check_header    "cache world.svg"    "$BASE/world.svg" "^cache-control: public, max-age=604800"
 check_no_header "world.svg no Worker" "$BASE/world.svg" "^x-frame-options:"
 # _headers stamps a static MISS with the same year-long immutable; the zone

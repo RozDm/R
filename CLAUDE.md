@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 Personal portfolio + blog for Dmytro Rozsoshnykh, live at https://rozsoshnykh.no.
-Next.js 16 static export (App Router, `output: 'export'`) served by a Cloudflare
-Worker. React 19, TypeScript 6, Tailwind v4. The site is Norwegian (nb-NO) at
+Next.js 16 static export (App Router, `output: 'export'`) served by Cloudflare
+Workers static assets, with a Worker for `/api/*`. React 19, TypeScript 6, Tailwind v4. The site is Norwegian (nb-NO) at
 the root with an English twin under `/en/` (front page, contact, privacy,
 blog). Code and comments are English.
 
@@ -76,7 +76,7 @@ answered, keep output and replies short.
   the contact page), plus `feed.xml` + `en/feed.xml`, `sitemap`, `robots`,
   `manifest`, OG images, `/icons/*.png` (build-time PNGs of `app/icon.svg`
   for the manifest + apple-touch-icon, `app/icons/[name]/route.tsx`, which
-  also builds `favicon.ico` — the Worker serves it at `/favicon.ico`) and
+  also builds `favicon.ico` — the build copies it to `/favicon.ico`) and
   `/.well-known/security.txt` (static in `public/`, RFC 9116 — bump its
   `Expires` yearly). `error.tsx` / `global-error.tsx` are the HAL-voiced
   «Systemfeil» boundaries.
@@ -93,8 +93,8 @@ answered, keep output and replies short.
   and pass their twin as `Header alternate` (the NO/EN switch) +
   `pageMetadata({ languages })` (hreflang). Bilingual data uses
   `Localized` + `pick()`. The export always says `<html lang="nb">`: the
-  Worker rewrites `/en/` documents to `en`, `HtmlLang` keeps it right on
-  client navigation. `/en/privacy/` translates `/personvern/` (the Norwegian
+  build (`scripts/finalize-export.mjs`) rewrites `/en/` documents to `en`,
+  `HtmlLang` keeps it right on client navigation. `/en/privacy/` translates `/personvern/` (the Norwegian
   one is authoritative) — change both.
 - Metadata: every page builds it with `pageMetadata()` (`lib/metadata.ts`;
   `lang: 'en'` on English pages sets og:locale, hreflang, the English OG card
@@ -105,15 +105,28 @@ answered, keep output and replies short.
   inherits it). Name, roles, site title/description and the light/dark
   background colours (`THEME_BG`, mirrored by themeColor, the manifest and
   `ThemeContext`) live in `lib/site.ts` — never hard-code them.
-- `src/` — the Cloudflare Worker in front of the static export
-  (`run_worker_first`): canonical-host redirects, per-request hash-based CSP,
-  `/api/*`, crons. Static files (`/_next/static/*`, `/fonts/*`, `/icons/*`,
-  `/world.svg`) skip it — every Worker invocation counts against the free
-  plan's 100k requests/day, and past it Worker-first requests get a 429 — and
-  take their headers from `public/_headers`; the two lists must match
-  (`tests/static-assets.test.ts`), and the zone's rate limiting rule excludes
-  the same prefixes by hand (`docs/cloudflare-security.md`) — change all three
-  together. `_headers` can't match on status, so a
+- Serving: the asset server answers every page and file straight from
+  `out/` — no Worker request (`run_worker_first: ["/api/*"]`; a miss gets the
+  404 page, never the Worker). Every Worker invocation counts against the
+  free plan's 100k requests/day and past it gets a 429; asset requests are
+  free, unlimited and keep working past it, so the quota can only take out
+  `/api/*`, never the pages. What the Worker used to do per request is done
+  once at build by `scripts/finalize-export.mjs` (postbuild): each page's
+  hash-based CSP as a `<meta>` atop `<head>`, ahead of any script (`withMetaCsp`,
+  `src/csp.ts`), `lang="en"` for `/en/`, `/favicon.ico`, and a 301 from every
+  slash-less page path into `out/_redirects` (the asset server's own is a
+  307); `npm run check:csp` re-checks the hashes in CI, deploy and smoke.
+  Headers come from `public/_headers` (`/*`: HSTS, the header CSP
+  `HEADER_CSP` — `frame-ancestors`, which `<meta>` can't carry, and NO fetch
+  directive, or it would veto the hashes — `Reporting-Endpoints` and the
+  rest; `X-Frame-Options` on the page paths; caches; OG `Content-Type`),
+  kept equal to the Worker's own set by `tests/static-assets.test.ts`;
+  `/status` → `/#status` in `public/_redirects`; www → apex and HTTP → HTTPS
+  at the edge (`zone-rules.yml`). The zone's rate limiting rule
+  (`docs/cloudflare-security.md`) excludes the static prefixes by hand.
+- `src/` — the Cloudflare Worker for `/api/*` and the crons (canonical-host
+  301 for the API; an `/api/` path no route claims gets the 404 page with
+  the `_headers` set). `_headers` can't match on status, so a
   zone Response Header Transform Rule (`.github/workflows/zone-rules.yml`)
   makes every 4xx/5xx `no-store`. Stores: KV `STATUS` (uptime snapshot only), D1
   `rozsoshnykh-metrics-v2` (`METRICS`: view/geo counters, contact log),
@@ -171,9 +184,10 @@ answered, keep output and replies short.
 ## Commands
 
 - `npm run check` (lint + typecheck + tests) must pass before a PR;
-  `npm run build` exports to `out/`. CI and deploy then run
-  `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
-  `.github/waf/scanner-block.expr` must block no URL the build serves.
+  `npm run build` exports to `out/` (and finalizes it, above). CI and deploy
+  then run `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
+  `.github/waf/scanner-block.expr` must block no URL the build serves — and
+  `npm run check:csp` (`scripts/check-csp.mjs`).
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (a
   secret-free job runs checks + build, then a job with the `production`
   secrets syncs them, runs `npx wrangler deploy` and `scripts/smoke.sh`
@@ -244,8 +258,10 @@ answered, keep output and replies short.
 ## Gotchas
 
 - `wrangler.jsonc`: `workers_dev: true` must stay (wrangler silently disables
-  workers.dev when routes exist, which 404s old links instead of letting the
-  Worker 301 them). The D1 database is `rozsoshnykh-metrics-v2`; never try to
+  workers.dev when routes exist, which would 404 old links). workers.dev
+  isn't our zone, so no edge rule can redirect it: its pages answer 200 with
+  the apex canonical, its `/api/*` still 301s to the apex (accepted
+  2026-10-22, when HTML left the Worker). The D1 database is `rozsoshnykh-metrics-v2`; never try to
   reclaim the old `rozsoshnykh-metrics` name — the dead original's deleted
   entry still locks it.
 - `next.config.js` sets the experimental

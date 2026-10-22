@@ -43,8 +43,11 @@ and Certificates or account-level Notifications, so CT Monitoring and
 Notifications stay dashboard work.
 
 Goal of the set: keep scanner traffic off the Worker's 100,000 requests/day
-(per account, resets 00:00 UTC; past it every `run_worker_first` path —
-all HTML and `/api/*` — gets a 429). A request blocked at the edge never
+(per account, resets 00:00 UTC; past it every `/api/*` request gets a 429).
+Since 2026-10-22 only `/api/*` runs the Worker (`run_worker_first`): pages,
+files and misses are the asset server's, free and unlimited, and stay up
+when the quota is gone — an exhausted quota now costs the status, map,
+chart, view counts and contact form, not the site. A request blocked at the edge never
 reaches the Worker and is not counted
 ([Workers metrics](https://developers.cloudflare.com/workers/observability/metrics-and-analytics/):
 "Requests blocked by WAF or other security features will not count").
@@ -157,8 +160,9 @@ Open as of 2026-10-17; tick them off here when done.
    an extension and bypass it. Replaced the same day by the prefix
    expression below; a fresh page view then got no 429 (39 requests in 10 s,
    22 of them static). `/favicon.ico`, `/icon.svg`, `/robots.txt`,
-   `/sitemap.xml`, the feeds, the manifest, OG images and RSC `*.txt` are
-   Worker-served here and must stay counted.
+   `/sitemap.xml`, the feeds, the manifest, OG images and RSC `*.txt` were
+   Worker-served then and had to stay counted (asset-first since
+   2026-10-22).
 
 ## Execution order
 
@@ -172,10 +176,11 @@ IP Access rules
   → http_request_firewall_managed  (Free Managed Ruleset)
   → [http_request_sbfm — Super Bot Fight Mode, Pro+ only, absent on Free]
   → … → Request Header Transforms → Cache Rules
-  → Worker (run_worker_first paths) or Workers Static Assets (asset-first paths)
+  → Worker (`/api/*`, run_worker_first) or Workers Static Assets (everything
+    else: `_redirects`, the file, or the 404 page, with `_headers`)
   → response: Response Header Transforms (error_no_store) — and, when
     `enable_js` is on, the JSD loader is injected into HTML here, after the
-    Worker set its CSP (off since 2026-10-16 — lesson 3)
+    page's CSP was fixed at build (off since 2026-10-16 — lesson 3)
 ```
 
 Sources: [phases list](https://developers.cloudflare.com/ruleset-engine/reference/phases-list/)
@@ -356,11 +361,13 @@ Source: [rate limiting availability](https://developers.cloudflare.com/waf/rate-
   exceeds 60 per 10 s and is 432,000 requests a day; ~1.2 req/s from one IP
   spends the whole quota. Only per-IP bursts are stopped.
 
-Deployed (2026-10-16), 60 requests / 10 s per IP, Block — counts only
-Worker-bound paths. The excluded prefixes are the negatives of
-`run_worker_first` in `wrangler.jsonc` (plus Cloudflare's own `/cdn-cgi/`),
-a third copy of that list next to `public/_headers` — change all three
-together. `starts_with` is a function, not an infix operator:
+Deployed (2026-10-16), 60 requests / 10 s per IP, Block — counts every
+path but the static prefixes, which were then the negatives of
+`run_worker_first` (plus Cloudflare's own `/cdn-cgi/`); they are still the
+cache rules of `public/_headers` — change both together. Since 2026-10-22
+only `/api/*` reaches the Worker, so the pages this rule still counts cost no
+quota; it stays as is (harmless at 60/10 s). The narrower alternative below
+is now the exact Worker-bound set — an optional dashboard edit. `starts_with` is a function, not an infix operator:
 
 ```
 not (
@@ -384,7 +391,8 @@ rejects `starts_with()`, the same rule with operators only:
 
 Narrower alternative: `starts_with(http.request.uri.path, "/api/")` at
 ~20/10 s (writes are already capped per IP by the Worker's
-`WRITE_LIMITER`).
+`WRITE_LIMITER`) — since 2026-10-22, every path that can spend a Worker
+request.
 
 ## Bot Fight Mode on Free
 

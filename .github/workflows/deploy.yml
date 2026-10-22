@@ -53,6 +53,9 @@ jobs:
       # The UI dictionary stays in one shared chunk (same check as ci.yml).
       - run: npm run check:dict
 
+      # Every page's baked-in CSP covers each of its inline scripts.
+      - run: npm run check:csp
+
       # out/ has a dot-directory (.well-known/security.txt), which
       # upload-artifact skips unless told otherwise.
       - uses: actions/upload-artifact@v7

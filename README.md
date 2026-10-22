@@ -1,8 +1,9 @@
 ## rozsoshnykh.no
 
 Personal site and blog for **Dmytro Rozsoshnykh** — sysadmin / DevOps in Vestland, Norway.
-A static Next.js export served by a Cloudflare Worker that also runs uptime
-monitoring, visitor geo aggregation, per-post view counters and a contact form.
+A static Next.js export served by Cloudflare Workers static assets, with a
+Worker for `/api/*` that runs uptime monitoring, visitor geo aggregation,
+per-post view counters and a contact form.
 Site copy is Norwegian (`nb-NO`); code and docs are English.
 
 Live: https://rozsoshnykh.no
@@ -16,9 +17,11 @@ Live: https://rozsoshnykh.no
   D1 (`METRICS`), Analytics Engine (`METRICS_AE`), Email Routing
   (`CONTACT_EMAIL`), Turnstile on the contact form, crons `*/5 * * * *`
   (uptime) and `0 3 * * *` (daily prune of the contact table, 30-day window)
-- Worker (`src/`) handles canonical host (301 from `www` and `*.workers.dev`),
-  strict per-request hash CSP for HTML it can decode, security headers, and the
-  `/api/*` endpoints
+- Pages never touch the Worker: each carries its strict hash CSP as a
+  `<meta>` baked in at build (`scripts/finalize-export.mjs`, re-checked by
+  `scripts/check-csp.mjs`), headers come from `public/_headers`, redirects
+  from `public/_redirects` + the zone (www → apex, HTTP → HTTPS)
+- Worker (`src/`) handles the `/api/*` endpoints and the crons
 
 ### Scripts
 

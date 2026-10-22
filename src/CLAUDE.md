@@ -5,19 +5,21 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 
 ## Modules
 
-- `index.ts` — entry (runs first for everything but static files, see
-  Rules below): HTTPS + canonical-host 301s (www/workers.dev → apex),
-  `/status/` → `/#status`, dispatches `/api/*` to `routes/`, per-request
-  **hash-based CSP** for HTML it can decode (+ a `Reporting-Endpoints`
-  header), cron dispatch (5-min health checks + daily contact prune) and the
-  status-alert mail.
+- `index.ts` — entry, run only for `/api/*` (Rules below): HTTPS +
+  canonical-host 301s for the API (workers.dev → apex; www is the edge's),
+  dispatches `/api/*` to `routes/`, hands an `/api/` path no route claims to
+  the 404 page (with the `_headers` set, which never reaches a Worker
+  response), cron dispatch (5-min health checks + daily contact prune) and
+  the status-alert mail.
 - `routes/` — one handler per endpoint: `status`, `views`, `geo`, `visit`,
   `timeseries`, `contact`, `csp-report`. Each takes the parsed `URL` and
   returns `null` when the path isn't its own; `index.ts` chains them with
   `??`. Pure logic goes in a top-level `src/*.ts` module, not in a route.
 - `http.ts` — `apiJson()` (JSON + security headers) and the edge-cache pair
   `cachedApiJson()`/`putCachedApiJson()`.
-- `csp.ts` — security headers and CSP.
+- `csp.ts` — security headers and CSP, shared with the build: `metaCsp`,
+  `withMetaCsp` and `cspProblems` run in `scripts/finalize-export.mjs` /
+  `scripts/check-csp.mjs` (Node imports the `.ts` directly).
 - `status.ts` — uptime cron config (`MONITORS`) + pure snapshot/alert logic.
 - `contact.ts` — pure contact/alert mail logic: validation limits, Turnstile
   verify, MIME building, the time windows over `contact`
@@ -114,13 +116,17 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   fetch with `cache: 'no-store'`. Keep both. `zone-rules.yml` now sets
   Browser Cache TTL → "Respect Existing Headers" (`browser_cache_ttl: 0`),
   which stops the rewrite; `withStoredTtl` stays as the backstop.
-- CSP: three policies sharing `COMMON_DIRECTIVES` (incl.
-  `upgrade-insecure-requests`): `strictCsp(hashes)` for readable HTML (with
-  `report-uri`/`report-to` → `/api/csp-report`); `ENFORCED_CSP` for non-HTML
-  assets + redirects (no `unsafe-inline` — nothing executes inline there);
-  `HTML_FALLBACK_CSP` (keeps `unsafe-inline`) only for HTML that couldn't be
-  decoded to hash — effectively unreachable, assets are fetched as identity.
-  Scripts the EDGE injects after the Worker (Bot Fight Mode's JavaScript
+- CSP: `metaCsp(hashes)` — each page's own policy, baked into it at build
+  as a `<meta>` right after the charset, ahead of any script (`COMMON_DIRECTIVES` incl.
+  `upgrade-insecure-requests`, minus `frame-ancestors`, + `report-to` →
+  `/api/csp-report`; `<meta>` can't carry `report-uri`, so only Chromium
+  reports — verified 2026-10-22 to report from `<meta>` like from a header);
+  `HEADER_CSP` on every asset-server response (`public/_headers` `/*`, equal
+  by test): `frame-ancestors`/`object-src`/`base-uri`/`form-action` only —
+  both policies are enforced, so a fetch directive there would block the
+  hashed inline scripts; `ENFORCED_CSP` for the Worker's JSON + redirects
+  (no `unsafe-inline` — nothing executes inline there).
+  Scripts the EDGE injects into a page (Bot Fight Mode's JavaScript
   Detections, Rocket Loader, Zaraz, Web Analytics' automatic setup) are never
   in the hash list or on the host list: the browser refuses them and each
   refusal is a CSP report — one Worker request (`docs/cloudflare-security.md`).
@@ -136,24 +142,24 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   our policy can't reach a cross-origin iframe — nothing arrives at
   `/api/csp-report`. Neither a `parseCspReports` filter nor `data:` in our
   `connect-src` would change it; leave it (tested in `tests/csp.test.ts`).
-- Static files skip the Worker: `run_worker_first` is `/*` minus
-  `/_next/static/*`, `/fonts/*`, `/icons/*`, `/world.svg`. Every Worker
-  invocation counts against the free plan's 100k requests/day (past it,
-  Worker-first requests get a 429 — the whole site), and a page view pulled
-  ~20 static files. Asset-first, they cost nothing, get 304s, and take their
-  headers from `public/_headers` (`/_next/static/*` → `immutable`, the rest →
-  1 week, all `nosniff`), which never applies to a Worker response — keep it
-  and the negative patterns in sync (`tests/static-assets.test.ts`); the zone's
-  rate limiting rule is a third, dashboard-only copy of the list
-  (`docs/cloudflare-security.md`). A miss
-  under those paths is answered by the asset server's 404 page, not the
-  Worker, still carrying the `_headers` cache — the zone rule from
-  `zone-rules.yml` (`.github/CLAUDE.md`) overrides it to `no-store` on
-  every 4xx/5xx. HTML stays no-cache (the per-request hash-CSP needs a fresh
-  document). The one icon the Worker still serves is the `/favicon.ico`
-  alias; it sets that week of cache itself. `smoke.sh` canary: world.svg
-  carries the week's cache AND no `X-Frame-Options` (proof it skipped the
-  Worker).
+- Only `/api/*` runs the Worker (`run_worker_first: ["/api/*"]`; keep the
+  key — without it a navigation to `/api/status` would get the 404 page).
+  Every Worker invocation counts against the free plan's 100k requests/day
+  (past it, a 429); the asset server's answers are free and outlive it, so
+  pages, files and misses (the 404 page — measured in `wrangler dev`, and in
+  prod by the `_headers` cache on a static miss) never cost a request. They
+  take their headers from `public/_headers` (security set on `/*`,
+  `X-Frame-Options` on the page paths, `immutable` on `/_next/static/*`, a
+  week on the stable files, a PNG type on the OG cards), which never
+  applies to a Worker response — `tests/static-assets.test.ts` keeps it
+  equal to `BASE_SECURITY_HEADERS` + HSTS + `HEADER_CSP` and lets no header
+  sit in two rules (they'd join with a comma). The zone's rate limiting rule
+  excludes the static prefixes by hand (`docs/cloudflare-security.md`). A
+  miss is still stamped with its path's `_headers` cache — the zone rule
+  from `zone-rules.yml` (`.github/CLAUDE.md`) overrides it to `no-store` on
+  every 4xx/5xx. HTML is `max-age=0, must-revalidate` with an ETag (304s).
+  `smoke.sh` canary: world.svg carries the week's cache AND no
+  `X-Frame-Options` (proof it skipped the Worker).
 - Status alerts are flap-damped (`CONSECUTIVE_FAILS_TO_ALERT = 2`): «nede»
   mails only on the second consecutive failed probe, «oppe igjen» on the
   first success after an alerted outage. `isStale`/`STALE_AFTER_MS` (15 min)
@@ -166,13 +172,12 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   parameters — NEVER `datetime('now', …)`: its "YYYY-MM-DD HH:MM:SS" form
   mis-compares with ISO as TEXT and makes every same-day row look recent.
 - `/en/` HTML: the export has one root layout, so every page says
-  `<html lang="nb">`; the HTML branch rewrites it to `lang="en"` for `/en`
-  paths (smoke-checked). The hash CSP is unaffected — it covers inline
-  scripts, not attributes.
-- Assets are fetched with `redirect: 'manual'`: a Request built in the Worker
-  follows redirects by default, which served `/blogg` as a 200 duplicate. The
-  binding's `html_handling` 307s (`/blogg` → `/blogg/`, `…/index.html` → `…/`)
-  go out as 301s. `/favicon.ico` is rewritten to the build-time
+  `<html lang="nb">`; `scripts/finalize-export.mjs` rewrites it to
+  `lang="en"` under `out/en/` (smoke-checked). The 404 page served for a
+  missing `/en/…` path still says `nb` (`HtmlLang` fixes it on the client).
+- Slash-less paths: `out/_redirects` 301s every page (`/blogg` → `/blogg/`,
+  generated at build); anything else gets `html_handling`'s 307
+  (`…/index.html` → `…/`). `/favicon.ico` is a build-time copy of
   `/icons/favicon.ico`.
 - Failures swallowed for availability (D1 upserts, mail sends, prune) still
   `console.error` — Workers Logs is the only place they show.

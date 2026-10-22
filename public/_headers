@@ -1,28 +1,73 @@
-# Headers for the static assets served WITHOUT the Worker. These paths are
-# the negative patterns of assets.run_worker_first in wrangler.jsonc (the two
-# lists must match — tests/static-assets.test.ts), so they cost no Worker
-# request and the asset server answers conditional requests with 304. The
-# Worker's own headers never reach them; this file is all they get.
-# _headers matches on path only, so it also stamps a MISS here (a 404) —
+# Headers for everything the asset server serves — every page and file; the
+# Worker runs only for /api/* (run_worker_first in wrangler.jsonc). _headers
+# never applies to a Worker response; the Worker sets the same set itself
+# (src/csp.ts BASE_SECURITY_HEADERS + HSTS — tests/static-assets.test.ts
+# keeps the two equal). Matching rules stack, and a header set by two of
+# them is joined with a comma — so each header lives in exactly one rule.
+# _headers matches on path only, so it also stamps a MISS (the 404 page) —
 # the zone rule from .github/workflows/zone-rules.yml turns every 4xx/5xx
 # into no-store, so a deploy-race 404 isn't kept for a year.
+
+# Security headers for every response. The CSP here is HEADER_CSP: no fetch
+# directive, so it stacks with each page's own hash policy (a <meta> baked in
+# at build, which can't carry frame-ancestors). Reports from that policy go
+# to the Reporting-Endpoints group.
+/*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=()
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy: frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
+  Reporting-Endpoints: csp-endpoint="https://rozsoshnykh.no/api/csp-report"
+
+# X-Frame-Options on the page paths only (frame-ancestors covers the rest):
+# world.svg must not carry it — smoke.sh's canary for "served without the
+# Worker". A new top-level route gets a line here (tests/static-assets.test.ts).
+/
+  X-Frame-Options: DENY
+
+/blogg/*
+  X-Frame-Options: DENY
+
+/en/*
+  X-Frame-Options: DENY
+
+/kontakt/*
+  X-Frame-Options: DENY
+
+/personvern/*
+  X-Frame-Options: DENY
 
 # Content-hashed build output (JS, CSS, next/font woff2): the name changes
 # when the bytes do.
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
-  X-Content-Type-Options: nosniff
 
-# Stable URLs (the 96 kB world map, the flag font, the app icons): a week,
-# so a change self-heals within one.
+# Stable URLs (the 96 kB world map, the flag font, the app icons, the
+# favicon copy): a week, so a change self-heals within one.
 /world.svg
   Cache-Control: public, max-age=604800
-  X-Content-Type-Options: nosniff
 
 /fonts/*
   Cache-Control: public, max-age=604800
-  X-Content-Type-Options: nosniff
 
 /icons/*
   Cache-Control: public, max-age=604800
-  X-Content-Type-Options: nosniff
+
+/favicon.ico
+  Cache-Control: public, max-age=604800
+
+# Next exports the OG cards as extension-less files, so the asset server
+# can't infer their type; crawlers ignore an image without it.
+/opengraph-image
+  Content-Type: image/png
+
+/en/opengraph-image
+  Content-Type: image/png
+
+/blogg/:slug/opengraph-image
+  Content-Type: image/png
+
+/en/blog/:slug/opengraph-image
+  Content-Type: image/png

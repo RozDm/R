@@ -20,9 +20,11 @@ description: Look at a built page in headless Chromium (Playwright) before it sh
 3. Stub `/api/*` with `page.route` — the LAST registered matching route wins,
    so register the catch-all first. Stub `window.turnstile` via
    `addInitScript`; the real widget can't load from the sandbox.
-4. To exercise the real Worker (CSP hashing, headers, redirects, routes):
-   `npx wrangler dev --local-protocol https` (plain http just 301s to https)
-   and launch with `ignoreHTTPSErrors: true`.
+4. To serve the export the way production does (the baked-in `<meta>` CSP
+   plus `_headers`, `_redirects`, the 404 page, and the real Worker on
+   `/api/*`): `npx wrangler dev`. Pages work over plain http; `/api/*`
+   301s to https unless you add `--local-protocol https` and launch with
+   `ignoreHTTPSErrors: true`.
 5. a11y: inject axe-core from cdnjs into each page and run it in both themes;
    the baseline is zero violations.
 6. Print a compact summary from the script (console errors, failed requests,

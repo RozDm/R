@@ -1,5 +1,6 @@
 // POST /api/csp-report — browsers report Content-Security-Policy violations
-// here (strictCsp() in ../csp.ts points report-uri / report-to at it). Each
+// here (metaCsp() in ../csp.ts points report-to at it, through the
+// Reporting-Endpoints header in public/_headers). Each
 // violation becomes one Analytics Engine point (blob1 = 'csp'); D1 and KV are
 // untouched, so a flood costs only AE writes (100k points/day on Free, shared
 // with the geo/view channels; WRITE_LIMITER caps one client at 20/min).

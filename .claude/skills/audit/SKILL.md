@@ -31,7 +31,7 @@ Look for:
 - **Sandbox egress varies.** Newer remote sessions can `curl` production through the agent proxy (use it to verify findings live); older web sandboxes have no egress. Never make a recommendation *depend* on being able to reach production from the dev environment — the deploy gate is `scripts/smoke.sh` in CI, not ad-hoc curl.
 - **`package.json` is not `type: module`.** Don't propose making it one — it breaks Next 16 / turbopack config load.
 - **ESLint stays on 9.** `eslint-plugin-react` via `eslint-config-next` is not ESLint-10-compatible. Don't propose a bump.
-- **`workers_dev: true` stays in `wrangler.jsonc`.** Setting it false silently breaks 301s.
+- **`workers_dev: true` stays in `wrangler.jsonc`.** Setting it false 404s old workers.dev links (they get the pages with the apex canonical; only `/api/*` still 301s there).
 - **`HISTORY_LIMIT = 149` is intentional** (monolith 1:4:9 — the 2001 theme is load-bearing). Don't propose "fixing" it.
 - **`%USERNAME%` in the intro is a literal joke**, not a template variable.
 - **`/kontakt`, `/personvern` and `/status` stay `noindex`** permanently; never propose adding them to the sitemap.
