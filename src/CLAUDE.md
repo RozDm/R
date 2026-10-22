@@ -20,7 +20,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `csp.ts` — security headers and CSP, shared with the build: `metaCsp`,
   `withMetaCsp` and `cspProblems` run in `scripts/finalize-export.mjs` /
   `scripts/check-csp.mjs` (Node imports the `.ts` directly).
-- `status.ts` — uptime cron config (`MONITORS`) + pure snapshot/alert logic.
+- `status.ts` — uptime cron config (`monitors(env)`; NetBox's URL is the
+  `NETBOX_URL` secret) + pure snapshot/alert logic.
 - `contact.ts` — pure contact/alert mail logic: validation limits, Turnstile
   verify, MIME building, the time windows over `contact`
   (`CONTACT_WINDOWS_MS`, `isoCutoff`).
@@ -60,7 +61,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `/api/visit` (429), `/api/views` POST (falls back to a read) and
   `/api/csp-report` (silent 204). It fails open. The header gates are
   spoofable; this is what stops a POST loop from burning D1's write quota.
-- Runtime secrets (`TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN`) are
+- Runtime secrets (`TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN`,
+  `NETBOX_URL` — NetBox's admin URL for `monitors()`) are
   not in `wrangler.jsonc`; they're typed in `src/env.d.ts` and synced by
   `deploy.yml`.
 

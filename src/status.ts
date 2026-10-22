@@ -1,12 +1,24 @@
 // Uptime monitoring: monitor list and the (pure) KV snapshot logic.
 
+export interface Monitor {
+  name: string
+  url: string
+  internal?: boolean
+}
+
 // Endpoints the uptime cron checks. Add your own services here.
 // `internal: true` checks via the ASSETS binding (a Worker can't fetch its own
 // public URL — Cloudflare blocks the loop). External services use plain fetch.
-export const MONITORS: { name: string; url: string; internal?: boolean }[] = [
-  { name: 'NetBox', url: 'https://guku7579.cloud.netboxapp.com/' },
-  { name: 'Grafana', url: 'https://rozsoshnykh.grafana.net/' },
-]
+// NetBox's address — an admin login on a random subdomain — comes from the
+// NETBOX_URL secret, not this public repo (the git history still has it: MFA
+// is what guards it). Grafana's is derivable from the name, so it stays here.
+// Without the secret NetBox is skipped, not reported down.
+export function monitors(env: { NETBOX_URL?: string }): Monitor[] {
+  return [
+    ...(env.NETBOX_URL ? [{ name: 'NetBox', url: env.NETBOX_URL }] : []),
+    { name: 'Grafana', url: 'https://rozsoshnykh.grafana.net/' },
+  ]
+}
 
 export const STATUS_KEY = 'status'
 // 149 = the monolith's proportions, 1² : 2² : 3² (1:4:9). ~12.5h at one
