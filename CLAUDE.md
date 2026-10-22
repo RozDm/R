@@ -154,8 +154,10 @@ answered, keep output and replies short.
   (`fetchGeoCountries`, `lib/geo.ts`) for the map and the Alt total.
 - Contact form: Turnstile is gated per side — the widget renders only when
   `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set at build time, the Worker verifies
-  only when the `TURNSTILE_SECRET` secret is set (both are live in prod;
-  either one empty keeps the form working on the other defences). Tokens are
+  only when the `TURNSTILE_SECRET` secret is set (both are live in prod; a
+  secret without a site key 403s every submission, so `deploy.yml` fails on
+  an empty site key; with neither, the form runs on its other defences).
+  Tokens are
   single-use and spent before the rate-limit/mail steps, so `ContactForm`
   resets the widget (`TurnstileHandle.reset`) after every non-OK response and
   keeps the typed text.
@@ -172,9 +174,10 @@ answered, keep output and replies short.
   `npm run build` exports to `out/`. CI and deploy then run
   `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
   `.github/waf/scanner-block.expr` must block no URL the build serves.
-- Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (checks,
-  build, secrets sync, `npx wrangler deploy`, `scripts/smoke.sh` against the
-  live site; details in `.github/CLAUDE.md`). Never deploy from a sandbox —
+- Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (a
+  secret-free job runs checks + build, then a job with the `production`
+  secrets syncs them, runs `npx wrangler deploy` and `scripts/smoke.sh`
+  against the live site; details in `.github/CLAUDE.md`). Never deploy from a sandbox —
   it has no Cloudflare credentials and would skip the gate; `npm run deploy`
   is for a local machine with `wrangler login`.
 - The merge gate is hands-off: branch protection on `main` requires `check`

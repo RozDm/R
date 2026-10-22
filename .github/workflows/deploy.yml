@@ -15,11 +15,11 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  # Everything that runs third-party package code (lint, tests, the Next
+  # build) runs here, without secrets: a compromised dependency finds no
+  # token to read. Its one input is the public Turnstile site key.
+  build:
     runs-on: ubuntu-latest
-    # Secrets live in the `production` environment (deployable from main
-    # only); without this line the job gets none.
-    environment: production
     steps:
       - uses: actions/checkout@v7
 
@@ -28,7 +28,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      # No install scripts: esbuild's and workerd's binaries come from
+      # optionalDependencies; nothing here needs a postinstall.
+      - run: npm ci --ignore-scripts
 
       # Same gate as predeploy: never ship a red build.
       - run: npm run lint
@@ -36,15 +38,53 @@ jobs:
       - run: npm test
       - name: Build
         env:
-          # Public Turnstile site key inlined into the bundle at build time;
-          # empty string keeps the widget off, matching the worker gate.
-          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
-        run: npm run build
+          # Public site key, a repository variable (not a secret), inlined
+          # into the bundle. The Worker answers every contact POST without a
+          # token with 403 while TURNSTILE_SECRET is set, so an empty key
+          # would break the form: fail instead.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+        run: |
+          [ -n "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" ] \
+            || { echo "::error::repository variable TURNSTILE_SITE_KEY is not set"; exit 1; }
+          npm run build
       # Needs out/: the WAF expression must block no URL the build serves.
       - run: npm run check:waf
 
       # The UI dictionary stays in one shared chunk (same check as ci.yml).
       - run: npm run check:dict
+
+      # out/ has a dot-directory (.well-known/security.txt), which
+      # upload-artifact skips unless told otherwise.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: out
+          path: out/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  # The only job with secrets: wrangler and the smoke test, nothing else.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Secrets live in the `production` environment (deployable from main
+    # only); without this line the job gets none.
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      # No npm cache here: the build job, which runs untrusted package code,
+      # could have written it.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - run: npm ci --ignore-scripts
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: out
+          path: out/
 
       # Push runtime secrets before deploy so the new code sees them on the
       # next request. One `secret bulk` call = one new Worker version (three
