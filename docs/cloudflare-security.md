@@ -456,11 +456,17 @@ ClaudeBot, CCBot, Bytespider, Amazonbot…) and keeps accountable mixed-use
 crawlers for search. `zone-rules.yml` keeps `ai_training: disallow` and
 fails on `ai_search: block`; it never writes the legacy
 `ai_bots_protection` (writing it resets Training — `docs/history.md`). `Google-Extended` and `Applebot-Extended` are robots.txt tokens,
-not crawlers, so the edge can't block them — and the Cloudflare-managed
-robots.txt content is **not served** here (measured: `/robots.txt` is the
-Worker's, `app/robots.ts`, with no prepended block despite
-`is_robots_txt_managed: true`); opting them out would take a rule in
-`app/robots.ts`. A spoofed Googlebot UA gets 200; whether the verified one
+not crawlers, so the edge can't block them — the Cloudflare-managed
+robots.txt (`is_robots_txt_managed: true`) does: since `/robots.txt` is
+asset-served (2026-10-22; while the Worker answered it nothing was
+prepended) Cloudflare puts its block ahead of `app/robots.ts` — `User-agent:
+*` + `Content-Signal: search=yes,ai-train=no,use=reference`, then
+`Disallow: /` for the training tokens (GPTBot, ClaudeBot, Google-Extended,
+Applebot-Extended…, also Baiduspider and PetalBot). Crawlers merge its
+`User-agent: *` group with ours, so `Disallow: /api/` and the `Sitemap:` line
+still hold. Lighthouse's robots-txt audit flags `Content-Signal` as an
+unknown directive (SEO score); Google ignores unknown lines — leave it. A
+spoofed Googlebot UA gets 200; whether the verified one
 passes can only be seen in Security → Events (check before launch). AI Crawl Control (`/ai` in the zone)
 is a separate per-crawler product; blocking there uses one custom rule.
 Source: [block AI bots](https://developers.cloudflare.com/bots/additional-configurations/block-ai-bots/).
