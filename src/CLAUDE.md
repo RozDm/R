@@ -155,6 +155,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   our policy can't reach a cross-origin iframe — nothing arrives at
   `/api/csp-report`. Neither a `parseCspReports` filter nor `data:` in our
   `connect-src` would change it; leave it (tested in `tests/csp.test.ts`).
+  Trusted Types (`require-trusted-types-for 'script'`) is not on: measured
+  2026-10-22, Next 16's chunk loader assigns `script.src` a plain string, so
+  the lazy sections and client navigation throw under it. Revisit when
+  Next ships Trusted Types support; a hand-written `default` policy is the
+  only workaround, not worth it for a site with no user-supplied HTML.
 - Only `/api/*` runs the Worker (`run_worker_first: ["/api/*"]`; keep the
   key — without it a navigation to `/api/status` would get the 404 page).
   Every Worker invocation counts against the free plan's 100k requests/day

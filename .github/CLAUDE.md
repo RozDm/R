@@ -95,6 +95,10 @@ incident background: `docs/history.md`.
   reserved for a www→apex redirect rule.
 - `d1-bootstrap.yml` — one-shot: creates the metrics D1 (skipped when the
   name is already listed) and applies the schema.
+- Every action is pinned to a full commit SHA with its release in a comment
+  (`actions/checkout@<sha> # v7.0.1`) — a tag can be moved, a SHA can't;
+  `tests/workflows.test.ts` fails on a bare tag. Dependabot reads the
+  comment and bumps SHA and comment together.
 - `dependabot.yml` — weekly (Monday, Europe/Oslo, 7-day cooldown) grouped
   PRs: npm minor+patch in one, wrangler alone, GitHub Actions in one; every
   semver-major is ignored (migrations are done by hand — ESLint stays 9).

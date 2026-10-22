@@ -60,6 +60,14 @@ watchdog from GitHub runners is green again (run 38910824580).
 
 Open as of 2026-10-17; tick them off here when done.
 
+- [ ] **Rotate the Turnstile secret** — due by 2027-04-22, then every 6–12
+  months. Turnstile → the site's widget → Settings → Rotate Secret Key (the
+  old secret stays valid for 2 hours, so the form never breaks) → GitHub →
+  Settings → Environments → `production` → update `TURNSTILE_SECRET` →
+  Actions → Deploy → Run workflow on `main` (its `secret bulk` pushes it to
+  the Worker) → send one test message from `/kontakt/`. The site key
+  doesn't change. Then move the due date here six to twelve months on.
+
 - [ ] **Certificate Transparency Monitoring** — SSL/TLS → Edge Certificates →
   Certificate Transparency Monitoring → On, add an e-mail. Mails when a CA
   outside Cloudflare logs a certificate for the zone (mis-issuance, a hijack).
