@@ -264,11 +264,13 @@ answered, keep output and replies short.
 
 ## Gotchas
 
-- `wrangler.jsonc`: `workers_dev: true` must stay (wrangler silently disables
-  workers.dev when routes exist, which would 404 old links). workers.dev
-  isn't our zone, so no edge rule can redirect it: its pages answer 200 with
-  the apex canonical, its `/api/*` still 301s to the apex (accepted
-  2026-10-22, when HTML left the Worker). The D1 database is `rozsoshnykh-metrics-v2`; never try to
+- `wrangler.jsonc`: `workers_dev: false` and `preview_urls: false` (owner's
+  call, 2026-10-22): the site lives on `rozsoshnykh.no` only. workers.dev
+  wasn't our zone, so nothing could redirect it — it served a second copy of
+  the site whose map/status/chart broke (its `/api/*` 301s were cross-origin);
+  a preview URL runs any old version against the production D1/KV/mail. Keep
+  both keys explicit — left out, wrangler turns workers.dev back on whenever
+  no routes exist, and preview URLs follow it. The D1 database is `rozsoshnykh-metrics-v2`; never try to
   reclaim the old `rozsoshnykh-metrics` name — the dead original's deleted
   entry still locks it.
 - `next.config.mjs` sets the experimental

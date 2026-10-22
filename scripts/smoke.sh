@@ -185,10 +185,17 @@ check_redirect "www"         "https://www.rozsoshnykh.no/"        "$BASE/"
 check_redirect "http"        "http://rozsoshnykh.no/"             "$BASE/"
 check_redirect "no-slash"    "$BASE/blogg"                         "/blogg/"
 check_redirect "status"      "$BASE/status"                        "/#status"
-# workers.dev isn't our zone, so no edge rule can redirect it: its pages are
-# served as-is with the apex canonical; only the Worker's /api/* still 301s.
-check "workers.dev page" "https://d.rozsoshnykh.workers.dev/blogg/" 200 '<link rel="canonical" href="https://rozsoshnykh.no/blogg/"'
-check_redirect "workers.dev api" "https://d.rozsoshnykh.workers.dev/api/status" "$BASE/api/status"
+# workers.dev is off (wrangler.jsonc): its address must not serve the site,
+# whatever it answers instead. Retried — a just-disabled subdomain can keep
+# answering for a while after the deploy.
+off=
+for i in 1 2 3 4 5 6; do
+  fetch "https://d.rozsoshnykh.workers.dev/blogg/" > /dev/null
+  grep -q 'rel="canonical"' "$TMP" || { off=1; break; }
+  echo "  retry $i: workers.dev still serves the site"
+  sleep 15
+done
+if [ -n "$off" ]; then echo "OK   workers.dev off"; else echo "FAIL workers.dev still serves the site"; FAIL=1; fi
 # MTA-STS (RFC 8461): senders take the policy only from its own host, only as
 # a 200 with no redirect — the Worker proxies Cloudflare's (routes/mta-sts.ts).
 # A custom domain's certificate can take minutes on its first deploy: wait up
