@@ -5,6 +5,10 @@ description: Look at a built page in headless Chromium (Playwright) before it sh
 
 # Browser check
 
+For a regression that should stay caught, add a test to the suite instead
+(`e2e/site.e2e.ts`, `npm run test:e2e` after a build — CI runs it); this
+recipe is for a one-off look.
+
 1. `npm run build`, then serve the export in the background:
    `python3 -m http.server 8765 --directory out` (serves by path, so a
    rebuild needs no restart). Note the PID.

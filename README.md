@@ -34,6 +34,7 @@ Live: https://rozsoshnykh.no
 | `npm run lint` | ESLint (flat config, `next/core-web-vitals` + `next/typescript`) |
 | `npm run typecheck` | `wrangler types --check` (`cf-typecheck`: is `worker-configuration.d.ts` current?), then `tsc --noEmit` for app **and** worker (`tsconfig.worker.json`) |
 | `npm test` | Vitest — CSP hashing + violation-report parsing, status history + alert damping + staleness, tags, metrics, contact, reading time, page metadata, map buckets, time-series (epoch boundary, AE parsing, bucket fill), and the Worker route handlers (`tests/worker/`, D1 as real SQLite) |
+| `npm run test:e2e` | After a build: Playwright browser tests (`e2e/`, `playwright.config.ts`) on `out/` served by `scripts/serve-out.mjs`, `/api/*` stubbed — user flows, axe in both themes, no console error or CSP violation (CI runs them) |
 | `npm run cf-typegen` | Regenerate `worker-configuration.d.ts` from `wrangler.jsonc` |
 | `npm run deploy` | Manual path: `predeploy` (lint + typecheck + test) → build → `wrangler deploy` |
 
@@ -116,11 +117,12 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
 schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
                     (postbuild), check-csp.mjs, check-waf.mjs, check-docs.mjs
-                    (docs drift)
+                    (docs drift), serve-out.mjs (out/ for the browser tests)
 src/                Cloudflare Worker for /api/* + MTA-STS (index.ts, csp.ts, http.ts,
                     ip.ts, status.ts, metrics.ts, contact.ts, timeseries.ts,
                     routes/*)
 tests/              Vitest
+e2e/                Playwright browser tests (site.e2e.ts, fixtures.ts)
 wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, CONTACT_EMAIL, cron, routes)
 ```
 

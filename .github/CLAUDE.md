@@ -9,7 +9,10 @@ incident background: `docs/history.md`.
   Gotchas), `check:waf` (`scripts/check-waf.mjs`: the WAF expression
   must block no URL in `out/` and still block its scanner list) and
   `check:csp` (`scripts/check-csp.mjs`: every page's baked-in `<meta>` CSP
-  hashes each of its inline scripts). It is the one
+  hashes each of its inline scripts), then the browser tests (`npx playwright
+  install --with-deps chromium`, `npm run test:e2e`; on a failure their
+  traces are a 3-day `e2e-traces` artifact). `deploy.yml` doesn't repeat
+  them: nothing reaches `main` without this job. It is the one
   required status check on `main`, so its result decides the auto-merge.
 - `deploy.yml` — on push to `main`, two jobs, both `npm ci --ignore-scripts`.
   `build` has no secrets, so package code (lint, tests, the Next build) never

@@ -42,3 +42,7 @@ next-env.d.ts
 .vscode/
 .idea/
 .wrangler/
+
+# playwright (npm run test:e2e)
+/test-results/
+/playwright-report/
