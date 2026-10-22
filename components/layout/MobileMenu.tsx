@@ -48,11 +48,12 @@ export default function MobileMenu({ links }: MobileMenuProps) {
         aria-label={open ? t.closeMenu : t.openMenu}
         aria-expanded={open}
       >
-        <div className="flex flex-col justify-center items-center w-5 h-5 gap-[5px]">
+        {/* A span, not a div: a <button> may only hold phrasing content. */}
+        <span className="flex flex-col justify-center items-center w-5 h-5 gap-[5px]">
           <span className={`block w-5 h-[2px] bg-gray-700 dark:bg-gray-300 rounded-full transition-all duration-300 ${open ? 'translate-y-[7px] rotate-45' : ''}`} />
           <span className={`block w-5 h-[2px] bg-gray-700 dark:bg-gray-300 rounded-full transition-all duration-300 ${open ? 'opacity-0 scale-0' : ''}`} />
           <span className={`block w-5 h-[2px] bg-gray-700 dark:bg-gray-300 rounded-full transition-all duration-300 ${open ? '-translate-y-[7px] -rotate-45' : ''}`} />
-        </div>
+        </span>
       </button>
 
       {open && (
