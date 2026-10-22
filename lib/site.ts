@@ -38,7 +38,8 @@ export const SITE_COPY: Record<
   },
   en: {
     roles: ROLES_EN,
-    title: `${AUTHOR.name} – Systems Administrator & DevOps in Vestland, Norway`,
+    // ≤ 60 characters: Google cuts longer titles in its results.
+    title: `${AUTHOR.name} – Sysadmin & DevOps in Vestland, Norway`,
     description:
       'Systems administrator, DevOps engineer and developer focused on infrastructure, automation and security. Based in Askøy, Vestland, Norway.',
     tagline: `${ROLES_EN.join(' · ')}. Infrastructure, automation and security.`,
