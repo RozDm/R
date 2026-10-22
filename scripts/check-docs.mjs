@@ -91,10 +91,13 @@ export function checkDocs(root = ROOT) {
   for (const f of ls('src', /\.ts$/)) {
     need(text['src/CLAUDE.md'].includes(f), `src/CLAUDE.md: module src/${f} is not described`)
   }
+  // Every route serves /api/<file name>, but for the few outside /api/.
+  const ROUTE_PATHS = { 'mta-sts': '/.well-known/mta-sts.txt' }
   for (const f of ls('src/routes', /\.ts$/)) {
     const stem = f.replace(/\.ts$/, '')
-    need(text['src/CLAUDE.md'].includes(`/api/${stem}`), `src/CLAUDE.md: route /api/${stem} is not in the API surface`)
-    need(text['CLAUDE.md'].includes(`/api/${stem}`), `CLAUDE.md: endpoint /api/${stem} is not listed`)
+    const route = ROUTE_PATHS[stem] ?? `/api/${stem}`
+    need(text['src/CLAUDE.md'].includes(route), `src/CLAUDE.md: route ${route} is not in the API surface`)
+    need(text['CLAUDE.md'].includes(route), `CLAUDE.md: endpoint ${route} is not listed`)
   }
   for (const f of ls('lib', /\.tsx?$/)) {
     need(anyDoc(f, ['CLAUDE.md', 'README.md']), `README.md: lib/${f} is not in the layout`)

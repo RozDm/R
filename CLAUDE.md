@@ -78,7 +78,9 @@ answered, keep output and replies short.
   for the manifest + apple-touch-icon, `app/icons/[name]/route.tsx`, which
   also builds `favicon.ico` — the build copies it to `/favicon.ico`) and
   `/.well-known/security.txt` (static in `public/`, RFC 9116 — bump its
-  `Expires` yearly). `error.tsx` / `global-error.tsx` are the HAL-voiced
+  `Expires` yearly). `https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt`
+  is the MTA-STS policy for mail to the domain: a custom domain of the Worker,
+  which proxies Cloudflare Email Routing's policy (`src/routes/mta-sts.ts`). `error.tsx` / `global-error.tsx` are the HAL-voiced
   «Systemfeil» boundaries.
 - Languages: ALL UI copy lives in `data/i18n.ts` — `nb` defines the shape,
   `en` is typed against it, `tests/i18n.test.ts` checks parity; never
@@ -106,8 +108,8 @@ answered, keep output and replies short.
   background colours (`THEME_BG`, mirrored by themeColor, the manifest and
   `ThemeContext`) live in `lib/site.ts` — never hard-code them.
 - Serving: the asset server answers every page and file straight from
-  `out/` — no Worker request (`run_worker_first: ["/api/*"]`; a miss gets the
-  404 page, never the Worker). Every Worker invocation counts against the
+  `out/` — no Worker request (`run_worker_first`: `/api/*` and the MTA-STS
+  policy only; a miss gets the 404 page, never the Worker). Every Worker invocation counts against the
   free plan's 100k requests/day and past it gets a 429; asset requests are
   free, unlimited and keep working past it, so the quota can only take out
   `/api/*`, never the pages. What the Worker used to do per request is done
@@ -124,8 +126,8 @@ answered, keep output and replies short.
   `/status` → `/#status` in `public/_redirects`; www → apex and HTTP → HTTPS
   at the edge (`zone-rules.yml`). The zone's rate limiting rule
   (`docs/cloudflare-security.md`) excludes the static prefixes by hand.
-- `src/` — the Cloudflare Worker for `/api/*` and the crons (canonical-host
-  301 for the API; an `/api/` path no route claims gets the 404 page with
+- `src/` — the Cloudflare Worker for `/api/*`, the MTA-STS policy and the
+  crons (canonical-host 301 for the API; an `/api/` path no route claims gets the 404 page with
   the `_headers` set). `_headers` can't match on status, so a
   zone Response Header Transform Rule (`.github/workflows/zone-rules.yml`)
   makes every 4xx/5xx `no-store`. Stores: KV `STATUS` (uptime snapshot only), D1
