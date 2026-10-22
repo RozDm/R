@@ -285,7 +285,7 @@ const MUST_BLOCK = `/wp-login.php /WP-LOGIN.PHP /wp-admin/ //wp-admin/ /xmlrpc.p
 
 // Paths the Worker answers without a file in out/ (src/index.ts).
 const WORKER_ROUTES = ['/api/status', '/api/geo', '/api/visit', '/api/timeseries', '/api/contact', '/api/csp-report',
-  '/status', '/status/', '/favicon.ico', '/.well-known/security.txt']
+  '/status', '/status/', '/favicon.ico', '/.well-known/security.txt', '/.well-known/mta-sts.txt']
 
 function servedUrls() {
   const urls = new Set(WORKER_ROUTES)

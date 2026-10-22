@@ -21,7 +21,8 @@ Live: https://rozsoshnykh.no
   `<meta>` baked in at build (`scripts/finalize-export.mjs`, re-checked by
   `scripts/check-csp.mjs`), headers come from `public/_headers`, redirects
   from `public/_redirects` + the zone (www → apex, HTTP → HTTPS)
-- Worker (`src/`) handles the `/api/*` endpoints and the crons
+- Worker (`src/`) handles the `/api/*` endpoints, the crons and the MTA-STS
+  policy on `mta-sts.rozsoshnykh.no` (Cloudflare Email Routing's, proxied)
 
 ### Scripts
 
@@ -116,7 +117,7 @@ schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
                     (postbuild), check-csp.mjs, check-waf.mjs, check-docs.mjs
                     (docs drift)
-src/                Cloudflare Worker for /api/* (index.ts, csp.ts, http.ts,
+src/                Cloudflare Worker for /api/* + MTA-STS (index.ts, csp.ts, http.ts,
                     ip.ts, status.ts, metrics.ts, contact.ts, timeseries.ts,
                     routes/*)
 tests/              Vitest

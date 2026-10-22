@@ -5,15 +5,17 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 
 ## Modules
 
-- `index.ts` — entry, run only for `/api/*` (Rules below): HTTPS +
-  canonical-host 301s for the API (workers.dev → apex; www is the edge's),
+- `index.ts` — entry, run only for `/api/*` and the MTA-STS policy (Rules
+  below): HTTPS, the policy on any host, canonical-host 301s for the API
+  (workers.dev → apex; www and mta-sts are the edge's, this is a backstop),
   dispatches `/api/*` to `routes/`, hands an `/api/` path no route claims to
   the 404 page (with the `_headers` set, which never reaches a Worker
   response), cron dispatch (5-min health checks + daily contact prune) and
   the status-alert mail.
 - `routes/` — one handler per endpoint: `status`, `views`, `geo`, `visit`,
-  `timeseries`, `contact`, `csp-report`. Each takes the parsed `URL` and
-  returns `null` when the path isn't its own; `index.ts` chains them with
+  `timeseries`, `contact`, `csp-report`, and `mta-sts` (the one outside
+  `/api/`, dispatched ahead of the host checks). Each takes the parsed `URL`
+  and returns `null` when the path isn't its own; `index.ts` chains them with
   `??`. Pure logic goes in a top-level `src/*.ts` module, not in a route.
 - `http.ts` — `apiJson()` (JSON + security headers), the edge-cache pair
   `cachedApiJson()`/`putCachedApiJson()`, `allowWrite()` and
@@ -100,6 +102,16 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `/api/csp-report` — POST → always 204, AE only, never D1/KV (anyone can
   POST to it); `parseCspReports` keeps own-origin reports only (origin +
   path; no query, UA or IP). GET → 405, which the smoke test checks.
+- `/.well-known/mta-sts.txt` — GET, any host; senders fetch it from
+  `mta-sts.rozsoshnykh.no` (a custom domain in `wrangler.jsonc`). Proxies
+  Cloudflare Email Routing's policy (`mta-sts.mx.cloudflare.net`; edge-cached
+  1 h) as text/plain, because our `_mta-sts` TXT is a CNAME to theirs: when
+  they bump its id, senders refetch and get their new policy from here — a
+  copy in `public/` could name stale MX hosts and bounce mail under
+  `mode: enforce`. Anything but a policy upstream → 503 (senders keep their
+  cached copy). The edge 301s every other path on that host to the apex
+  (`zone-rules.yml`); `smoke.sh` checks the policy, `zone-rules.yml` that it
+  isn't redirected.
 - A new `/api/*/<slug>` route must be added to the WAF rule's exemptions
   (`.github/waf/scanner-block.expr`, like `/api/views/`): its word patterns
   would 403 a slug such as `jenkins-pipeline`, and `check-waf` sees only
@@ -163,8 +175,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   the lazy sections and client navigation throw under it. Revisit when
   Next ships Trusted Types support; a hand-written `default` policy is the
   only workaround, not worth it for a site with no user-supplied HTML.
-- Only `/api/*` runs the Worker (`run_worker_first: ["/api/*"]`; keep the
-  key — without it a navigation to `/api/status` would get the 404 page).
+- Only `/api/*` and the MTA-STS policy run the Worker (`run_worker_first:
+  ["/api/*", "/.well-known/mta-sts.txt"]`; keep the key — without it a
+  navigation to `/api/status` would get the 404 page).
   Every Worker invocation counts against the free plan's 100k requests/day
   (past it, a 429); the asset server's answers are free and outlive it, so
   pages, files and misses (the 404 page — measured in `wrangler dev`, and in

@@ -25,7 +25,8 @@ that would block search engines or CI.
 | Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
 | Automatic HTTPS Rewrites, Email Obfuscation, Replace insecure JS libraries | `zone-rules.yml` (code) | **Off** — they rewrite HTML after the build hashed its inline scripts and strip the pages' strong ETag (found 2026-10-22: asset-served pages lost their ETag/304, which Worker-served ones had kept); the site is HTTPS-only |
 | Always Use HTTPS | `zone-rules.yml` (code) | On — plain HTTP gets the edge's 301 before the Worker or the asset server |
-| Single Redirect `www_to_apex` | `zone-rules.yml` (code) | `www.rozsoshnykh.no` → apex, 301, path + query kept — 1 of 10 Free redirect rules |
+| Single Redirect `www_to_apex` | `zone-rules.yml` (code) | `www.rozsoshnykh.no` → apex, 301, path + query kept; also `mta-sts.rozsoshnykh.no` for every path but `/.well-known/mta-sts.txt` — 1 of 10 Free redirect rules |
+| MTA-STS + TLS-RPT | Worker custom domain `mta-sts.rozsoshnykh.no` (code); DNS records (dashboard, owner to-do below) | Policy = Cloudflare Email Routing's (`mode: enforce`, `mx: *.mx.cloudflare.net`), proxied by `src/routes/mta-sts.ts`; `_mta-sts` CNAME → `_mta-sts.mx.cloudflare.net` (their policy id); TLS-RPT reports to `contact@rozsoshnykh.no` |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
 | Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the zone token lacks) | owner to switch on + add an e-mail (see "Owner to-do") |
@@ -45,7 +46,8 @@ Notifications stay dashboard work.
 
 Goal of the set: keep scanner traffic off the Worker's 100,000 requests/day
 (per account, resets 00:00 UTC; past it every `/api/*` request gets a 429).
-Since 2026-10-22 only `/api/*` runs the Worker (`run_worker_first`): pages,
+Since 2026-10-22 only `/api/*` (and the MTA-STS policy, a handful of
+requests a day) runs the Worker (`run_worker_first`): pages,
 files and misses are the asset server's, free and unlimited, and stay up
 when the quota is gone — an exhausted quota now costs the status, map,
 chart, view counts and contact form, not the site. A request blocked at the edge never
@@ -67,6 +69,18 @@ Open as of 2026-10-17; tick them off here when done.
   Actions → Deploy → Run workflow on `main` (its `secret bulk` pushes it to
   the Worker) → send one test message from `/kontakt/`. The site key
   doesn't change. Then move the due date here six to twelve months on.
+
+- [ ] **MTA-STS and TLS-RPT DNS records** — DNS → Records → Add, after the
+  `mta-sts.rozsoshnykh.no` custom domain serves the policy (check:
+  `curl https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt`):
+  - CNAME, name `_mta-sts`, target `_mta-sts.mx.cloudflare.net`, **DNS only**
+    (grey cloud) — Cloudflare's policy id; senders start enforcing TLS to
+    our MX once it resolves;
+  - TXT, name `_smtp._tls`, content
+    `v=TLSRPTv1; rua=mailto:contact@rozsoshnykh.no` — daily TLS reports
+    (gzip JSON) from Google, Microsoft and others; a Gmail filter on
+    "Report Domain: rozsoshnykh.no" keeps them out of the inbox.
+  Check: `dig +short TXT _mta-sts.rozsoshnykh.no` shows `v=STSv1; id=…`.
 
 - [ ] **Certificate Transparency Monitoring** — SSL/TLS → Edge Certificates →
   Certificate Transparency Monitoring → On, add an e-mail. Mails when a CA
@@ -228,7 +242,8 @@ don't cover trailing-slash URLs like `/blogg/install.sh/` — moot while
 slugs have no dot (`tests/blog-pairs.test.ts`), and `check-waf` tries every
 reading. The export only serves css, html,
 ico, js, png, svg, txt, webmanifest, woff2 and xml, plus
-`/.well-known/security.txt`.
+`/.well-known/security.txt` and the Worker's `/.well-known/mta-sts.txt`
+(both listed in `check-waf`'s must-pass URLs).
 
 Testing on Free: there is no Log action. Deploy a new rule as Managed
 Challenge, watch Security → Analytics → Events, then switch to Block.

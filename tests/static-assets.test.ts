@@ -5,8 +5,8 @@ import { BASE_SECURITY_HEADERS, CSP_REPORT_GROUP, CSP_REPORT_PATH, HEADER_CSP, H
 import { SITE_URL } from '@/lib/site'
 
 // Pages and files are served by the asset server, not the Worker
-// (run_worker_first: ["/api/*"]), and take every header from public/_headers —
-// which never applies to a Worker response. So _headers must carry what the
+// (run_worker_first: /api/* and the MTA-STS policy), and take every header
+// from public/_headers — which never applies to a Worker response. So _headers must carry what the
 // Worker would have set, and the two copies must not drift.
 
 function headerRules(): Map<string, Map<string, string>> {
@@ -42,8 +42,8 @@ const rules = headerRules()
 const PAGE_RULES = ['/', ...pageDirs().map((d) => `/${d}/*`)]
 
 describe('asset server headers (public/_headers)', () => {
-  it('runs the Worker first for /api/* only', () => {
-    expect(runWorkerFirst()).toEqual(['/api/*'])
+  it('runs the Worker first for /api/* and the MTA-STS policy only', () => {
+    expect(runWorkerFirst()).toEqual(['/api/*', '/.well-known/mta-sts.txt'])
   })
 
   it('stamps the Worker’s security headers on every response', () => {

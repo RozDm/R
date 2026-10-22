@@ -76,10 +76,12 @@ incident background: `docs/history.md`.
   rewrite pages after the build hashed them and strip their ETag; the prod
   check wants `/` to answer `If-None-Match` with a 304 — minimum TLS
   raised to 1.2 if lower — it is 1.3); keeps the Single Redirect
-  `www_to_apex` (www → apex 301, path + query kept, phase
-  `http_request_dynamic_redirect`, found by ref; the prod check wants www
-  and plain HTTP answered by the edge's 301, which has no X-Frame-Options —
-  the Worker's has); and applies the "Block scanners" WAF rule from
+  `www_to_apex` (www → apex 301, and mta-sts → apex for every path but
+  `/.well-known/mta-sts.txt`; path + query kept, phase
+  `http_request_dynamic_redirect`, found by ref; the prod check wants www,
+  plain HTTP and mta-sts pages answered by the edge's 301, which has no
+  X-Frame-Options — the Worker's has — and the MTA-STS policy served as a
+  200, not redirected); and applies the "Block scanners" WAF rule from
   `.github/waf/scanner-block.expr` — dry run first, then a PATCH of that one
   rule in place (found by ref, else by name, else — first run only — by the
   old rule's signature; PATCH can't set a ref, so the name finds it; the

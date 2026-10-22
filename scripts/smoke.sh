@@ -189,6 +189,17 @@ check_redirect "status"      "$BASE/status"                        "/#status"
 # served as-is with the apex canonical; only the Worker's /api/* still 301s.
 check "workers.dev page" "https://d.rozsoshnykh.workers.dev/blogg/" 200 '<link rel="canonical" href="https://rozsoshnykh.no/blogg/"'
 check_redirect "workers.dev api" "https://d.rozsoshnykh.workers.dev/api/status" "$BASE/api/status"
+# MTA-STS (RFC 8461): senders take the policy only from its own host, only as
+# a 200 with no redirect — the Worker proxies Cloudflare's (routes/mta-sts.ts).
+# A custom domain's certificate can take minutes on its first deploy: wait up
+# to 5 min for the host to answer before check()'s own retries.
+for i in $(seq 1 20); do
+  curl -sSf -o /dev/null --max-time 10 "https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt" 2>/dev/null && break
+  echo "  waiting for mta-sts.rozsoshnykh.no ($i/20)"
+  sleep 15
+done
+check "mta-sts policy" "https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt" 200 '^version: STSv1' '^mx: '
+check_header "mta-sts type" "https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt" "^content-type: text/plain"
 
 echo "== Security headers =="
 check_header "HSTS"       "$BASE/" "^strict-transport-security:"

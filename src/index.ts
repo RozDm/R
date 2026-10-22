@@ -1,14 +1,16 @@
 // Cloudflare Worker for the portfolio site.
 //
-// Runs only for /api/* (assets.run_worker_first in wrangler.jsonc). Pages and
-// files are served by the asset server straight from the static export, with
-// their headers from public/_headers, each page's hash CSP baked in at build
-// (scripts/finalize-export.mjs), and the redirects in out/_redirects and the
-// zone (zone-rules.yml) — none of it costs a Worker request, and it keeps
-// working when the free plan's 100k requests/day run out. Here:
-//   1. HTTPS and canonical host for the API (workers.dev → apex).
-//   2. Dispatches /api/* to the route handlers in src/routes/.
-//   3. An /api/ path no route claims gets the asset server's 404 page.
+// Runs only for /api/* and the MTA-STS policy (assets.run_worker_first in
+// wrangler.jsonc). Pages and files are served by the asset server straight
+// from the static export, with their headers from public/_headers, each
+// page's hash CSP baked in at build (scripts/finalize-export.mjs), and the
+// redirects in out/_redirects and the zone (zone-rules.yml) — none of it
+// costs a Worker request, and it keeps working when the free plan's 100k
+// requests/day run out. Here:
+//   1. HTTPS, then /.well-known/mta-sts.txt on any host (routes/mta-sts.ts).
+//   2. Canonical host for the API (workers.dev, mta-sts → apex).
+//   3. Dispatches /api/* to the route handlers in src/routes/.
+//   4. An /api/ path no route claims gets the asset server's 404 page.
 //
 // Types for Env and the Workers runtime come from worker-configuration.d.ts,
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
@@ -24,6 +26,7 @@ import { handleContact } from './routes/contact'
 import { handleTimeseries } from './routes/timeseries'
 import { handleVisit } from './routes/visit'
 import { handleCspReport } from './routes/csp-report'
+import { handleMtaSts } from './routes/mta-sts'
 
 const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
 const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
@@ -130,10 +133,20 @@ export default {
       return redirect301(body, target, false)
     }
 
-    // Canonical host for the API. www is redirected at the edge (Single
-    // Redirect, zone-rules.yml) before it gets here; workers.dev can't be —
-    // it isn't our zone, so its pages are served as-is (canonical → apex).
-    if (url.hostname === 'www.rozsoshnykh.no' || url.hostname.endsWith('.workers.dev')) {
+    // The MTA-STS policy, before the host checks: senders fetch it from
+    // mta-sts.rozsoshnykh.no and must get it there, never a redirect.
+    const policy = await handleMtaSts(url)
+    if (policy) return policy
+
+    // Canonical host for the API. www (and mta-sts, but for its policy) is
+    // redirected at the edge (Single Redirect, zone-rules.yml) before it gets
+    // here — this is the backstop; workers.dev can't be — it isn't our zone,
+    // so its pages are served as-is (canonical → apex).
+    if (
+      url.hostname === 'www.rozsoshnykh.no' ||
+      url.hostname === 'mta-sts.rozsoshnykh.no' ||
+      url.hostname.endsWith('.workers.dev')
+    ) {
       url.hostname = 'rozsoshnykh.no'
       return redirect301(null, url.toString())
     }
