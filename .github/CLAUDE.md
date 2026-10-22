@@ -64,8 +64,12 @@ incident background: `docs/history.md`.
   (`docs/history.md`). It fails if the PUT moved any other field or if a
   dashboard bot setting would block search engines or CI (Bot Fight Mode,
   AI Search "block", AI Labyrinth…); sets the zone settings (Browser Cache
-  TTL "Respect Existing Headers", 0-RTT on, minimum TLS raised to 1.2 if
-  lower — it is 1.3); and applies the "Block scanners" WAF rule from
+  TTL "Respect Existing Headers", 0-RTT on, Always Use HTTPS on, minimum TLS
+  raised to 1.2 if lower — it is 1.3); keeps the Single Redirect
+  `www_to_apex` (www → apex 301, path + query kept, phase
+  `http_request_dynamic_redirect`, found by ref; the prod check wants www
+  and plain HTTP answered by the edge's 301, which has no X-Frame-Options —
+  the Worker's has); and applies the "Block scanners" WAF rule from
   `.github/waf/scanner-block.expr` — dry run first, then a PATCH of that one
   rule in place (found by ref, else by name, else — first run only — by the
   old rule's signature; PATCH can't set a ref, so the name finds it; the
