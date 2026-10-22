@@ -15,7 +15,7 @@
 
 import { EmailMessage } from 'cloudflare:email'
 import { ENFORCED_CSP, HEADER_CSP, HSTS, applyBaseHeaders } from './csp'
-import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
+import { MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, monitors, parseHistory } from './status'
 import { CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
@@ -50,7 +50,7 @@ function redirect301(target: string | null, location: string, secure = true): Re
 // Cron: ping each monitor, record latency/status, append to rolling history.
 async function runHealthChecks(env: Env): Promise<void> {
   const results = await Promise.all(
-    MONITORS.map(async (monitor) => {
+    monitors(env).map(async (monitor) => {
       const start = Date.now()
       let ok = false
       let status = 0

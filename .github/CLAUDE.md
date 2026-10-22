@@ -21,7 +21,8 @@ incident background: `docs/history.md`.
   it is empty — with `TURNSTILE_SECRET` set, the Worker 403s every form POST
   that has no token. `deploy` (`environment: production`; no npm cache, which
   the build job could have written): one `wrangler secret bulk` syncing
-  `TURNSTILE_SECRET`, `CF_ACCOUNT_ID` and `AE_API_TOKEN` (unset ones are
+  `TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN` and `NETBOX_URL`
+  (unset ones are
   skipped, never blanked) → `npx wrangler deploy` with the repo's pinned
   wrangler (not `cloudflare/wrangler-action`, which runs on deprecated
   Node 20) → `scripts/smoke.sh` against the live site (it also runs
@@ -109,7 +110,8 @@ incident background: `docs/history.md`.
   Workers Scripts/KV/D1 + Workers Routes; `deploy`, `d1-*`,
   `reset-metrics`), `CLOUDFLARE_ZONE_TOKEN` (`zone-rules` only),
   `CLOUDFLARE_ACCOUNT_ID` (also synced to the Worker as `CF_ACCOUNT_ID`),
-  `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account → Account Analytics: Read).
+  `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account → Account Analytics: Read),
+  `NETBOX_URL` (the uptime cron's NetBox admin URL, kept out of the repo).
   The public `TURNSTILE_SITE_KEY` is a repository variable. A job that needs
   a secret declares `environment: production`; a job without it, or one
   started from any

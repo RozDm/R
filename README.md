@@ -73,7 +73,7 @@ Secrets live in the GitHub environment `production` (deployment branches:
 `main` only; no repository-level secrets — `.github/CLAUDE.md`):
 `CLOUDFLARE_API_TOKEN` (deploy: Workers, KV, D1), `CLOUDFLARE_ZONE_TOKEN`
 (zone settings and rules, `zone-rules.yml` only), `CLOUDFLARE_ACCOUNT_ID`,
-`TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
+`TURNSTILE_SECRET`, `NETBOX_URL` (the uptime cron's NetBox URL), `AE_API_TOKEN` (Account Analytics:Read
 token for the Analytics Engine SQL API; `CF_ACCOUNT_ID` for the same call
 reuses `CLOUDFLARE_ACCOUNT_ID`). The public Turnstile site key is a repository
 variable, `TURNSTILE_SITE_KEY`, read only by the secret-free build job.
@@ -117,7 +117,7 @@ wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, CONTACT_EMAIL,
 
 ### Uptime monitoring
 
-The cron pings every entry in `MONITORS` (`src/status.ts`) every 5 minutes and
+The cron pings every entry of `monitors()` (`src/status.ts`) every 5 minutes and
 writes a JSON snapshot to KV (`status` key). `/api/status` serves the snapshot
 (edge-cached 60 s — well under the cron interval, so refreshes still land
 promptly while KV reads stay near zero); the front page (`/#status`) renders
@@ -128,7 +128,7 @@ only, no URLs. A snapshot older than 15 minutes (the cron itself stopped)
 turns the banner and the footer dot grey ("Statusdata er utdatert") instead
 of repeating the last known state.
 
-Add a service by extending `MONITORS`. Use `internal: true` for routes that
+Add a service by extending `monitors()`. Use `internal: true` for routes that
 point at this site itself (the ASSETS binding is required — Workers block
 self-fetches over the public URL). A check counts as up only on a final HTTP
 200 (redirects followed).

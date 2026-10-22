@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { HISTORY_LIMIT, STALE_AFTER_MS, buildStatusData, detectTransitions, isStale, parseHistory } from '@/src/status'
+import { readFileSync } from 'node:fs'
+import { HISTORY_LIMIT, STALE_AFTER_MS, buildStatusData, detectTransitions, isStale, monitors, parseHistory } from '@/src/status'
 import type { HistoryEntry, MonitorResult } from '@/src/status'
 
 const result = (name: string, ok: boolean): MonitorResult => ({
@@ -173,5 +174,18 @@ describe('detectTransitions', () => {
     const out = detectTransitions(prev, [result('A', false)])
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({ name: 'A', ok: false })
+  })
+})
+
+describe('monitors', () => {
+  it('takes NetBox from the NETBOX_URL secret and skips it without one', () => {
+    expect(monitors({}).map((m) => m.name)).toEqual(['Grafana'])
+    const withSecret = monitors({ NETBOX_URL: 'https://netbox.example/' })
+    expect(withSecret.map((m) => m.name)).toEqual(['NetBox', 'Grafana'])
+    expect(withSecret[0].url).toBe('https://netbox.example/')
+  })
+
+  it('keeps no NetBox address in the public source', () => {
+    expect(readFileSync('src/status.ts', 'utf8')).not.toContain('netboxapp')
   })
 })
