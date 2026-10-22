@@ -216,7 +216,6 @@ own ids). Then `npm run deploy` — `predeploy` runs lint/typecheck/test first.
 ### Status (soft launch)
 
 The site is live at `rozsoshnykh.no` (`www` and plain HTTP 301 at the edge;
-`d.rozsoshnykh.workers.dev` serves the same pages with the apex canonical, its
-`/api/*` 301s). DNSSEC is active. `robots: { index: false }` stays
+the `workers.dev` subdomain and preview URLs are off). DNSSEC is active. `robots: { index: false }` stays
 until the first posts are published — flip `robots.index` to `true` in
 `app/layout.tsx` and submit the sitemap in Google Search Console then.

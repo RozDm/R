@@ -8,7 +8,7 @@
 // costs a Worker request, and it keeps working when the free plan's 100k
 // requests/day run out. Here:
 //   1. HTTPS, then /.well-known/mta-sts.txt on any host (routes/mta-sts.ts).
-//   2. Canonical host for the API (workers.dev, mta-sts → apex).
+//   2. Canonical host for the API (www, mta-sts → apex).
 //   3. Dispatches /api/* to the route handlers in src/routes/.
 //   4. An /api/ path no route claims gets the asset server's 404 page.
 //
@@ -140,13 +140,8 @@ export default {
 
     // Canonical host for the API. www (and mta-sts, but for its policy) is
     // redirected at the edge (Single Redirect, zone-rules.yml) before it gets
-    // here — this is the backstop; workers.dev can't be — it isn't our zone,
-    // so its pages are served as-is (canonical → apex).
-    if (
-      url.hostname === 'www.rozsoshnykh.no' ||
-      url.hostname === 'mta-sts.rozsoshnykh.no' ||
-      url.hostname.endsWith('.workers.dev')
-    ) {
+    // here — this is the backstop. workers.dev is off (wrangler.jsonc).
+    if (url.hostname === 'www.rozsoshnykh.no' || url.hostname === 'mta-sts.rozsoshnykh.no') {
       url.hostname = 'rozsoshnykh.no'
       return redirect301(null, url.toString())
     }

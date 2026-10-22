@@ -7,7 +7,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 
 - `index.ts` — entry, run only for `/api/*` and the MTA-STS policy (Rules
   below): HTTPS, the policy on any host, canonical-host 301s for the API
-  (workers.dev → apex; www and mta-sts are the edge's, this is a backstop),
+  (www and mta-sts are the edge's, this is a backstop; workers.dev is off),
   dispatches `/api/*` to `routes/`, hands an `/api/` path no route claims to
   the 404 page (with the `_headers` set, which never reaches a Worker
   response), cron dispatch (5-min health checks + daily contact prune) and
