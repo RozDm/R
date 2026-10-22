@@ -32,7 +32,7 @@ export default function PersonvernPage() {
           Personvernerklæring
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-10">
-          Sist oppdatert: 17. oktober 2026
+          Sist oppdatert: 22. oktober 2026
         </p>
 
         <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold">
@@ -51,8 +51,8 @@ export default function PersonvernPage() {
             skjemaet (antall innsendinger per adresse).
           </p>
           <p>
-            Meldingen leveres til e-postinnboksen min, og en kopi lagres i en database hos
-            Cloudflare. Databasekopien slettes automatisk etter 30 dager. Hvis e-posten ikke
+            Meldingen leveres til e-postinnboksen min hos Gmail, og en kopi lagres i en database
+            hos Cloudflare. Databasekopien slettes automatisk etter 30 dager. Hvis e-posten ikke
             kan leveres, slettes kopien med en gang, og du får beskjed om å prøve igjen.
           </p>
           <p>
@@ -84,6 +84,15 @@ export default function PersonvernPage() {
             blokkert — ingen IP-adresse og ingen opplysninger om deg.
           </p>
 
+          <h2>Tekniske logger</h2>
+          <p>
+            Når nettstedets server (en Cloudflare Worker) håndterer en forespørsel, lagrer
+            Cloudflare en teknisk logg over den: blant annet tidspunktet, adressen som ble bedt
+            om og opplysninger om forbindelsen, som kan omfatte IP-adressen din. Loggene brukes
+            kun til feilsøking og sikkerhet, lagres i opptil 7 dager og slettes deretter
+            automatisk.
+          </p>
+
           <h2>Informasjonskapsler og lokal lagring</h2>
           <p>
             Nettstedet bruker ingen informasjonskapsler til sporing eller markedsføring.
@@ -93,16 +102,49 @@ export default function PersonvernPage() {
             i nettleseren din og sendes ikke videre.
           </p>
 
-          <h2>Databehandler</h2>
+          <h2>Rettslig grunnlag</h2>
+          <ul>
+            <li>
+              <strong>Svar på meldinger fra kontaktskjemaet:</strong> berettiget interesse i å
+              kunne svare på henvendelser du selv sender (personvernforordningen artikkel 6
+              nr. 1 bokstav f). Gjelder henvendelsen et oppdrag, en stilling eller et annet
+              mulig avtaleforhold, er grunnlaget at behandlingen er nødvendig for å gjennomføre
+              tiltak du ber om før en avtale inngås (bokstav b).
+            </li>
+            <li>
+              <strong>
+                IP-adressen til å begrense misbruk, Turnstile, tekniske logger og
+                besøksstatistikken:
+              </strong>{' '}
+              berettiget interesse i å holde nettstedet sikkert, tilgjengelig og fritt for
+              misbruk, og i å vite hvordan det brukes (bokstav f).
+            </li>
+          </ul>
+
+          <h2>Databehandler og overføring til USA</h2>
           <p>
             Nettstedet driftes på Cloudflare sin plattform (Cloudflare, Inc.), som behandler
             trafikk og lagrer dataene beskrevet ovenfor på vegne av behandlingsansvarlig.
+            Cloudflare er et amerikansk selskap, så opplysningene kan bli behandlet i USA.
+            Overføringen bygger på EU–US Data Privacy Framework, som Cloudflare er sertifisert
+            under; der rammeverket ikke gjelder, bygger den på EU-kommisjonens
+            standardkontraktsbestemmelser i Cloudflares databehandleravtale. Se{' '}
+            <a href="https://www.cloudflare.com/trust-hub/gdpr/" target="_blank" rel="noopener noreferrer">
+              Cloudflares side om GDPR
+            </a>
+            .
+          </p>
+          <p>
+            Meldinger fra kontaktskjemaet leveres til en e-postkonto hos Gmail. Google LLC
+            (USA) mottar og lagrer derfor navnet, e-postadressen og meldingen din. Google er
+            også sertifisert under EU–US Data Privacy Framework.
           </p>
 
           <h2>Dine rettigheter</h2>
           <p>
-            Du har rett til innsyn i, retting av og sletting av opplysninger om deg. Send en
-            e-post til <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a>, så
+            Du har rett til innsyn i, retting og sletting av opplysninger om deg, og til å kreve
+            at behandlingen begrenses. Du kan også protestere mot behandling som bygger på
+            berettiget interesse. Send en e-post til <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a>, så
             ordner jeg det. Du kan også klage til{' '}
             <a href="https://www.datatilsynet.no/" target="_blank" rel="noopener noreferrer">
               Datatilsynet
