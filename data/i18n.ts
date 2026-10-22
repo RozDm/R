@@ -140,7 +140,8 @@ const nb = {
     topics: 'Emner',
     topic: 'Emne',
     topicTitle: (tag: string) => `Emne: ${tag}`,
-    topicDescription: (tag: string) => `Artikler merket med ${tag}.`,
+    topicDescription: (tag: string) =>
+      `Alle artikler merket med «${tag}» — notater om systemadministrasjon, DevOps, infrastruktur og sikkerhet.`,
     count: (n: number) => `${n} ${n === 1 ? 'artikkel' : 'artikler'}`,
     back: 'Tilbake til bloggen',
     draft: 'Utkast — kun synlig lokalt',
@@ -291,7 +292,8 @@ const en: Dict = {
     topics: 'Topics',
     topic: 'Topic',
     topicTitle: (tag) => `Topic: ${tag}`,
-    topicDescription: (tag) => `Articles tagged ${tag}.`,
+    topicDescription: (tag) =>
+      `All articles tagged “${tag}” — notes on systems administration, DevOps, infrastructure and security.`,
     count: (n) => `${n} ${n === 1 ? 'article' : 'articles'}`,
     back: 'Back to the blog',
     draft: 'Draft — only visible locally',
