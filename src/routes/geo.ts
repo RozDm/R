@@ -62,9 +62,14 @@ export async function handleGeo(
 
   const rows = await env.METRICS.prepare('SELECT country, count FROM geo')
     .all<{ country: string; count: number }>()
-    .catch(() => null)
-  const body = JSON.stringify({ countries: countriesFromRows(rows?.results ?? []) })
-  // Only cache on a successful query; a D1 hiccup shouldn't pin an empty map.
-  if (rows) return putCachedApiJson(ctx, cache.key, body, GEO_CACHE_TTL_S)
-  return apiJson(body)
+    .catch((err) => {
+      console.error('geo: D1 read failed', err)
+      return null
+    })
+  // A failed read is a 503 (never cached), not an empty map: an empty 200
+  // read as "no visitors yet" on the site and as health to smoke.sh and the
+  // hourly watchdog, which probe D1 through this endpoint (docs/history.md).
+  if (!rows) return apiJson(JSON.stringify({ error: 'unavailable' }), 503)
+  const body = JSON.stringify({ countries: countriesFromRows(rows.results ?? []) })
+  return putCachedApiJson(ctx, cache.key, body, GEO_CACHE_TTL_S)
 }

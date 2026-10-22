@@ -78,7 +78,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   or, for an English-only post, `/en/blog/<slug>/`), so junk slugs can't mint
   D1 rows. The slug is the post's view key (`lib/blog.ts viewKey`): both
   language versions of a post count into the Norwegian slug.
-- `/api/geo` — GET, edge-cached 60s.
+- `/api/geo` — GET, edge-cached 60s. A failed D1 read is a 503 (logged,
+  never cached), not an empty map: `smoke.sh` and the hourly
+  `status-watchdog.yml` probe D1 through it, and the map shows its "failed"
+  state instead of «no visitors yet».
 - `/api/visit` — POST is the Besøk beacon:
   `recordGeo(env, ctx, request.cf?.country, { asn, org })` writes the D1
   `geo` row and the AE point. GET is a harmless self-diagnostic (the

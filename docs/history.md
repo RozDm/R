@@ -28,6 +28,11 @@ Fallout that shaped other rules:
   out pre-relaunch points client-side and both surfaces restart together.
   The first real post-relaunch visit was 18:00 UTC on 2026-07-03, hence the
   epoch value.
+- The read side hid it too: `/api/geo` swallowed the failed read and answered
+  an empty map with a 200, which the site showed as "no visitors yet" and
+  `smoke.sh` took for health; the watchdog only reads the KV snapshot. Since
+  2026-10-22 a failed read is a 503 and `status-watchdog.yml` probes
+  `/api/geo` hourly — a dead D1 now e-mails the owner within the hour.
 
 ## Why METRICS_EPOCH must sit on a 6-hour UTC boundary
 
