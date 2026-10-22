@@ -1,0 +1,7 @@
+# Asset-server redirects (the Worker runs only for /api/*). The build appends
+# a 301 from every page's slash-less path (scripts/finalize-export.mjs); www
+# and plain HTTP are redirected at the edge (zone-rules.yml).
+
+# The standalone status page moved to a section on the front page.
+/status /#status 301
+/status/ /#status 301

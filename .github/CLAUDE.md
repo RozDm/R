@@ -6,12 +6,15 @@ incident background: `docs/history.md`.
 - `ci.yml` — job `check` on PRs: lint, typecheck (starting with
   `wrangler types --check`), test, build, then `check:dict` (the UI
   dictionary sits in exactly one chunk — `turbopackChunking`, CLAUDE.md
-  Gotchas) and `check:waf` (`scripts/check-waf.mjs`: the WAF expression
-  must block no URL in `out/` and still block its scanner list). It is the one
+  Gotchas), `check:waf` (`scripts/check-waf.mjs`: the WAF expression
+  must block no URL in `out/` and still block its scanner list) and
+  `check:csp` (`scripts/check-csp.mjs`: every page's baked-in `<meta>` CSP
+  hashes each of its inline scripts). It is the one
   required status check on `main`, so its result decides the auto-merge.
 - `deploy.yml` — on push to `main`, two jobs, both `npm ci --ignore-scripts`.
   `build` has no secrets, so package code (lint, tests, the Next build) never
-  sees a token: the same checks → build → check:waf → check:dict → `out/` as
+  sees a token: the same checks → build → check:waf → check:dict → check:csp
+  → `out/` as
   a 1-day artifact (`include-hidden-files`, or `.well-known/security.txt`
   is dropped). It inlines the repository variable `TURNSTILE_SITE_KEY`
   (public, not a secret) as `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and fails when
@@ -21,7 +24,8 @@ incident background: `docs/history.md`.
   `TURNSTILE_SECRET`, `CF_ACCOUNT_ID` and `AE_API_TOKEN` (unset ones are
   skipped, never blanked) → `npx wrangler deploy` with the repo's pinned
   wrangler (not `cloudflare/wrangler-action`, which runs on deprecated
-  Node 20) → `scripts/smoke.sh` against the live site.
+  Node 20) → `scripts/smoke.sh` against the live site (it also runs
+  `check-csp.mjs --live` on five pages).
 - `status-watchdog.yml` — hourly, outside Cloudflare: fails (GitHub e-mails
   the owner) when the site is down or `/api/status` is older than 20 min —
   the one failure the Worker can't report about itself. A `403` here (or in
@@ -77,7 +81,8 @@ incident background: `docs/history.md`.
   touched). Applied 2026-10-17 (run 38992597687). The prod check then wants `/` free of the
   `/cdn-cgi/challenge-platform/` loader, TLS 1.1 refused, a GPTBot UA
   blocked, scanner paths
-  answered by Cloudflare's 403 and scanner-word slugs by the Worker. Its
+  answered by Cloudflare's 403 and scanner-word slugs by the site (a CSP
+  with `frame-ancestors` — `_headers` or the Worker — tells it apart). Its
   token is `CLOUDFLARE_ZONE_TOKEN` (user-owned, My Profile → API Tokens; the
   run prints its id), separate from the deploy token: Zone: Read + Zone →
   Transform Rules: Edit + Zone → Bot Management: Edit + Zone → Zone

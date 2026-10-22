@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { BASE_SECURITY_HEADERS, CSP_REPORT_GROUP, CSP_REPORT_PATH, HEADER_CSP, HSTS } from '@/src/csp'
+import { SITE_URL } from '@/lib/site'
 
-// Static files skip the Worker (negative run_worker_first patterns in
-// wrangler.jsonc) and take their headers from public/_headers instead — which
-// never applies to a Worker response. The two lists must match: a path only
-// in _headers would silently lose its cache headers to the Worker, a path
-// only in wrangler.jsonc would be served with the asset server's
-// must-revalidate default.
+// Pages and files are served by the asset server, not the Worker
+// (run_worker_first: ["/api/*"]), and take every header from public/_headers —
+// which never applies to a Worker response. So _headers must carry what the
+// Worker would have set, and the two copies must not drift.
 
 function headerRules(): Map<string, Map<string, string>> {
   const rules = new Map<string, Map<string, string>>()
@@ -30,24 +31,72 @@ function runWorkerFirst(): string[] {
   return JSON.parse(m[1])
 }
 
-describe('static assets served without the Worker', () => {
-  it('runs the Worker first for everything else', () => {
-    expect(runWorkerFirst()[0]).toBe('/*')
+// Top-level app/ folders that render pages (a page.tsx of their own).
+function pageDirs(): string[] {
+  return readdirSync('app', { withFileTypes: true })
+    .filter((d) => d.isDirectory() && existsSync(join('app', d.name, 'page.tsx')))
+    .map((d) => d.name)
+}
+
+const rules = headerRules()
+const PAGE_RULES = ['/', ...pageDirs().map((d) => `/${d}/*`)]
+
+describe('asset server headers (public/_headers)', () => {
+  it('runs the Worker first for /api/* only', () => {
+    expect(runWorkerFirst()).toEqual(['/api/*'])
   })
 
-  it('gives every Worker-skipping path a _headers rule, and nothing more', () => {
-    const skipped = runWorkerFirst()
-      .filter((p) => p.startsWith('!'))
-      .map((p) => p.slice(1))
-    expect([...headerRules().keys()].sort()).toEqual(skipped.sort())
+  it('stamps the Worker’s security headers on every response', () => {
+    const want: Record<string, string> = {
+      'strict-transport-security': HSTS,
+      'content-security-policy': HEADER_CSP,
+      'reporting-endpoints': `${CSP_REPORT_GROUP}="${SITE_URL}${CSP_REPORT_PATH}"`,
+    }
+    for (const [k, v] of Object.entries(BASE_SECURITY_HEADERS)) {
+      if (k !== 'X-Frame-Options') want[k.toLowerCase()] = v
+    }
+    expect(Object.fromEntries(rules.get('/*') ?? [])).toEqual(want)
   })
 
-  it('caches build output immutably and stable URLs for a week, all nosniff', () => {
-    for (const [path, headers] of headerRules()) {
-      expect(headers.get('cache-control')).toBe(
-        path === '/_next/static/*' ? 'public, max-age=31536000, immutable' : 'public, max-age=604800',
-      )
-      expect(headers.get('x-content-type-options')).toBe('nosniff')
+  it('keeps fetch directives out of the header CSP, so it cannot veto a page’s hashes', () => {
+    for (const d of HEADER_CSP.split('; ')) {
+      expect(d).toMatch(/^(frame-ancestors|object-src|base-uri|form-action) /)
+    }
+  })
+
+  it('sets X-Frame-Options DENY on every page path, and not on world.svg', () => {
+    expect(PAGE_RULES).toEqual(expect.arrayContaining(['/', '/blogg/*', '/en/*', '/kontakt/*', '/personvern/*']))
+    for (const path of PAGE_RULES) {
+      expect(rules.get(path)?.get('x-frame-options'), path).toBe(BASE_SECURITY_HEADERS['X-Frame-Options'])
+    }
+    for (const [path, headers] of rules) {
+      if (!PAGE_RULES.includes(path)) expect(headers.has('x-frame-options'), path).toBe(false)
+    }
+  })
+
+  it('sets each header in one rule only — overlapping rules would join two values with a comma', () => {
+    const global = rules.get('/*') ?? new Map()
+    for (const [path, headers] of rules) {
+      if (path === '/*') continue
+      for (const name of headers.keys()) expect(global.has(name), `${path} ${name}`).toBe(false)
+    }
+  })
+
+  it('caches build output immutably and stable URLs for a week', () => {
+    expect(rules.get('/_next/static/*')?.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    for (const path of ['/world.svg', '/fonts/*', '/icons/*', '/favicon.ico']) {
+      expect(rules.get(path)?.get('cache-control'), path).toBe('public, max-age=604800')
+    }
+  })
+
+  it('types the extension-less OG cards as PNG', () => {
+    for (const path of [
+      '/opengraph-image',
+      '/en/opengraph-image',
+      '/blogg/:slug/opengraph-image',
+      '/en/blog/:slug/opengraph-image',
+    ]) {
+      expect(rules.get(path)?.get('content-type'), path).toBe('image/png')
     }
   })
 })

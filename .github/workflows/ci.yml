@@ -34,3 +34,5 @@ jobs:
       - run: npm run check:dict
       # Needs out/: the WAF expression must block no URL the build serves.
       - run: npm run check:waf
+      # Every page's baked-in CSP covers each of its inline scripts.
+      - run: npm run check:csp

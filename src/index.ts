@@ -1,18 +1,20 @@
 // Cloudflare Worker for the portfolio site.
 //
-// Runs first for everything except static files (assets.run_worker_first in
-// wrangler.jsonc: /_next/static/*, /fonts/*, /icons/*, /world.svg are served
-// asset-first with headers from public/_headers):
-//   1. Redirects HTTP -> HTTPS and onto the canonical host.
+// Runs only for /api/* (assets.run_worker_first in wrangler.jsonc). Pages and
+// files are served by the asset server straight from the static export, with
+// their headers from public/_headers, each page's hash CSP baked in at build
+// (scripts/finalize-export.mjs), and the redirects in out/_redirects and the
+// zone (zone-rules.yml) — none of it costs a Worker request, and it keeps
+// working when the free plan's 100k requests/day run out. Here:
+//   1. HTTPS and canonical host for the API (workers.dev → apex).
 //   2. Dispatches /api/* to the route handlers in src/routes/.
-//   3. Serves the Next.js static export from the ASSETS binding, adding
-//      security headers (strict hash-based CSP for HTML it can read).
+//   3. An /api/ path no route claims gets the asset server's 404 page.
 //
 // Types for Env and the Workers runtime come from worker-configuration.d.ts,
 // generated with `npm run cf-typegen` — rerun it after changing wrangler.jsonc.
 
 import { EmailMessage } from 'cloudflare:email'
-import { CSP_REPORT_GROUP, CSP_REPORT_PATH, ENFORCED_CSP, HSTS, HTML_FALLBACK_CSP, applyBaseHeaders, inlineScriptHashes, readHtml, strictCsp } from './csp'
+import { ENFORCED_CSP, HEADER_CSP, HSTS, applyBaseHeaders } from './csp'
 import { MONITORS, MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, parseHistory } from './status'
 import { CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
 import { handleStatus } from './routes/status'
@@ -128,16 +130,12 @@ export default {
       return redirect301(body, target, false)
     }
 
-    // Canonical host: collapse www and the workers.dev preview onto the apex
-    // domain — avoids duplicate-content SEO hits, keeps shareable links short.
+    // Canonical host for the API. www is redirected at the edge (Single
+    // Redirect, zone-rules.yml) before it gets here; workers.dev can't be —
+    // it isn't our zone, so its pages are served as-is (canonical → apex).
     if (url.hostname === 'www.rozsoshnykh.no' || url.hostname.endsWith('.workers.dev')) {
       url.hostname = 'rozsoshnykh.no'
       return redirect301(null, url.toString())
-    }
-
-    // The standalone status page moved to a section on the front page.
-    if (url.pathname === '/status' || url.pathname === '/status/') {
-      return redirect301(null, '/#status')
     }
 
     // /api/* dispatch — each handler returns null when the path isn't its own.
@@ -151,79 +149,15 @@ export default {
       (await handleCspReport(url, request, env))
     if (apiResponse) return apiResponse
 
-    // Clients that ask for /favicon.ico directly (RSS readers, link unfurlers,
-    // bookmarks) get the build-time ICO from app/icons/[name]/route.tsx.
-    // The only /icons/* file the Worker serves, so it sets that path's week
-    // of cache itself (public/_headers doesn't apply to Worker responses).
-    const favicon = url.pathname === '/favicon.ico'
-    if (favicon) url.pathname = '/icons/favicon.ico'
-
-    // Fetch the asset with a clean request: no conditional headers (they make
-    // the binding answer 304 with an empty body), identity encoding so we can
-    // read the HTML. redirect: 'manual' — a Request built here follows
-    // redirects by default, which silently served /blogg as a 200 duplicate
-    // of /blogg/ instead of passing on the binding's trailing-slash redirect.
-    const asset = await env.ASSETS.fetch(
-      new Request(url.toString(), { headers: { 'Accept-Encoding': 'identity' }, redirect: 'manual' }),
-    )
-
-    // html_handling redirects (/blogg → /blogg/, /x/index.html → /x/) come
-    // back as 307s; they're permanent, so hand them on as 301s.
-    const assetLocation = asset.headers.get('location')
-    if (asset.status >= 300 && asset.status < 400 && assetLocation) {
-      return redirect301(null, new URL(assetLocation, url).toString())
-    }
-
-    if ((asset.headers.get('content-type') || '').includes('text/html')) {
-      // Visit + geo are no longer counted here — the client /api/visit beacon
-      // (once per session) records both, so a multi-page visit counts once.
-      const raw = await readHtml(asset)
-      // One root layout serves both languages, so every exported page says
-      // <html lang="nb">; /en/ documents are English (the client keeps it in
-      // sync on later navigations — components/effects/HtmlLang.tsx).
-      const html =
-        raw !== null && (url.pathname === '/en' || url.pathname.startsWith('/en/'))
-          ? raw.replace('<html lang="nb"', '<html lang="en"')
-          : raw
-      if (html !== null) {
-        const hashes = await inlineScriptHashes(html)
-        const headers = new Headers(asset.headers)
-        headers.delete('content-encoding')
-        headers.delete('content-length')
-        const response = new Response(html, {
-          status: asset.status,
-          statusText: asset.statusText,
-          headers,
-        })
-        applyBaseHeaders(response.headers)
-        response.headers.set('Strict-Transport-Security', HSTS)
-        // Strict hash-based CSP for HTML we can read — no 'unsafe-inline'.
-        response.headers.set('Content-Security-Policy', strictCsp(hashes))
-        // Where the policy's report-to group delivers (Reporting API).
-        response.headers.set('Reporting-Endpoints', `${CSP_REPORT_GROUP}="${url.origin}${CSP_REPORT_PATH}"`)
-        return response
-      }
-      // HTML we couldn't decode to hash (e.g. brotli): serve the bytes as-is
-      // but keep 'unsafe-inline' so its inline scripts still run. Effectively
-      // unreachable since we fetch assets as identity above.
-      const response = new Response(asset.body, asset)
-      applyBaseHeaders(response.headers)
-      response.headers.set('Strict-Transport-Security', HSTS)
-      response.headers.set('Content-Security-Policy', HTML_FALLBACK_CSP)
-      return response
-    }
-
-    // Everything else: headers only, body untouched.
+    // An /api/ path no route claims: the asset server's 404 page. _headers
+    // never applies to a Worker response, so the headers it would have had
+    // are set here; HEADER_CSP, not ENFORCED_CSP — the page's own <meta>
+    // policy holds the hashes its inline scripts need.
+    const asset = await env.ASSETS.fetch(request)
     const response = new Response(asset.body, asset)
     applyBaseHeaders(response.headers)
     response.headers.set('Strict-Transport-Security', HSTS)
-    response.headers.set('Content-Security-Policy', ENFORCED_CSP)
-    if (favicon) response.headers.set('Cache-Control', 'public, max-age=604800')
-    // Next emits OG images as extension-less files (out/opengraph-image), so the
-    // static host can't infer the type; force image/png or crawlers ignore them.
-    if (url.pathname.includes('opengraph-image')) {
-      response.headers.set('Content-Type', 'image/png')
-    }
+    response.headers.set('Content-Security-Policy', HEADER_CSP)
     return response
   },
 } satisfies ExportedHandler<Env>

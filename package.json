@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "prebuild": "node scripts/build-world-svg.mjs",
     "build": "next build",
+    "postbuild": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/finalize-export.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "npm run cf-typecheck && tsc --noEmit && tsc -p tsconfig.worker.json",
@@ -14,9 +15,10 @@
     "cf-typecheck": "wrangler types --check",
     "check:dict": "n=$(grep -l 'Hopp til hovedinnhold' out/_next/static/chunks/*.js | wc -l); [ \"$n\" -eq 1 ] || { echo \"UI dictionary in $n chunks, want 1 (CLAUDE.md Gotchas: turbopackChunking)\"; exit 1; }",
     "predeploy": "npm run check",
-    "deploy": "next build && wrangler deploy",
+    "deploy": "npm run build && wrangler deploy",
     "check": "npm run lint && npm run typecheck && npm test",
-    "check:waf": "node scripts/check-waf.mjs"
+    "check:waf": "node scripts/check-waf.mjs",
+    "check:csp": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-csp.mjs"
   },
   "engines": {
     "node": ">=22"

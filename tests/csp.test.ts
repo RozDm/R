@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { CSP_REPORT_GROUP, CSP_REPORT_PATH, ENFORCED_CSP, HTML_FALLBACK_CSP, inlineScriptHashes, parseCspReports, strictCsp } from '@/src/csp'
+import {
+  CSP_REPORT_GROUP,
+  CSP_REPORT_PATH,
+  ENFORCED_CSP,
+  HEADER_CSP,
+  cspProblems,
+  inlineScriptHashes,
+  metaCsp,
+  parseCspReports,
+  withMetaCsp,
+} from '@/src/csp'
 
 describe('inlineScriptHashes', () => {
   it('hashes a single inline script', async () => {
@@ -47,42 +57,89 @@ describe('inlineScriptHashes', () => {
   })
 })
 
-describe('strictCsp', () => {
+describe('metaCsp', () => {
   it('embeds hashes in the script-src directive', () => {
-    const csp = strictCsp(["'sha256-abc='", "'sha256-def='"])
+    const csp = metaCsp(["'sha256-abc='", "'sha256-def='"])
     expect(csp).toContain("script-src 'self' 'sha256-abc=' 'sha256-def=' https://challenges.cloudflare.com;")
+    expect(metaCsp([])).toContain("script-src 'self' https://challenges.cloudflare.com;")
   })
 
   it('allows no Cloudflare Web Analytics host (removed; an edge-injected beacon must be refused)', () => {
-    for (const csp of [strictCsp([]), ENFORCED_CSP, HTML_FALLBACK_CSP]) {
+    for (const csp of [metaCsp([]), ENFORCED_CSP, HEADER_CSP]) {
       expect(csp).not.toContain('cloudflareinsights')
     }
   })
 
   it('does not include unsafe-inline in script-src', () => {
-    const csp = strictCsp(["'sha256-abc='"])
-    const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src '))
+    const scriptSrc = metaCsp(["'sha256-abc='"]).split('; ').find((d) => d.startsWith('script-src '))
     expect(scriptSrc).toBeDefined()
     expect(scriptSrc).not.toContain('unsafe-inline')
   })
 
-  it('keeps frame-ancestors none and object-src none for A+ rating', () => {
-    const csp = strictCsp([])
-    expect(csp).toContain("frame-ancestors 'none'")
+  it('keeps object-src none and upgrades insecure subresource requests', () => {
+    const csp = metaCsp([])
     expect(csp).toContain("object-src 'none'")
+    expect(csp).toContain('upgrade-insecure-requests')
   })
 
-  it('upgrades insecure subresource requests on real HTML pages', () => {
-    const csp = strictCsp([])
-    expect(csp).toContain('upgrade-insecure-requests')
+  it('leaves out what <meta> ignores; frame-ancestors comes from the header policy', () => {
+    const csp = metaCsp([])
+    expect(csp).not.toContain('frame-ancestors')
+    expect(csp).not.toContain('report-uri')
+    expect(HEADER_CSP).toContain("frame-ancestors 'none'")
+    expect(ENFORCED_CSP).toContain("frame-ancestors 'none'")
+  })
+
+  it('reports violations through report-to', () => {
+    expect(metaCsp([])).toContain(`report-to ${CSP_REPORT_GROUP}`)
+    expect(CSP_REPORT_PATH).toBe('/api/csp-report')
   })
 })
 
-describe('strictCsp reporting', () => {
-  it('asks browsers to report violations via both mechanisms', () => {
-    const csp = strictCsp([])
-    expect(csp).toContain(`report-uri ${CSP_REPORT_PATH}`)
-    expect(csp).toContain(`report-to ${CSP_REPORT_GROUP}`)
+describe('withMetaCsp / cspProblems', () => {
+  const page = '<!DOCTYPE html><html lang="nb"><head><meta charSet="utf-8"/><script>a()</script></head><body><script>b()</script></body></html>'
+
+  it('puts the policy right after the charset, ahead of every script, with each inline script hashed', async () => {
+    const html = await withMetaCsp(page)
+    expect(
+      html.startsWith(
+        '<!DOCTYPE html><html lang="nb"><head><meta charSet="utf-8"/><meta http-equiv="Content-Security-Policy" content="script-src',
+      ),
+    ).toBe(true)
+    expect(await withMetaCsp('<html><head><title>x</title></head></html>')).toContain(
+      '<head><meta http-equiv="Content-Security-Policy"',
+    )
+    for (const hash of await inlineScriptHashes(page)) expect(html).toContain(hash)
+    expect(await cspProblems(html)).toEqual([])
+  })
+
+  it('is idempotent: a second pass replaces the policy, never doubles it', async () => {
+    const once = await withMetaCsp(page)
+    expect(await withMetaCsp(once)).toBe(once)
+  })
+
+  it('refuses a page without exactly one <head>', async () => {
+    await expect(withMetaCsp('<html><body></body></html>')).rejects.toThrow('one <head>')
+  })
+
+  it('flags a page whose policy misses an inline script', async () => {
+    const html = (await withMetaCsp(page)).replace('b()', 'evil()')
+    const problems = await cspProblems(html)
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toMatch(/^inline script 'sha256-.+' is not in script-src$/)
+  })
+
+  it('flags a missing, doubled or misplaced policy', async () => {
+    expect(await cspProblems(page)).toEqual(['0 CSP <meta> tags, want 1'])
+    const html = await withMetaCsp(page)
+    const meta = html.match(/<meta http-equiv="Content-Security-Policy"[^>]*>/)![0]
+    expect(await cspProblems(html.replace('</head>', `${meta}</head>`))).toEqual(['2 CSP <meta> tags, want 1'])
+    expect(await cspProblems(html.replace(meta, '').replace('</head>', `${meta}</head>`))).toEqual([
+      'the CSP <meta> is not in <head> ahead of every <script>',
+    ])
+    expect(await cspProblems(html.replace(meta, '').replace('<body>', `<body>${meta}`))).toEqual([
+      'the CSP <meta> is not in <head> ahead of every <script>',
+    ])
   })
 })
 
