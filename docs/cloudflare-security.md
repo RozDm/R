@@ -70,13 +70,13 @@ Open as of 2026-10-17; tick them off here when done.
     notification (a false phishing block of a URL);
   - Security Insights.
   Free has no alert for the Workers 100k/day limit.
-- [ ] **Old CI credentials gone** — once a deploy and the `analytics-report`,
-  `d1-repair` (`info`) and `zone-rules` runs are green on the `production`
-  environment's secrets: GitHub → Settings → Secrets and variables → Actions
-  → delete every *Repository* secret (until then a branch can run a workflow
-  without `environment:` and read them), then revoke the old shared
-  `CLOUDFLARE_API_TOKEN` and the old `AE_API_TOKEN` in My Profile → API
-  Tokens.
+- [x] **Old CI credentials gone** — done 2026-10-22, after deploy,
+  `analytics-report`, `d1-repair` (`info`) and `zone-rules` ran green on the
+  `production` environment's secrets: no *Repository* secrets left (a branch
+  could run a workflow without `environment:` and read them), the old shared
+  `CLOUDFLARE_API_TOKEN` and the old `AE_API_TOKEN` revoked. A secret saved
+  under another name silently fell back to the repo-level one until then —
+  check the names before deleting.
 - [ ] **AI bot policies** — Security → Settings → Configure AI bot policies:
   confirm Training = "Disallow AI training" (never "Block": it stops
   Googlebot), Search and Agent Allow; then Security → Events, filtered to
