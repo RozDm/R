@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           Privacy notice
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-4">
-          Last updated: 17 October 2026
+          Last updated: 22 October 2026
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-10 max-w-xl">
           This is a translation for convenience. The{' '}
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
             the form (the number of submissions per address).
           </p>
           <p>
-            The message is delivered to my email inbox, and a copy is stored in a database at
+            The message is delivered to my Gmail inbox, and a copy is stored in a database at
             Cloudflare. The database copy is deleted automatically after 30 days. If the email
             cannot be delivered, the copy is deleted at once and you are asked to try again.
           </p>
@@ -96,6 +96,14 @@ export default function PrivacyPage() {
             address and no information about you.
           </p>
 
+          <h2>Technical logs</h2>
+          <p>
+            When the website’s server (a Cloudflare Worker) handles a request, Cloudflare stores a
+            technical log of it: among other things the time, the address requested and details of
+            the connection, which may include your IP address. The logs are used only for
+            troubleshooting and security, kept for up to 7 days and then deleted automatically.
+          </p>
+
           <h2>Cookies and local storage</h2>
           <p>
             The website uses no cookies for tracking or marketing. The browser’s local storage is
@@ -105,16 +113,49 @@ export default function PrivacyPage() {
             not passed on.
           </p>
 
-          <h2>Data processor</h2>
+          <h2>Legal basis</h2>
+          <ul>
+            <li>
+              <strong>Replying to messages from the contact form:</strong> legitimate interest in
+              being able to answer enquiries you send yourself (GDPR Article 6(1)(f)). If the
+              enquiry concerns an assignment, a job or another possible contract, the basis is that
+              the processing is necessary to take steps at your request before entering into a
+              contract (Article 6(1)(b)).
+            </li>
+            <li>
+              <strong>
+                The IP address for limiting abuse, Turnstile, technical logs and the visitor
+                statistics:
+              </strong>{' '}
+              legitimate interest in keeping the website secure, available and free of abuse, and
+              in knowing how it is used (Article 6(1)(f)).
+            </li>
+          </ul>
+
+          <h2>Data processor and transfers to the US</h2>
           <p>
             The website runs on Cloudflare’s platform (Cloudflare, Inc.), which processes traffic
-            and stores the data described above on behalf of the data controller.
+            and stores the data described above on behalf of the data controller. Cloudflare is a
+            US company, so the data may be processed in the United States. The transfer relies on
+            the EU–US Data Privacy Framework, under which Cloudflare is certified; where the
+            framework does not apply, it relies on the European Commission’s standard contractual
+            clauses in Cloudflare’s data processing addendum. See{' '}
+            <a href="https://www.cloudflare.com/trust-hub/gdpr/" target="_blank" rel="noopener noreferrer">
+              Cloudflare’s GDPR page
+            </a>
+            .
+          </p>
+          <p>
+            Messages from the contact form are delivered to a Gmail account. Google LLC (USA)
+            therefore receives and stores your name, email address and message. Google is also
+            certified under the EU–US Data Privacy Framework.
           </p>
 
           <h2>Your rights</h2>
           <p>
-            You have the right to access, correct and delete information about you. Send an email
-            to <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a> and I will take
+            You have the right to access, correct and delete information about you, and to have
+            its processing restricted. You can also object to processing based on legitimate
+            interest. Send an email to <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a> and I will take
             care of it. You can also complain to the Norwegian Data Protection Authority,{' '}
             <a href="https://www.datatilsynet.no/en/" target="_blank" rel="noopener noreferrer">
               Datatilsynet
