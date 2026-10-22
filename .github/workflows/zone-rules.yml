@@ -28,9 +28,9 @@ name: Zone rules
 #    dashboard-made rule is updated in place (found by ref, else by name),
 #    validated with ?dry_run=true first; other custom rules are never touched.
 #
-# The token needs Zone → Zone: Read, Zone → Transform Rules: Edit,
-# Zone → Bot Management: Edit, Zone → Zone Settings: Edit and
-# Zone → Zone WAF: Edit.
+# CLOUDFLARE_ZONE_TOKEN (not the deploy token) needs Zone → Zone: Read,
+# Zone → Transform Rules: Edit, Zone → Bot Management: Edit,
+# Zone → Zone Settings: Edit and Zone → Zone WAF: Edit.
 on:
   workflow_dispatch:
 
@@ -39,13 +39,16 @@ concurrency:
   cancel-in-progress: false
 
 # Read-only GITHUB_TOKEN: nothing here writes to the repo; Cloudflare access
-# comes from the CLOUDFLARE_API_TOKEN secret.
+# comes from the CLOUDFLARE_ZONE_TOKEN secret.
 permissions:
   contents: read
 
 jobs:
   apply:
     runs-on: ubuntu-latest
+    # Secrets live in the `production` environment (deployable from main
+    # only); without this line the job gets none.
+    environment: production
     env:
       CF_API: https://api.cloudflare.com/client/v4
       ZONE: rozsoshnykh.no
@@ -57,14 +60,14 @@ jobs:
 
       - name: Apply the 4xx/5xx no-store rule
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_TOKEN: ${{ secrets.CLOUDFLARE_ZONE_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           OUT=$(mktemp)
           call() { # method path [json] -> HTTP status on stdout, body in $OUT
             curl -sS --max-time 30 -o "$OUT" -w '%{http_code}' -X "$1" "$CF_API$2" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Authorization: Bearer $CLOUDFLARE_ZONE_TOKEN" \
               -H 'Content-Type: application/json' ${3:+--data "$3"}
           }
           fail() { echo "::error::$1"; jq -c '.errors' "$OUT" 2>/dev/null || cat "$OUT"; exit 1; }
@@ -118,13 +121,13 @@ jobs:
 
       - name: Bot settings
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_TOKEN: ${{ secrets.CLOUDFLARE_ZONE_TOKEN }}
         run: |
           set -euo pipefail
           OUT=$(mktemp)
           call() { # method path [json] -> HTTP status on stdout, body in $OUT
             curl -sS --max-time 30 -o "$OUT" -w '%{http_code}' -X "$1" "$CF_API$2" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Authorization: Bearer $CLOUDFLARE_ZONE_TOKEN" \
               -H 'Content-Type: application/json' ${3:+--data "$3"}
           }
           fail() { echo "::error::$1"; jq -c '.errors' "$OUT" 2>/dev/null || cat "$OUT"; exit 1; }
@@ -177,13 +180,13 @@ jobs:
 
       - name: Zone settings
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_TOKEN: ${{ secrets.CLOUDFLARE_ZONE_TOKEN }}
         run: |
           set -euo pipefail
           OUT=$(mktemp)
           call() { # method path [json] -> HTTP status on stdout, body in $OUT
             curl -sS --max-time 30 -o "$OUT" -w '%{http_code}' -X "$1" "$CF_API$2" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Authorization: Bearer $CLOUDFLARE_ZONE_TOKEN" \
               -H 'Content-Type: application/json' ${3:+--data "$3"}
           }
           # stderr: get() runs inside $(…), which would swallow stdout.
@@ -220,7 +223,7 @@ jobs:
 
       - name: Scanner-block WAF rule
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_TOKEN: ${{ secrets.CLOUDFLARE_ZONE_TOKEN }}
           WAF_PHASE: http_request_firewall_custom
           WAF_REF: scanner_block
           WAF_EXPR_FILE: .github/waf/scanner-block.expr
@@ -229,7 +232,7 @@ jobs:
           OUT=$(mktemp)
           call() { # method path [json] -> HTTP status on stdout, body in $OUT
             curl -sS --max-time 30 -o "$OUT" -w '%{http_code}' -X "$1" "$CF_API$2" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Authorization: Bearer $CLOUDFLARE_ZONE_TOKEN" \
               -H 'Content-Type: application/json' ${3:+--data "$3"}
           }
           fail() { echo "::error::$1"; jq -c '.errors' "$OUT" 2>/dev/null || cat "$OUT"; exit 1; }

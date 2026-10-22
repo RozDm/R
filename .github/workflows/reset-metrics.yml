@@ -28,6 +28,9 @@ permissions:
 jobs:
   reset:
     runs-on: ubuntu-latest
+    # Secrets live in the `production` environment (deployable from main
+    # only); without this line the job gets none.
+    environment: production
     steps:
       - name: Check confirmation
         if: ${{ inputs.confirm != 'RESET' }}

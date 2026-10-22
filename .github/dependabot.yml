@@ -1,7 +1,8 @@
 # Dependabot: one weekly batch per ecosystem, so a normal week brings one or
-# two PRs. Each runs the required `check` (ci.yml needs no repo secrets).
+# two PRs. Each runs the required `check` (ci.yml needs no secrets).
 # Merge by enabling squash auto-merge as the owner, so the merge push is the
-# owner's and deploy.yml gets its secrets (.github/CLAUDE.md).
+# owner's and deploy.yml gets the `production` environment's secrets
+# (.github/CLAUDE.md).
 version: 2
 updates:
   - package-ecosystem: npm

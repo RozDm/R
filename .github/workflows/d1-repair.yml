@@ -53,6 +53,9 @@ permissions:
 jobs:
   repair:
     runs-on: ubuntu-latest
+    # Secrets live in the `production` environment (deployable from main
+    # only); without this line the job gets none.
+    environment: production
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -17,6 +17,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Secrets live in the `production` environment (deployable from main
+    # only); without this line the job gets none.
+    environment: production
     steps:
       - uses: actions/checkout@v7
 
