@@ -14,7 +14,7 @@ name: Zone rules
 #    cached chunk and the font into no-store. Found by its ref and updated in
 #    place; other rules in the phase are left alone, a new one goes last.
 # 2. JavaScript Detections off (`enable_js: false`). The edge injects its
-#    loader into HTML after the Worker hashed the page's scripts, so the CSP
+#    loader into HTML after the page's CSP hashes were fixed, so the CSP
 #    refuses it on every page view (one CSP report — a Worker request — each)
 #    and the HTML loses its ETag. It outlived Bot Fight Mode being switched
 #    off (docs/cloudflare-security.md, lesson 3). The same step fails on bot

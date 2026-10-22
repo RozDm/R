@@ -213,8 +213,9 @@ answered, keep output and replies short.
   (`bg-white dark:bg-gray-900/50 rounded-xl border … hover:border-red-500/30`),
   staggered `animate-fade-in` delays (0/150/300/450/600/750ms).
 - Secondary links (footer, tag chips, the NO/EN switch) set
-  `prefetch={false}`: each viewport prefetch is several Worker requests and
-  mobile data; primary nav, post cards and prev/next keep Next's default.
+  `prefetch={false}`: each viewport prefetch is several requests (RSC
+  payloads — asset-served, so no Worker quota, but still mobile data);
+  primary nav, post cards and prev/next keep Next's default.
 - Accent TEXT is red-600 in light mode / red-400 in dark; red-500 is for
   decoration only (dots, borders, selection, chart dots) — red-500 text on
   the light background fails WCAG AA. In-text links are underlined. Font is

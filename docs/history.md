@@ -140,6 +140,37 @@ both `cloudflareinsights` CSP hosts and the privacy-notice paragraph went,
 the owner disables the site in the dashboard, and `smoke.sh` ("no edge
 script") fails while HTML served to a browser carries an injected script.
 
+## 2026-10-22 — secrets, HTML off the Worker, and the ETag that vanished
+
+Audit follow-up, three lessons that became rules:
+
+- **A misnamed environment secret falls back silently.** Secrets moved from
+  repository level to the `production` environment. The deploy token was
+  saved there as `CW_API_TOKEN`; the workflows read `CLOUDFLARE_API_TOKEN`,
+  which still existed at repo level, so deploy and `d1-repair` ran green on
+  the *old* token and nothing flagged it. Caught only by reading the
+  secret list before deleting the repo-level ones. Also learned: smoke never
+  proved `AE_API_TOKEN` or `TURNSTILE_SECRET` — `/api/timeseries` answers
+  200 with empty points on an AE error, and Turnstile isn't exercised — so a
+  new value is verified by `analytics-report` and one real form message.
+  Rule: no repository-level secrets (`.github/CLAUDE.md`).
+- **HTML left the Worker.** `run_worker_first: ["/api/*"]`; each page's hash
+  CSP is baked in at build as a `<meta>` (`scripts/finalize-export.mjs`).
+  Measured in `wrangler dev`: with a selective `run_worker_first` a miss gets
+  the 404 page and never reaches the Worker, navigation or not (the docs'
+  "non-navigation misses invoke the Worker" didn't hold), so only `/api/*`
+  spends quota. Chromium reports `report-to` violations from a `<meta>`
+  policy exactly as from a header. The `<meta>` goes after the charset: a
+  ~1 KB policy ahead of it pushed `<meta charset>` past the first 1,024
+  bytes, and the asset server sends `text/html` without a charset.
+- **The pages lost their ETag.** Worker-served HTML had kept the asset
+  server's ETag; asset-served HTML came back without one, so every view
+  re-downloaded the page instead of a 304. Cloudflare strips a strong ETag
+  from HTML when Automatic HTTPS Rewrites, Email Obfuscation or Replace
+  insecure JS libraries may rewrite it — features that could also break a
+  page's baked hashes. `zone-rules.yml` turns all three off and its prod
+  check wants `/` to answer `If-None-Match` with a 304.
+
 ## Removed features that must not quietly return
 
 - **Cloudflare Web Analytics** — removed 2026-10-17 (above). Visits are
