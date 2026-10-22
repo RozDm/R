@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/context/ThemeContext'
 import VisitBeacon from '@/components/effects/VisitBeacon'
 import HtmlLang from '@/components/effects/HtmlLang'
 import { SITE_URL, AUTHOR, SITE_TITLE, SITE_DESCRIPTION, SITE_TAGLINE, THEME_BG } from '@/lib/site'
-import { RSS_ALTERNATE } from '@/lib/metadata'
+import { RSS_ALTERNATE, serializeJsonLd } from '@/lib/metadata'
 
 const intelOneMono = Intel_One_Mono({
   subsets: ['latin'],
@@ -140,11 +140,11 @@ export default function RootLayout({
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(personJsonLd) }}
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(webSiteJsonLd) }}
         />
         <script
           dangerouslySetInnerHTML={{

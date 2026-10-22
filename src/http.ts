@@ -73,3 +73,29 @@ export function putCachedApiJson(
   ctx.waitUntil(caches.default.put(key, response.clone()))
   return response
 }
+
+// A request body as text, or null once it passes `max` bytes — read in
+// chunks and abandoned there, so an oversized body is never held whole.
+export async function readCapped(request: Request, max: number): Promise<string | null> {
+  if (!request.body) return ''
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      await reader.cancel()
+      return null
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(bytes)
+}

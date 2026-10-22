@@ -37,8 +37,10 @@ export interface ContactInput extends ContactPayload {
   turnstileToken: string | null
 }
 
-// Loose but practical: something@something.tld, no spaces.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+// Loose but practical: something@something.tld. No whitespace and none of
+// <>,;"()[]\: — the address lands in `Reply-To: <…>`, and a `>, <…` inside
+// it would add a second recipient (CR/LF were already refused).
+const EMAIL_RE = /^[^\s@<>,;"()[\]\\:]+@[^\s@<>,;"()[\]\\:]+\.[^\s@<>,;"()[\]\\:]{2,}$/
 
 export function validateContact(input: unknown): ContactInput | null {
   if (typeof input !== 'object' || input === null) return null
@@ -58,20 +60,31 @@ export function validateContact(input: unknown): ContactInput | null {
   }
 }
 
+// A hung siteverify must not hold the form open; past this it fails closed.
+export const TURNSTILE_TIMEOUT_MS = 5_000
+
 // Cloudflare Turnstile siteverify. Returns true on a valid token, false
-// otherwise (or on transport failure — fail closed). The `remoteip` is the
-// visitor's IP for the audit trail.
-export async function verifyTurnstile(token: string, secret: string, remoteip?: string): Promise<boolean> {
+// otherwise (or on transport failure or timeout — fail closed). The
+// `remoteip` is the visitor's IP for the audit trail; with `hostname`, the
+// token must also have been solved on that host (siteverify reports where),
+// so a token minted on another site using our site key doesn't pass.
+export async function verifyTurnstile(
+  token: string,
+  secret: string,
+  remoteip?: string,
+  hostname?: string,
+): Promise<boolean> {
   const body = new URLSearchParams({ secret, response: token })
   if (remoteip) body.set('remoteip', remoteip)
   try {
     const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       body,
+      signal: AbortSignal.timeout(TURNSTILE_TIMEOUT_MS),
     })
     if (!res.ok) return false
-    const data = (await res.json()) as { success?: boolean }
-    return data.success === true
+    const data = (await res.json()) as { success?: boolean; hostname?: string }
+    return data.success === true && (hostname === undefined || data.hostname === hostname)
   } catch {
     return false
   }

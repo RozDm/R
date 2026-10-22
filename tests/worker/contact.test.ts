@@ -143,8 +143,24 @@ describe('POST /api/contact', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: false })))
     expect(await send(fake, { ...FORM, turnstileToken: 'spent' })).toEqual({ status: 403, body: { error: 'challenge failed' } })
 
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: true })))
+    // A token solved on another host using our site key doesn't pass.
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: true, hostname: 'evil.example' })))
+    expect(await send(fake, { ...FORM, turnstileToken: 'elsewhere' })).toEqual({ status: 403, body: { error: 'challenge failed' } })
+
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: true, hostname: 'rozsoshnykh.no' })))
     expect(await send(fake, { ...FORM, turnstileToken: 'fresh' })).toEqual({ status: 200, body: { ok: true } })
     expect(fake.sent).toHaveLength(1)
+  })
+
+  it('refuses an oversized body with 413, by its Content-Length or as it is read', async () => {
+    const fake = makeEnv()
+    const big = { ...FORM, message: 'x'.repeat(40_000) }
+    expect(await send(fake, big)).toEqual({ status: 413, body: { error: 'payload too large' } })
+    expect(await send(fake, FORM, { ...BROWSER_HEADERS, 'content-length': '999999' })).toEqual({
+      status: 413,
+      body: { error: 'payload too large' },
+    })
+    expect(rows(fake)).toBe(0)
+    expect(await send(fake)).toEqual({ status: 200, body: { ok: true } })
   })
 })

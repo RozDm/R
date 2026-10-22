@@ -2,7 +2,7 @@
 // Email Routing. Defence in depth: same-origin + bot-UA + honeypot + Turnstile
 // (when configured) + per-IP and per-email rate limits.
 import { EmailMessage } from 'cloudflare:email'
-import { apiJson } from '../http'
+import { apiJson, readCapped } from '../http'
 import { looksLikeBot } from '../metrics'
 import { clientKey } from '../ip'
 import { CONTACT_WINDOWS_MS, buildContactMime, isoCutoff, validateContact, verifyTurnstile } from '../contact'
@@ -14,9 +14,18 @@ const CONTACT_IP_LIMIT = 3
 // Max submissions per e-mail address per hour — spammers reuse a throwaway
 // address while rotating IPs, so this catches what the IP gate misses.
 const CONTACT_EMAIL_LIMIT = 2
+// The largest body a real form sends is ~15 KB (5,000 characters of message
+// at up to 3 UTF-8 bytes, a Turnstile token, the short fields). A larger
+// Content-Length is refused before anything else; the body is read with the
+// same cap either way (a client need not send the header).
+export const CONTACT_MAX_BODY = 32_768
 
 export async function handleContact(url: URL, request: Request, env: Env): Promise<Response | null> {
   if (url.pathname !== '/api/contact' || request.method !== 'POST') return null
+
+  if (Number(request.headers.get('content-length')) > CONTACT_MAX_BODY) {
+    return apiJson('{"error":"payload too large"}', 413)
+  }
 
   if (
     request.headers.get('sec-fetch-site') !== 'same-origin' ||
@@ -25,9 +34,11 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     return apiJson('{"error":"forbidden"}', 403)
   }
 
+  const text = await readCapped(request, CONTACT_MAX_BODY)
+  if (text === null) return apiJson('{"error":"payload too large"}', 413)
   let raw: unknown
   try {
-    raw = await request.json()
+    raw = JSON.parse(text)
   } catch {
     return apiJson('{"error":"bad request"}', 400)
   }
@@ -51,7 +62,8 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     if (!payload.turnstileToken) {
       return apiJson('{"error":"challenge required"}', 403)
     }
-    const ok = await verifyTurnstile(payload.turnstileToken, env.TURNSTILE_SECRET, ip)
+    // The widget ran on a page of this host (the form posts same-origin).
+    const ok = await verifyTurnstile(payload.turnstileToken, env.TURNSTILE_SECRET, ip, url.hostname)
     if (!ok) return apiJson('{"error":"challenge failed"}', 403)
   }
 

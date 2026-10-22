@@ -15,6 +15,7 @@ import {
 } from '../timeseries'
 
 const DATASET = 'rozsoshnykh_metrics'
+const AE_TIMEOUT_MS = 8_000
 
 export async function handleTimeseries(
   url: URL,
@@ -52,6 +53,9 @@ export async function handleTimeseries(
             'Content-Type': 'text/plain',
           },
           body: sql,
+          // A slow AE answer degrades to an empty series instead of holding
+          // the request (and its Worker CPU wall time) open.
+          signal: AbortSignal.timeout(AE_TIMEOUT_MS),
         },
       )
       const text = await res.text()

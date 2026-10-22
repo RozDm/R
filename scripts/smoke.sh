@@ -161,6 +161,11 @@ check "api/ts/view" "$BASE/api/timeseries?metric=view&range=7d" 200 '"points"'
 # GET is refused on purpose (reports are POSTed by browsers): 405 proves the
 # route is wired without writing a junk AE point on every deploy.
 check "csp-report"  "$BASE/api/csp-report"   405 '"method not allowed"'
+# /api/contact refuses an oversized body before anything else (no Turnstile,
+# no D1, no mail): 40 KB against the 32 KB cap.
+code=$(head -c 40000 /dev/zero | tr '\0' 'x' | curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -A "$UA" \
+  -X POST -H 'Content-Type: application/json' --data-binary @- "$BASE/api/contact")
+if [ "$code" = 413 ]; then echo "OK   contact 413 (oversized body)"; else echo "FAIL contact oversized body -> $code (want 413)"; FAIL=1; fi
 check "robots.txt"  "$BASE/robots.txt"       200 "Sitemap: $BASE/sitemap.xml" "Disallow: /api/"
 check "sitemap"     "$BASE/sitemap.xml"      200 "<loc>$BASE/blogg/"
 check "rss"         "$BASE/feed.xml"         200 "<rss"

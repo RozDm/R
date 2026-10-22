@@ -15,8 +15,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `timeseries`, `contact`, `csp-report`. Each takes the parsed `URL` and
   returns `null` when the path isn't its own; `index.ts` chains them with
   `??`. Pure logic goes in a top-level `src/*.ts` module, not in a route.
-- `http.ts` — `apiJson()` (JSON + security headers) and the edge-cache pair
-  `cachedApiJson()`/`putCachedApiJson()`.
+- `http.ts` — `apiJson()` (JSON + security headers), the edge-cache pair
+  `cachedApiJson()`/`putCachedApiJson()`, `allowWrite()` and
+  `readCapped()` (a body read that gives up past a byte cap).
 - `csp.ts` — security headers and CSP, shared with the build: `metaCsp`,
   `withMetaCsp` and `cspProblems` run in `scripts/finalize-export.mjs` /
   `scripts/check-csp.mjs` (Node imports the `.ts` directly).
@@ -48,7 +49,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   network org (a bot diagnostic; AE only, no IP); `view` — `/api/views`
   POSTs, not graphed yet; `csp` — browser CSP reports. Reads need the runtime
   secrets `CF_ACCOUNT_ID` + `AE_API_TOKEN` (`Account Analytics:Read`);
-  missing either → empty series. Quote every AE SQL `INTERVAL` literal
+  missing either, or an AE answer slower than 8 s, → empty series. Quote every AE SQL `INTERVAL` literal
   (`INTERVAL '6' HOUR`) — the bare form 422s.
 - `METRICS_EPOCH` filters pre-relaunch AE points (AE is append-only). It must
   sit on a 6-hour UTC boundary (00/06/12/18; unit-tested in
@@ -84,8 +85,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `/api/timeseries?metric=view|geo&range=24h|7d|30d|all` — GET, edge-cached
   per metric+range; `view` is still served for API compat, only `geo` is
   graphed; `all` spans ~90 days at 6h buckets.
-- `/api/contact` — POST: Sec-Fetch + UA filter, honeypot, Turnstile (when
-  `TURNSTILE_SECRET` is set), D1 rate limits (per sender — `contact.ip`
+- `/api/contact` — POST: a 32 KB body cap first (413, by Content-Length
+  and while reading — smoke-checked), Sec-Fetch + UA filter, honeypot,
+  Turnstile (when `TURNSTILE_SECRET` is set; siteverify bounded at 5 s and
+  its `hostname` must be the request's host), an e-mail pattern without
+  `<>,;"()[]\:` (it lands in `Reply-To: <…>`), D1 rate limits (per sender — `contact.ip`
   holds `clientKey(ip)`, an IPv6 /64 rather than the address — and per
   e-mail), and a 2-minute content dedup
   (same address + message → ack'd without a second mail).
