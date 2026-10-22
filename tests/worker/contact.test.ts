@@ -106,6 +106,18 @@ describe('POST /api/contact', () => {
     expect(await send(fake)).toEqual({ status: 429, body: { error: 'rate limited' } })
   })
 
+  it('counts a whole IPv6 /64 as one sender, and stores only that prefix', async () => {
+    const fake = makeEnv()
+    seed(fake, 1, { ip: '2001:db8:aa:bb::/64', email: 'a@example.no', message: 'første melding her' })
+    seed(fake, 2, { ip: '2001:db8:aa:bb::/64', email: 'b@example.no', message: 'andre melding her' })
+    seed(fake, 3, { ip: '2001:db8:aa:bb::/64', email: 'c@example.no', message: 'tredje melding her' })
+    const v6 = (ip: string) => ({ ...BROWSER_HEADERS, 'cf-connecting-ip': ip })
+    expect((await send(fake, FORM, v6('2001:db8:aa:bb:dead:beef:0:1'))).status).toBe(429)
+    expect((await send(fake, FORM, v6('2001:db8:aa:bc::1'))).status).toBe(200)
+    const stored = fake.db.prepare('SELECT ip FROM contact ORDER BY id DESC LIMIT 1').get() as { ip: string }
+    expect(stored.ip).toBe('2001:db8:aa:bc::/64')
+  })
+
   it('does not count IP submissions older than ten minutes (same day)', async () => {
     const fake = makeEnv()
     for (const m of [30, 90, 240]) seed(fake, m, { email: `x${m}@example.no`, message: `melding nummer ${m}` })

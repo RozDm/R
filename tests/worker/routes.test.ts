@@ -48,6 +48,20 @@ describe('/api/csp-report', () => {
     expect(fake.aePoints).toHaveLength(2)
   })
 
+  it('budgets a whole IPv6 /64 as one client', async () => {
+    const fake = makeEnv()
+    fake.setRateLimit(1)
+    const send = (ip: string) => {
+      const req = report(`${ORIGIN}/`, 'inline')
+      req.headers.set('cf-connecting-ip', ip)
+      return handleCspReport(url, req, fake.env)
+    }
+    await send('2001:db8:aa:bb::1')
+    await send('2001:db8:aa:bb::2')
+    await send('2001:db8:aa:bc::1')
+    expect(fake.aePoints).toHaveLength(2)
+  })
+
   it('refuses GET with 405 (the smoke check)', async () => {
     const res = (await handleCspReport(url, new Request(url), makeEnv().env))!
     expect(res.status).toBe(405)
