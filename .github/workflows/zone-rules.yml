@@ -21,7 +21,9 @@ name: Zone rules
 #    settings that would block search engines or CI (Bot Fight Mode, AI
 #    training "block", AI Labyrinth…) — those stay dashboard-owned.
 # 3. Zone settings: Browser Cache TTL "Respect Existing Headers" (0), 0-RTT
-#    on, Always Use HTTPS on, minimum TLS raised to 1.2 if below it (a
+#    on, Always Use HTTPS on, the HTML-rewriting features (Automatic HTTPS
+#    Rewrites, Email Obfuscation, Replace insecure JS) off, minimum TLS
+#    raised to 1.2 if below it (a
 #    stricter 1.3 is kept). Then the Single Redirect www → apex (301, path
 #    and query kept; found by its ref, other redirect rules left alone).
 # 4. The "Block scanners" WAF custom rule from .github/waf/scanner-block.expr
@@ -219,6 +221,14 @@ jobs:
           # HTTP → HTTPS at the edge (301), before the Worker or the asset
           # server: once HTML is served asset-first, nothing else upgrades it.
           ensure always_use_https '"on"'
+          # HTML-rewriting features off. Pages come from the asset server with
+          # their CSP hashes baked in at build: a feature that edits a page
+          # after that (a rewritten inline script fails its hash) also strips
+          # the page's strong ETag, so browsers re-download it instead of a 304.
+          # The site is HTTPS-only (HSTS preload, upgrade-insecure-requests).
+          ensure automatic_https_rewrites '"off"'
+          ensure email_obfuscation '"off"'
+          ensure replace_insecure_js '"off"'
           # Raise-only: 1.2 is the floor; a stricter 1.3 is the owner's choice
           # and is kept (measured 1.3 on 2026-10-16: TLS 1.2 was refused).
           v=$(get min_tls_version)
@@ -412,7 +422,19 @@ jobs:
             sleep 10
           done
           [ -n "$ok" ] || { echo "::error::$BASE/ still carries the /cdn-cgi/challenge-platform/ loader"; exit 1; }
-          echo "OK   no JSD loader in $BASE/ ($(echo "$h" | grep -i '^etag:' || echo 'no etag'))"
+          echo "OK   no JSD loader in $BASE/"
+          # Pages keep the asset server's ETag (nothing at the edge rewrites
+          # them), so a revisit is a 304 (retried while the settings propagate).
+          ok=
+          for i in $(seq 1 12); do
+            etag=$(curl -sS -o /dev/null -D - --max-time 20 "$BASE/" | tr -d '\r' | grep -i '^etag:' | cut -d' ' -f2-)
+            if [ -n "$etag" ] && curl -sS -o /dev/null -D - --max-time 20 -H "If-None-Match: $etag" "$BASE/" \
+                | grep -q '^HTTP/[0-9.]* 304'; then ok=1; break; fi
+            echo "  retry $i: $BASE/ has no working ETag yet (${etag:-none})"
+            sleep 10
+          done
+          [ -n "$ok" ] || { echo "::error::$BASE/ has no ETag/304 — an HTML-rewriting feature is still on"; exit 1; }
+          echo "OK   $BASE/ answers If-None-Match with 304 ($etag)"
           # www and plain HTTP are redirected by the edge, not the Worker: the
           # Worker's 301s carry X-Frame-Options, the edge's carry none
           # (retried while the rule and the setting propagate).

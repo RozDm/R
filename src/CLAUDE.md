@@ -157,7 +157,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   excludes the static prefixes by hand (`docs/cloudflare-security.md`). A
   miss is still stamped with its path's `_headers` cache — the zone rule
   from `zone-rules.yml` (`.github/CLAUDE.md`) overrides it to `no-store` on
-  every 4xx/5xx. HTML is `max-age=0, must-revalidate` with an ETag (304s).
+  every 4xx/5xx. HTML is `max-age=0, must-revalidate` with an ETag (304s) —
+  as long as the zone's HTML-rewriting features stay off (`zone-rules.yml`):
+  they strip it.
   `smoke.sh` canary: world.svg carries the week's cache AND no
   `X-Frame-Options` (proof it skipped the Worker).
 - Status alerts are flap-damped (`CONSECUTIVE_FAILS_TO_ALERT = 2`): «nede»
