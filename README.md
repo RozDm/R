@@ -66,7 +66,10 @@ submissions are delivered by e-mail anyway (the D1 row is a secondary copy).
 A weekly encrypted-dump workflow existed briefly and was removed as not worth
 the upkeep.
 
-Repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
+Secrets live in the GitHub environment `production` (deployment branches:
+`main` only; no repository-level secrets — `.github/CLAUDE.md`):
+`CLOUDFLARE_API_TOKEN` (deploy: Workers, KV, D1), `CLOUDFLARE_ZONE_TOKEN`
+(zone settings and rules, `zone-rules.yml` only), `CLOUDFLARE_ACCOUNT_ID`,
 `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
 token for the Analytics Engine SQL API; `CF_ACCOUNT_ID` for the same call
 reuses `CLOUDFLARE_ACCOUNT_ID`).

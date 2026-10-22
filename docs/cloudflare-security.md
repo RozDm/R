@@ -25,16 +25,20 @@ that would block search engines or CI.
 | Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
-| Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the token lacks) | owner to switch on + add an e-mail (see "Owner to-do") |
+| Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the zone token lacks) | owner to switch on + add an e-mail (see "Owner to-do") |
 | Browser Integrity Check | Security → Settings | on by default per the docs, which say it challenges requests without a User-Agent — yet an empty-UA request got 200 (measured); its actual state is unverified, so don't rely on it |
 | Free Managed Ruleset, L3–L7 DDoS | default | On (a custom rule with Skip → All managed rules can exempt a false positive) |
 | Response Header Transform `error_no_store` | `zone-rules.yml` (code) | 4xx/5xx → `Cache-Control: no-store` |
-| Web Analytics (RUM) | account → Web Analytics → rozsoshnykh.no → Manage site (dashboard; the CI token has no account Analytics scope) | **Disable** (since 2026-10-17). Its automatic setup injects a second beacon into browser HTML after the Worker and strips the ETag; the site counts visits itself (`/api/visit`). The CSP no longer lists `cloudflareinsights`, so a returning injection is refused, and `smoke.sh` ("no edge script") fails on it (`docs/history.md`) |
+| Web Analytics (RUM) | account → Web Analytics → rozsoshnykh.no → Manage site (dashboard; no CI token can write it) | **Disable** (since 2026-10-17). Its automatic setup injects a second beacon into browser HTML after the Worker and strips the ETag; the site counts visits itself (`/api/visit`). The CSP no longer lists `cloudflareinsights`, so a returning injection is refused, and `smoke.sh` ("no edge script") fails on it (`docs/history.md`) |
 
-The `CLOUDFLARE_API_TOKEN` secret (a user-owned token) has Zone Read +
+CI reaches Cloudflare with two user-owned tokens, held only by the GitHub
+environment `production` (`.github/CLAUDE.md`): `CLOUDFLARE_API_TOKEN`
+deploys (Workers Scripts, KV, D1, Workers Routes — no zone settings), and
+`CLOUDFLARE_ZONE_TOKEN`, used only by `zone-rules.yml`, has Zone Read +
 Transform Rules Edit + Bot Management Edit + Zone Settings Edit + Zone WAF
-Edit — no SSL and Certificates, and no account-level Notifications, so CT
-Monitoring and Notifications stay dashboard work.
+Edit + Single Redirect Edit (reserved for a www→apex rule). Neither has SSL
+and Certificates or account-level Notifications, so CT Monitoring and
+Notifications stay dashboard work.
 
 Goal of the set: keep scanner traffic off the Worker's 100,000 requests/day
 (per account, resets 00:00 UTC; past it every `run_worker_first` path —
@@ -46,7 +50,7 @@ Measured: `/wp-login.php`, `/.env`, `*.php` get Cloudflare's 403 without
 touching the Worker — the custom rule works. With Bot Fight Mode off, the
 watchdog from GitHub runners is green again (run 38910824580).
 
-## Owner to-do (dashboard only — the CI token can't do these)
+## Owner to-do (dashboard only — the CI tokens can't do these)
 
 Open as of 2026-10-17; tick them off here when done.
 
@@ -54,7 +58,7 @@ Open as of 2026-10-17; tick them off here when done.
   Certificate Transparency Monitoring → On, add an e-mail. Mails when a CA
   outside Cloudflare logs a certificate for the zone (mis-issuance, a hijack).
   Free on every plan. (API: `PATCH /zones/{id}/ct/alerting {"enabled":true}`
-  needs SSL and Certificates: Edit — deliberately not on the CI token.)
+  needs SSL and Certificates: Edit — deliberately not on the zone token.)
 - [ ] **Notifications** (account level: Notifications → Add), e-mail to the
   owner. All on Free:
   - HTTP DDoS Attack Alert (`dos_attack_l7`);
@@ -66,6 +70,13 @@ Open as of 2026-10-17; tick them off here when done.
     notification (a false phishing block of a URL);
   - Security Insights.
   Free has no alert for the Workers 100k/day limit.
+- [ ] **Old CI credentials gone** — once a deploy and the `analytics-report`,
+  `d1-repair` (`info`) and `zone-rules` runs are green on the `production`
+  environment's secrets: GitHub → Settings → Secrets and variables → Actions
+  → delete every *Repository* secret (until then a branch can run a workflow
+  without `environment:` and read them), then revoke the old shared
+  `CLOUDFLARE_API_TOKEN` and the old `AE_API_TOKEN` in My Profile → API
+  Tokens.
 - [ ] **AI bot policies** — Security → Settings → Configure AI bot policies:
   confirm Training = "Disallow AI training" (never "Block": it stops
   Googlebot), Search and Agent Allow; then Security → Events, filtered to

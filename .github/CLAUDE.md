@@ -67,21 +67,36 @@ incident background: `docs/history.md`.
   touched). Applied 2026-10-17 (run 38992597687). The prod check then wants `/` free of the
   `/cdn-cgi/challenge-platform/` loader, TLS 1.1 refused, a GPTBot UA
   blocked, scanner paths
-  answered by Cloudflare's 403 and scanner-word slugs by the Worker. The
-  token (a user-owned one, My Profile → API Tokens; the run prints its id)
-  needs Zone: Read + Zone → Transform Rules: Edit + Zone → Bot Management:
-  Edit + Zone → Zone Settings: Edit + Zone → Zone WAF: Edit — enough in
-  practice; the Account Rulesets: Read some docs list wasn't.
+  answered by Cloudflare's 403 and scanner-word slugs by the Worker. Its
+  token is `CLOUDFLARE_ZONE_TOKEN` (user-owned, My Profile → API Tokens; the
+  run prints its id), separate from the deploy token: Zone: Read + Zone →
+  Transform Rules: Edit + Zone → Bot Management: Edit + Zone → Zone
+  Settings: Edit + Zone → Zone WAF: Edit — enough in practice; the Account
+  Rulesets: Read some docs list wasn't — plus Zone → Single Redirect: Edit,
+  reserved for a www→apex redirect rule.
 - `d1-bootstrap.yml` — one-shot: creates the metrics D1 (skipped when the
   name is already listed) and applies the schema.
 - `dependabot.yml` — weekly (Monday, Europe/Oslo, 7-day cooldown) grouped
   PRs: npm minor+patch in one, wrangler alone, GitHub Actions in one; every
   semver-major is ignored (migrations are done by hand — ESLint stays 9).
-  Dependabot PRs get no repo secrets, which `check` doesn't need. Merge one
+  Dependabot PRs get no secrets, which `check` doesn't need. Merge one
   by enabling squash auto-merge as the owner, so the merge push is the
   owner's and `deploy.yml` runs with its secrets (never a GITHUB_TOKEN merge
   workflow). The wrangler PR stays red until `npm run cf-typegen` is
   committed on it (`wrangler types --check` compares the workerd version);
   pushing to a Dependabot branch stops Dependabot rebasing it.
-- Every workflow runs with a read-only `GITHUB_TOKEN`; Cloudflare access comes
-  from the `CLOUDFLARE_API_TOKEN` secret.
+- Every workflow runs with a read-only `GITHUB_TOKEN`. All secrets live in
+  the GitHub environment `production`, whose deployment branch policy allows
+  `main` only — none at repository level: `CLOUDFLARE_API_TOKEN` (deploy:
+  Workers Scripts/KV/D1 + Workers Routes; `deploy`, `d1-*`,
+  `reset-metrics`), `CLOUDFLARE_ZONE_TOKEN` (`zone-rules` only),
+  `CLOUDFLARE_ACCOUNT_ID` (also synced to the Worker as `CF_ACCOUNT_ID`),
+  `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account →
+  Account Analytics: Read). A job that needs one declares
+  `environment: production`; a job without it, or one started from any
+  other branch, gets nothing. Never add a repository-level secret back: the
+  repo is public and any branch could run a workflow without `environment:`
+  that reads it. `ci.yml` and `status-watchdog.yml` use no secrets. The
+  remaining path to the secrets is a merge into `main` (auto-merge on a
+  green `check`, no approvals); only "Required reviewers" on the environment
+  closes it, at one click per deploy — not enabled.
