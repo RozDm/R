@@ -70,7 +70,9 @@ Open as of 2026-10-17; tick them off here when done.
   the Worker) → send one test message from `/kontakt/`. The site key
   doesn't change. Then move the due date here six to twelve months on.
 
-- [ ] **MTA-STS and TLS-RPT DNS records** — DNS → Records → Add, after the
+- [x] **MTA-STS and TLS-RPT DNS records** — done 2026-10-22 (verified over
+  DoH: `_mta-sts` resolves to `v=STSv1; id=…`, `_smtp._tls` to the TLSRPTv1
+  record). DNS → Records → Add, after the
   `mta-sts.rozsoshnykh.no` custom domain serves the policy (check:
   `curl https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt`):
   - CNAME, name `_mta-sts`, target `_mta-sts.mx.cloudflare.net`, **DNS only**

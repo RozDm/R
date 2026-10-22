@@ -55,12 +55,11 @@ export function parseRange(value: string | null): { key: string; range: SeriesRa
 // (hourly ranges divide 6h evenly), so nothing straddles.
 // REMINDER: bump this after every `reset-metrics` run — keep it on a 6h
 // boundary, rounding UP to the next one so no pre-reset noise slips in.
-// 2026-07-03: relaunch after the D1 storage outage (~June 29 → July 3) during
-// which geo/views upserts silently failed while AE kept collecting — the
-// Trends card showed visits the map could never have. Both surfaces restart
-// from this moment together; the first real visit was 18:00 UTC, so the
-// 18:00 boundary keeps every post-relaunch point.
-export const METRICS_EPOCH = '2026-07-03 18:00:00'
+// 2026-10-23 00:00: the owner reset the counters (reset-metrics, run at
+// 21:30 UTC on 2026-10-22) to start the public stats clean; the next 6h
+// boundary rounding up. (Before it: 2026-07-03 18:00, the relaunch after the
+// D1 storage outage — docs/history.md.)
+export const METRICS_EPOCH = '2026-10-23 00:00:00'
 
 // Build the AE SQL query. Identifiers are fixed strings (dataset, blob index,
 // bucket function from RANGES) — no user input is interpolated. The epoch
