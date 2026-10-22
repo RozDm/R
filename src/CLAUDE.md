@@ -26,6 +26,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   (`CONTACT_WINDOWS_MS`, `isoCutoff`).
 - `metrics.ts` — slug/country validation, bot filter, the `isWriteAllowed`
   header gate.
+- `ip.ts` — `clientKey(ip)`: the rate-limit identity of an address — IPv4
+  as is, IPv6 as its /64 (`expandIpv6` first: a naive split of
+  `2001:db8::1` keys every address apart), IPv4-mapped back to IPv4.
 - `timeseries.ts` — metric/range parsing, AE SQL builder + response parser,
   `METRICS_EPOCH`.
 
@@ -52,7 +55,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   bucket's visits and the chart undercounts the map. Bump it after every
   `reset-metrics` run, rounding UP.
 - `WRITE_LIMITER` (ratelimits, 20/min per key, per Cloudflare location):
-  `allowWrite(env, request, scope)` in `http.ts` keys it `<scope>:<ip>` for
+  `allowWrite(env, request, scope)` in `http.ts` keys it
+  `<scope>:<clientKey(ip)>` (IPv6 → its /64, `ip.ts`) for
   `/api/visit` (429), `/api/views` POST (falls back to a read) and
   `/api/csp-report` (silent 204). It fails open. The header gates are
   spoofable; this is what stops a POST loop from burning D1's write quota.
@@ -79,7 +83,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   per metric+range; `view` is still served for API compat, only `geo` is
   graphed; `all` spans ~90 days at 6h buckets.
 - `/api/contact` — POST: Sec-Fetch + UA filter, honeypot, Turnstile (when
-  `TURNSTILE_SECRET` is set), D1 rate limits, and a 2-minute content dedup
+  `TURNSTILE_SECRET` is set), D1 rate limits (per sender — `contact.ip`
+  holds `clientKey(ip)`, an IPv6 /64 rather than the address — and per
+  e-mail), and a 2-minute content dedup
   (same address + message → ack'd without a second mail).
 - `/api/csp-report` — POST → always 204, AE only, never D1/KV (anyone can
   POST to it); `parseCspReports` keeps own-origin reports only (origin +
@@ -95,11 +101,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   types from the generated `worker-configuration.d.ts` — run
   `npm run cf-typegen` after any `wrangler.jsonc` change or wrangler bump and
   commit it; `wrangler types --check` in `npm run typecheck` enforces it).
-  `csp.ts`, `contact.ts`, `status.ts`, `metrics.ts` and `timeseries.ts` are
-  ALSO checked under the app tsconfig — tests import them, and the app
+  `csp.ts`, `contact.ts`, `status.ts`, `metrics.ts`, `timeseries.ts` and
+  `ip.ts` are ALSO checked under the app tsconfig — tests import them, and the app
   imports `status.ts` (`isStale`, `HISTORY_LIMIT`) and `timeseries.ts`
   (`METRICS_EPOCH`, `normalizeBucketKey`). DOM-compatible APIs only in those
-  five files, no Workers-only globals.
+  six files, no Workers-only globals.
 - A Worker can't fetch its own public URL (Cloudflare blocks the loop).
   Anything that needs the site goes through the ASSETS binding: the
   `/api/views` slug check and `internal: true` monitors (supported, none

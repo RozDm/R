@@ -4,6 +4,7 @@
 import { EmailMessage } from 'cloudflare:email'
 import { apiJson } from '../http'
 import { looksLikeBot } from '../metrics'
+import { clientKey } from '../ip'
 import { CONTACT_WINDOWS_MS, buildContactMime, isoCutoff, validateContact, verifyTurnstile } from '../contact'
 
 const CONTACT_FROM = 'contact@rozsoshnykh.no'
@@ -40,6 +41,9 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   if (!payload) return apiJson('{"error":"invalid"}', 422)
 
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown'
+  // The per-IP window counts a whole IPv6 /64 as one sender (src/ip.ts) — and
+  // that prefix, not the full address, is what the row keeps.
+  const sender = clientKey(ip)
 
   // Turnstile is enforced only when the secret is set, so deploying the code
   // never breaks the form on its own — the dashboard setup activates it.
@@ -56,7 +60,7 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   const now = Date.now()
   const [recentByIp, recentByEmail] = await Promise.all([
     env.METRICS.prepare('SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > ?2')
-      .bind(ip, isoCutoff(now, CONTACT_WINDOWS_MS.perIp))
+      .bind(sender, isoCutoff(now, CONTACT_WINDOWS_MS.perIp))
       .first<{ n: number }>()
       .catch(() => null),
     env.METRICS.prepare('SELECT COUNT(*) AS n FROM contact WHERE email = ?1 AND at > ?2')
@@ -85,7 +89,7 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   const row = await env.METRICS.prepare(
     'INSERT INTO contact (at, ip, name, email, message) VALUES (?1, ?2, ?3, ?4, ?5) RETURNING id',
   )
-    .bind(at, ip, payload.name, payload.email, payload.message)
+    .bind(at, sender, payload.name, payload.email, payload.message)
     .first<{ id: number }>()
     .catch((err) => {
       console.error('contact: D1 insert failed', err)
