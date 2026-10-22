@@ -83,3 +83,12 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
     ...(input.noindex ? { robots: { index: false, follow: true } } : {}),
   }
 }
+
+// JSON-LD for a <script type="application/ld+json">. JSON.stringify leaves
+// `<` alone, so a value holding "</script>" would end the element early and
+// whatever follows would run as markup — and the page's hash CSP admits every
+// inline script that ships in the built HTML. Frontmatter only comes from the
+// repo, so this is belt and braces: < is the same character to JSON.
+export function serializeJsonLd(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c')
+}

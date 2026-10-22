@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { RSS_ALTERNATE, pageMetadata } from '@/lib/metadata'
+import { RSS_ALTERNATE, pageMetadata, serializeJsonLd } from '@/lib/metadata'
 import { SITE_URL } from '@/lib/site'
 
 // Next merges route metadata shallowly, so every page must carry the whole
@@ -49,5 +49,14 @@ describe('pageMetadata', () => {
     const home = pageMetadata({ title: 'Hjem', description: 'x', path: '/', absoluteTitle: true })
     expect(home.title).toEqual({ absolute: 'Hjem' })
     expect(home.openGraph?.title).toBe('Hjem')
+  })
+})
+
+describe('serializeJsonLd', () => {
+  it('escapes "<" so a value cannot close the <script> early, and stays the same JSON', () => {
+    const data = { name: '</script><script>alert(1)</script>' }
+    const out = serializeJsonLd(data)
+    expect(out).not.toContain('<')
+    expect(JSON.parse(out)).toEqual(data)
   })
 })

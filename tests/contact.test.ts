@@ -121,6 +121,28 @@ describe('buildStatusAlertMime', () => {
   })
 })
 
+describe('validateContact e-mail', () => {
+  it('refuses an address that could smuggle a second Reply-To recipient', () => {
+    for (const email of [
+      'ola@example.no>, <evil@example.com',
+      'ola@example.no, evil@example.com',
+      'ola@example.no;evil@example.com',
+      '"ola"@example.no',
+      'ola@example.no (comment)',
+      'ola@[127.0.0.1]',
+      'ola\\@example.no',
+    ]) {
+      expect(validateContact({ ...valid, email }), email).toBeNull()
+    }
+  })
+
+  it('still takes ordinary addresses', () => {
+    for (const email of ['ola@example.no', 'ola.nordmann+blogg@sub.example.co.uk', 'o_l-a@xn--bcher-kva.example']) {
+      expect(validateContact({ ...valid, email })?.email, email).toBe(email)
+    }
+  })
+})
+
 describe('verifyTurnstile', () => {
   afterEach(() => vi.restoreAllMocks())
 
@@ -137,6 +159,26 @@ describe('verifyTurnstile', () => {
   it('fails closed on a non-200 response', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })))
     expect(await verifyTurnstile('tok', 'secret')).toBe(false)
+  })
+
+  it('wants the token solved on the expected host when one is given', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: true, hostname: 'evil.example' })))
+    expect(await verifyTurnstile('tok', 'secret', undefined, 'rozsoshnykh.no')).toBe(false)
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: true, hostname: 'rozsoshnykh.no' })))
+    expect(await verifyTurnstile('tok', 'secret', undefined, 'rozsoshnykh.no')).toBe(true)
+  })
+
+  it('bounds siteverify with a timeout', async () => {
+    let signal: AbortSignal | undefined
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        signal = init.signal ?? undefined
+        return Response.json({ success: true })
+      }),
+    )
+    await verifyTurnstile('tok', 'secret')
+    expect(signal).toBeInstanceOf(AbortSignal)
   })
 
   it('fails closed when fetch throws', async () => {

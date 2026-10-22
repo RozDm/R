@@ -264,7 +264,7 @@ answered, keep output and replies short.
   2026-10-22, when HTML left the Worker). The D1 database is `rozsoshnykh-metrics-v2`; never try to
   reclaim the old `rozsoshnykh-metrics` name — the dead original's deleted
   entry still locks it.
-- `next.config.js` sets the experimental
+- `next.config.mjs` sets the experimental
   `turbopackChunking: { minChunkSize: 15000 }`: Turbopack's default (50 kB)
   copied shared client modules — Header/Footer client parts, `next/link`,
   the dictionary — into several page chunks, and viewport prefetch downloads

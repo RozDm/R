@@ -12,7 +12,7 @@ import { DICT } from '@/data/i18n'
 import { formatDate, getAdjacentPosts, getPostBySlug, getPostSlugs, getTranslation, viewKey } from '@/lib/blog'
 import { blogPath, postPath, tagPath } from '@/lib/blog-paths'
 import { INTL_LOCALE, localePath, type Lang } from '@/lib/i18n'
-import { pageMetadata } from '@/lib/metadata'
+import { pageMetadata, serializeJsonLd } from '@/lib/metadata'
 import { AUTHOR, SITE_URL } from '@/lib/site'
 import { tagLabel } from '@/lib/tags'
 import type { Post } from '@/types'
@@ -113,8 +113,8 @@ export default function PostPage({ lang, slug }: { lang: Lang; slug: string }) {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
       <Header lang={lang} alternate={twin ? postPath(other(lang), twin.slug) : blogPath(other(lang))} />
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 py-20">
         <Link
