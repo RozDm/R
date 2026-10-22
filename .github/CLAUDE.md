@@ -68,7 +68,10 @@ incident background: `docs/history.md`.
   (`docs/history.md`). It fails if the PUT moved any other field or if a
   dashboard bot setting would block search engines or CI (Bot Fight Mode,
   AI Search "block", AI Labyrinth…); sets the zone settings (Browser Cache
-  TTL "Respect Existing Headers", 0-RTT on, Always Use HTTPS on, minimum TLS
+  TTL "Respect Existing Headers", 0-RTT on, Always Use HTTPS on, Automatic
+  HTTPS Rewrites / Email Obfuscation / Replace insecure JS off — they
+  rewrite pages after the build hashed them and strip their ETag; the prod
+  check wants `/` to answer `If-None-Match` with a 304 — minimum TLS
   raised to 1.2 if lower — it is 1.3); keeps the Single Redirect
   `www_to_apex` (www → apex 301, path + query kept, phase
   `http_request_dynamic_redirect`, found by ref; the prod check wants www

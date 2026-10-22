@@ -23,6 +23,7 @@ that would block search engines or CI.
 | JavaScript Detections | `zone-rules.yml` (code; no dashboard switch on Free) | **Off** — `enable_js: false` (lesson 3) |
 | AI bot policies | Security → Settings → Configure AI bot policies | Training **Disallow** (`ai_training: disallow`), Search and Agent Allow, Bot Preference Sync on (read 2026-10-16); `zone-rules.yml` owns Training = Disallow. The deprecated legacy toggle (`ai_bots_protection`) is off since 2026-10-17 — and must never be written: writing it `disabled` also reset Training to Allow for a minute (`docs/history.md`). GPTBot/ClaudeBot/CCBot UAs get Cloudflare's 403 (measured; Check prod probes GPTBot). `zone-rules.yml` fails if Search becomes Block (see "AI bots") |
 | Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
+| Automatic HTTPS Rewrites, Email Obfuscation, Replace insecure JS libraries | `zone-rules.yml` (code) | **Off** — they rewrite HTML after the build hashed its inline scripts and strip the pages' strong ETag (found 2026-10-22: asset-served pages lost their ETag/304, which Worker-served ones had kept); the site is HTTPS-only |
 | Always Use HTTPS | `zone-rules.yml` (code) | On — plain HTTP gets the edge's 301 before the Worker or the asset server |
 | Single Redirect `www_to_apex` | `zone-rules.yml` (code) | `www.rozsoshnykh.no` → apex, 301, path + query kept — 1 of 10 Free redirect rules |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
