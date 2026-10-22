@@ -23,6 +23,8 @@ that would block search engines or CI.
 | JavaScript Detections | `zone-rules.yml` (code; no dashboard switch on Free) | **Off** — `enable_js: false` (lesson 3) |
 | AI bot policies | Security → Settings → Configure AI bot policies | Training **Disallow** (`ai_training: disallow`), Search and Agent Allow, Bot Preference Sync on (read 2026-10-16); `zone-rules.yml` owns Training = Disallow. The deprecated legacy toggle (`ai_bots_protection`) is off since 2026-10-17 — and must never be written: writing it `disabled` also reset Training to Allow for a minute (`docs/history.md`). GPTBot/ClaudeBot/CCBot UAs get Cloudflare's 403 (measured; Check prod probes GPTBot). `zone-rules.yml` fails if Search becomes Block (see "AI bots") |
 | Browser Cache TTL | `zone-rules.yml` (code) | Respect Existing Headers (`browser_cache_ttl: 0`) |
+| Always Use HTTPS | `zone-rules.yml` (code) | On — plain HTTP gets the edge's 301 before the Worker or the asset server |
+| Single Redirect `www_to_apex` | `zone-rules.yml` (code) | `www.rozsoshnykh.no` → apex, 301, path + query kept — 1 of 10 Free redirect rules |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
 | Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the zone token lacks) | owner to switch on + add an e-mail (see "Owner to-do") |
