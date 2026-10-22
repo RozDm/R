@@ -54,3 +54,13 @@ jobs:
               print(f"::error::status snapshot is {age:.0f} min old — the 5-minute cron (or its KV write) has stopped")
               sys.exit(1)
           '
+
+      # The snapshot above lives in KV; nothing else here touches D1, and a
+      # dead D1 once went unnoticed for days (docs/history.md). /api/geo is a
+      # D1 read that answers 503 when the read fails; curl retries a 503.
+      - name: Visitor data (D1) answers
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 --retry 2 --retry-delay 10 \
+            -A 'status-watchdog/1.0 (+https://github.com/RozDm/R)' https://rozsoshnykh.no/api/geo)
+          echo "GET /api/geo -> $code"
+          [ "$code" = "200" ] || { echo "::error::/api/geo answered $code — D1 read failed (Workers Logs: 'geo: D1 read failed')"; exit 1; }

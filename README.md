@@ -57,7 +57,8 @@ merged head branch. A failing `check` just leaves the PR open with auto-merge
 pending; open a draft (and skip auto-merge) to hold a change for manual review.
 
 Monitoring workflows: `status-watchdog` (hourly; fails — and GitHub e-mails
-— when the site is down or the status snapshot is older than 20 minutes) and
+— when the site is down, the status snapshot is older than 20 minutes or the
+D1 database fails a read) and
 `analytics-report` (manual; Analytics Engine breakdown of visits by network
 and country, plus browser-reported CSP violations, in the run summary).
 
