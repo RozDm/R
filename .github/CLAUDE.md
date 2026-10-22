@@ -9,13 +9,19 @@ incident background: `docs/history.md`.
   Gotchas) and `check:waf` (`scripts/check-waf.mjs`: the WAF expression
   must block no URL in `out/` and still block its scanner list). It is the one
   required status check on `main`, so its result decides the auto-merge.
-- `deploy.yml` — on push to `main`: the same checks → build → check:waf → one
-  `wrangler secret bulk` syncing `TURNSTILE_SECRET`, `CF_ACCOUNT_ID` and
-  `AE_API_TOKEN` from GitHub secrets (unset ones are skipped, never blanked)
-  → `npx wrangler deploy` with the repo's pinned wrangler (not
-  `cloudflare/wrangler-action`, which runs on deprecated Node 20) →
-  `scripts/smoke.sh` against the live site. The `TURNSTILE_SITE_KEY` secret
-  is inlined into the build as `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
+- `deploy.yml` — on push to `main`, two jobs, both `npm ci --ignore-scripts`.
+  `build` has no secrets, so package code (lint, tests, the Next build) never
+  sees a token: the same checks → build → check:waf → check:dict → `out/` as
+  a 1-day artifact (`include-hidden-files`, or `.well-known/security.txt`
+  is dropped). It inlines the repository variable `TURNSTILE_SITE_KEY`
+  (public, not a secret) as `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and fails when
+  it is empty — with `TURNSTILE_SECRET` set, the Worker 403s every form POST
+  that has no token. `deploy` (`environment: production`; no npm cache, which
+  the build job could have written): one `wrangler secret bulk` syncing
+  `TURNSTILE_SECRET`, `CF_ACCOUNT_ID` and `AE_API_TOKEN` (unset ones are
+  skipped, never blanked) → `npx wrangler deploy` with the repo's pinned
+  wrangler (not `cloudflare/wrangler-action`, which runs on deprecated
+  Node 20) → `scripts/smoke.sh` against the live site.
 - `status-watchdog.yml` — hourly, outside Cloudflare: fails (GitHub e-mails
   the owner) when the site is down or `/api/status` is older than 20 min —
   the one failure the Worker can't report about itself. A `403` here (or in
@@ -91,9 +97,10 @@ incident background: `docs/history.md`.
   Workers Scripts/KV/D1 + Workers Routes; `deploy`, `d1-*`,
   `reset-metrics`), `CLOUDFLARE_ZONE_TOKEN` (`zone-rules` only),
   `CLOUDFLARE_ACCOUNT_ID` (also synced to the Worker as `CF_ACCOUNT_ID`),
-  `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account →
-  Account Analytics: Read). A job that needs one declares
-  `environment: production`; a job without it, or one started from any
+  `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account → Account Analytics: Read).
+  The public `TURNSTILE_SITE_KEY` is a repository variable. A job that needs
+  a secret declares `environment: production`; a job without it, or one
+  started from any
   other branch, gets nothing. Never add a repository-level secret back: the
   repo is public and any branch could run a workflow without `environment:`
   that reads it. `ci.yml` and `status-watchdog.yml` use no secrets. The

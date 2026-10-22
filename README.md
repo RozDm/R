@@ -70,9 +70,10 @@ Secrets live in the GitHub environment `production` (deployment branches:
 `main` only; no repository-level secrets — `.github/CLAUDE.md`):
 `CLOUDFLARE_API_TOKEN` (deploy: Workers, KV, D1), `CLOUDFLARE_ZONE_TOKEN`
 (zone settings and rules, `zone-rules.yml` only), `CLOUDFLARE_ACCOUNT_ID`,
-`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
+`TURNSTILE_SECRET`, `AE_API_TOKEN` (Account Analytics:Read
 token for the Analytics Engine SQL API; `CF_ACCOUNT_ID` for the same call
-reuses `CLOUDFLARE_ACCOUNT_ID`).
+reuses `CLOUDFLARE_ACCOUNT_ID`). The public Turnstile site key is a repository
+variable, `TURNSTILE_SITE_KEY`, read only by the secret-free build job.
 
 ### Layout
 
@@ -191,8 +192,9 @@ submission (not a silently ack'd duplicate). Turnstile tokens are
 single-use: the form resets the widget after every non-OK response.
 
 Turnstile is feature-gated: the widget renders only when `TURNSTILE_SITE_KEY`
-is set, and the worker enforces it only when `TURNSTILE_SECRET` is set, so the
-form keeps working without keys.
+is set, and the worker enforces it only when `TURNSTILE_SECRET` is set. With
+neither, the form works on its other defences; a secret without a site key
+refuses every submission, so `deploy.yml` fails on an empty site key.
 
 ### Manual deploy
 
