@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { xTicksFor } from '@/lib/trends-axis'
+import { xTicksFor, yTicksFor } from '@/lib/trends-axis'
 import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
 import { fetchGeoCountries, showVisitCounts } from '@/lib/geo'
 import { DICT } from '@/data/i18n'
@@ -179,9 +179,7 @@ export default function TrendsChart() {
   // from a genuinely empty dataset — say which so a non-zero total below
   // doesn't sit next to a bare "Ingen data ennå".
   const emptyMsg = geoTotal && geoTotal > 0 ? t.emptyWindow : t.noData
-  // Integer, de-duplicated y-ticks so a max of 1 doesn't label 0/0.5/1 as
-  // "0,1,1" after rounding.
-  const yTicks = Array.from(new Set([0, Math.round(yMax / 2), yMax]))
+  const yTicks = yTicksFor(yMax)
   const rangeLabel = t.ranges[range]
   // Headline number: exact D1 all-time (= the map) on `Alt`, else the AE count
   // for the selected window. Label follows suit: "totalt" only when it truly is
@@ -248,7 +246,7 @@ export default function TrendsChart() {
           isAll ? (allCapped ? t.chartCapped(ALL_MAX_DAYS) : t.chartAll) : t.chartWindow(rangeLabel)
         }
       >
-        {/* Y-axis ticks (0, mid, max) and faint gridlines. */}
+        {/* Y-axis ticks (0, half when whole, max) and faint gridlines. */}
         {yTicks.map((v, i) => {
           const y = BASELINE - (v / yMax) * PLOT_H
           return (

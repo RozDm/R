@@ -115,7 +115,8 @@ answered, keep output and replies short.
   `/api/*`, never the pages. What the Worker used to do per request is done
   once at build by `scripts/finalize-export.mjs` (postbuild): each page's
   hash-based CSP as a `<meta>` atop `<head>`, ahead of any script (`withMetaCsp`,
-  `src/csp.ts`), `lang="en"` for `/en/`, `/favicon.ico`, and a 301 from every
+  `src/csp.ts`), `lang="en"` for `/en/`, the body font's preload on pages
+  Next leaves without it (the 404), `/favicon.ico`, and a 301 from every
   slash-less page path into `out/_redirects` (the asset server's own is a
   307); `npm run check:csp` re-checks the hashes in CI, deploy and smoke.
   Headers come from `public/_headers` (`/*`: HSTS, the header CSP
@@ -297,7 +298,9 @@ answered, keep output and replies short.
   page on a cold first paint. Don't switch back without a hand-built
   metric-matched fallback `@font-face`. Keep `preload: true` with it — without
   the preload the woff2 misses `optional`'s block window and a newcomer's
-  first page renders in the system monospace.
+  first page renders in the system monospace. Next emits no preload on the
+  404, so `finalize-export.mjs` copies the front page's there (the build
+  fails if `index.html` has none).
 - `app/template.tsx` cross-fades client-side route changes (450ms
   `animate-page-in`) — never the document's first page, which must paint at
   once (an opacity-0 start also hid it from LCP); its wrapper keyed by

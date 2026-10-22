@@ -7,6 +7,15 @@
 //   2 pts -> first + last (a "middle" tick would land on the same x as the
 //            last point and the two labels would visually collide)
 //   3+    -> first + middle + last
+// Y-axis ticks for the chart's niceCeil'd max (1, 2, 5, 10, 20, 50…): 0, the
+// half and the max when the half is a whole number, else 0 and the max — a max
+// of 5 used to give 0/3/5 (Math.round(2.5)), uneven steps on even gridlines.
+export function yTicksFor(yMax: number): number[] {
+  if (yMax <= 0) return [0]
+  const half = yMax / 2
+  return Number.isInteger(half) ? [0, half, yMax] : [0, yMax]
+}
+
 export function xTicksFor<T>(
   items: T[],
   pickX: (t: T) => number,

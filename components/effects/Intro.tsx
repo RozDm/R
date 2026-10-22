@@ -180,7 +180,7 @@ export default function Intro() {
 
       {/* Skip hint */}
       <p
-        className="absolute bottom-8 inset-x-0 px-4 text-center text-[11px] tracking-widest text-gray-500 uppercase transition-opacity duration-[1600ms] ease-in-out"
+        className="absolute bottom-8 inset-x-0 px-4 text-center text-[11px] tracking-widest text-gray-400 uppercase transition-opacity duration-[1600ms] ease-in-out"
         style={{ opacity: phase >= 1 && phase < 7 ? 1 : 0 }}
       >
         {t.skip}
