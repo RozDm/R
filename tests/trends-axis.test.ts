@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { xTicksFor } from '@/lib/trends-axis'
+import { xTicksFor, yTicksFor } from '@/lib/trends-axis'
 
 // Tiny shape that mirrors what Trends.tsx feeds in (a coord + a timestamp).
 interface P { x: number; label: string }
@@ -57,5 +57,15 @@ describe('xTicksFor', () => {
       const ticks = xTicksFor(pts, pickX, pickLabel)
       expect(new Set(ticks.map((t) => t.x)).size).toBe(ticks.length)
     }
+  })
+})
+
+describe('yTicksFor', () => {
+  it('halves the max only when the half is a whole number', () => {
+    expect(yTicksFor(1)).toEqual([0, 1])
+    expect(yTicksFor(2)).toEqual([0, 1, 2])
+    expect(yTicksFor(5)).toEqual([0, 5]) // not 0/3/5
+    expect(yTicksFor(10)).toEqual([0, 5, 10])
+    expect(yTicksFor(50)).toEqual([0, 25, 50])
   })
 })
