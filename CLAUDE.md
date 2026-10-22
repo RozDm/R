@@ -211,7 +211,10 @@ answered, keep output and replies short.
 - Front-page section pattern: mono uppercase red eyebrow
   (`text-red-500 … tracking-widest uppercase`) + bold h2 + cards
   (`bg-white dark:bg-gray-900/50 rounded-xl border … hover:border-red-500/30`),
-  staggered `animate-fade-in` delays (0/150/300/450/600/750ms).
+  staggered `animate-fade-in` delays (150/300/450/600/750ms). The hero
+  (`#about`, the first screen) has none: an opacity-0 start keeps its text
+  out of LCP — measured 2026-10-22 on throttled mobile, the hero `<p>`
+  counted at 3.7 s instead of with the first paint (~1.1 s).
 - Secondary links (footer, tag chips, the NO/EN switch) set
   `prefetch={false}`: each viewport prefetch is several requests (RSC
   payloads — asset-served, so no Worker quota, but still mobile data);
