@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "typecheck": "npm run cf-typecheck && tsc --noEmit && tsc -p tsconfig.worker.json",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "cf-typegen": "wrangler types",
     "cf-typecheck": "wrangler types --check",
     "check:dict": "n=$(grep -l 'Hopp til hovedinnhold' out/_next/static/chunks/*.js | wc -l); [ \"$n\" -eq 1 ] || { echo \"UI dictionary in $n chunks, want 1 (CLAUDE.md Gotchas: turbopackChunking)\"; exit 1; }",
@@ -38,6 +39,8 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.56.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
@@ -45,6 +48,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.2",
+    "playwright-core": "1.56.1",
     "tailwindcss": "^4.3.3",
     "typescript": "6.0.3",
     "vitest": "^4.1.12",

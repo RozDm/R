@@ -190,7 +190,16 @@ answered, keep output and replies short.
   `npm run build` exports to `out/` (and finalizes it, above). CI and deploy
   then run `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
   `.github/waf/scanner-block.expr` must block no URL the build serves — and
-  `npm run check:csp` (`scripts/check-csp.mjs`).
+  `npm run check:csp` (`scripts/check-csp.mjs`). CI then runs the browser
+  tests, `npm run test:e2e` (Playwright, `playwright.config.ts`, `e2e/`): the
+  user flows — intro, theme, NO/EN, nav and the mobile menu, blog, contact
+  form, the 404 — on desktop and mobile Chromium, axe in both themes, and no
+  console error or CSP violation on any page. They run on `out/` served by
+  `scripts/serve-out.mjs` with `/api/*` stubbed (`e2e/fixtures.ts`), so they
+  need a build first and never touch the Worker. A UI change that breaks a
+  selector there updates the test in the same PR. `@playwright/test` and
+  `playwright-core` stay pinned to one version (axe's peer dependency would
+  otherwise pull a second, mismatched copy).
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (a
   secret-free job runs checks + build, then a job with the `production`
   secrets syncs them, runs `npx wrangler deploy` and `scripts/smoke.sh`
