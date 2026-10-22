@@ -65,7 +65,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - Runtime secrets (`TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN`,
   `NETBOX_URL` — NetBox's admin URL for `monitors()`) are
   not in `wrangler.jsonc`; they're typed in `src/env.d.ts` and synced by
-  `deploy.yml`.
+  `deploy.yml`. `CF_ACCOUNT_ID` isn't really secret, but moving it to `vars`
+  was declined (2026-10-22): no gain worth a delete-then-deploy step.
 
 ## API surface
 
@@ -194,7 +195,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   (`…/index.html` → `…/`). `/favicon.ico` is a build-time copy of
   `/icons/favicon.ico`.
 - Failures swallowed for availability (D1 upserts, mail sends, prune) still
-  `console.error` — Workers Logs is the only place they show.
+  `console.error` — Workers Logs is the only place they show. Traces stay
+  off (`"traces": {}` in `wrangler.jsonc` enables nothing) — owner's call,
+  2026-10-22: from 2026-12-01 logs and traces share Free's 0.5 GB/day
+  (7-day retention), and past it ingestion stops until 00:00 UTC, logs
+  included; logs answer what traces would.
 
 ## Tests
 
