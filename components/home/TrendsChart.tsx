@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { xTicksFor, yTicksFor } from '@/lib/trends-axis'
+import { dropRepeatedDays, xTicksFor, yTicksFor } from '@/lib/trends-axis'
 import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
 import { MIN_PUBLIC_VISITS, fetchGeoCountries, showVisitCounts } from '@/lib/geo'
 import { DICT } from '@/data/i18n'
@@ -181,6 +181,9 @@ export default function TrendsChart() {
       ts: p.ts,
       value: p.value,
     }))
+    // X ticks come from the full grid so labels span the window even though
+    // only non-empty buckets get a dot.
+    const ticks = xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range, lang))
     return {
       dots: coords.filter((c) => c.value > 0),
       yMax: max,
@@ -189,9 +192,7 @@ export default function TrendsChart() {
       // `Alt` tab, only the empty-window vs. empty-dataset signal — there the
       // headline switches to the exact D1 total.
       waveTotal: filled.reduce((sum, p) => sum + p.value, 0),
-      // X ticks come from the full grid so labels span the window even though
-      // only non-empty buckets get a dot.
-      tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range, lang)),
+      tickLabels: range === '24h' ? ticks : dropRepeatedDays(ticks),
       allCapped: range === 'all' && isAllRangeCapped(),
     }
   }, [series, range, lang, PLOT_W, PLOT_H, BASELINE])
@@ -232,7 +233,7 @@ export default function TrendsChart() {
     : quiet || null
 
   return (
-    <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
+    <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
           {t.cardTitle}

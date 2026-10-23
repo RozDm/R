@@ -121,7 +121,7 @@ test('NO/EN switch moves between the language twins', async ({ page }) => {
 test('header nav scrolls within the front page (desktop)', async ({ page, isMobile }) => {
   test.skip(isMobile, 'the mobile menu has its own test')
   await page.goto('/')
-  await page.getByRole('navigation').getByRole('link', { name: 'Ferdigheter' }).click()
+  await page.getByRole('navigation').getByRole('link', { name: 'Kompetanse', exact: true }).click()
   await expect(page).toHaveURL(/\/#skills$/) // one hash, not /#main#skills
   await expect(page.locator('#skills')).toBeInViewport()
 })
@@ -147,6 +147,29 @@ test('mobile menu opens, closes on Escape and navigates', async ({ page, isMobil
   await toggle.click()
   await page.getByRole('navigation', { name: 'Mobilnavigasjon' }).getByRole('link', { name: 'Blogg' }).click()
   await expect(page).toHaveURL(/\/blogg\/$/)
+})
+
+// WebKit's Tab skips links (Safari's default), so these run on Chromium.
+test('mobile menu closes when Tab leaves it', async ({ page, isMobile, browserName }) => {
+  test.skip(!isMobile || browserName === 'webkit', 'Chromium phone only')
+  await page.goto('/blogg/')
+  await page.getByRole('button', { name: 'Åpne meny' }).click()
+  const menu = page.getByRole('navigation', { name: 'Mobilnavigasjon' })
+  await menu.getByRole('link').last().focus()
+  await page.keyboard.press('Tab')
+  await expect(menu).toHaveCount(0)
+})
+
+test('every page starts with a skip link to its main content', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', "WebKit's Tab skips links")
+  for (const path of ['/', '/kontakt/', '/blogg/velkommen/', '/en/privacy/']) {
+    await page.goto(path)
+    await page.keyboard.press('Tab')
+    const skip = page.getByRole('link', { name: /Hopp til hovedinnhold|Skip to main content/ })
+    await expect(skip).toBeFocused()
+    await expect(skip).toHaveAttribute('href', '#main')
+    await expect(page.locator('main#main')).toHaveCount(1)
+  }
 })
 
 test('blog: index → post → tag page and back', async ({ page }) => {

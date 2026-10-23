@@ -30,14 +30,17 @@ export default function PersonvernPage() {
           Personvern
         </p>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          Personvernerklæring
+          {/* Soft hyphens (here and in «Behandlingsansvarlig»): at 320px
+              the word is wider than the screen, so it breaks as
+              «Personvern-/erklæring» there and nowhere else. */}
+          Personvern&shy;erklæring
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-10">
           Sist oppdatert: 23. oktober 2026
         </p>
 
         <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold">
-          <h2>Behandlingsansvarlig</h2>
+          <h2>Behandlings&shy;ansvarlig</h2>
           <p>
             Dmytro Rozsoshnykh er ansvarlig for behandlingen av personopplysninger på dette
             nettstedet. Spørsmål om personvern kan sendes til{' '}

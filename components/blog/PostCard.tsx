@@ -13,7 +13,7 @@ export default function PostCard({ post }: { post: PostMeta }) {
   const { lang } = post
   return (
     <article className="group relative p-5 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500">
-      <div className="flex items-baseline justify-between gap-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
           <Link href={postPath(lang, post.slug)} className="after:absolute after:inset-0 after:rounded-xl">
             {post.title}

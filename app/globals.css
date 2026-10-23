@@ -67,6 +67,15 @@ body {
   background: #030712;
 }
 
+/* A word wider than a narrow phone (a long Norwegian compound in a heading)
+   breaks instead of pushing the page sideways. Only a word that can't fit
+   is affected. In the base layer, so utilities still win. */
+@layer base {
+  h1, h2, h3 {
+    overflow-wrap: break-word;
+  }
+}
+
 html {
   scroll-behavior: smooth;
   /* Offset every anchor scroll (initial #hash load, the /status -> /#status
