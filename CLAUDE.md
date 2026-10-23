@@ -295,7 +295,7 @@ answered, keep output and replies short.
   `lib/metadata.ts`, with `knowsAbout` from `data/skills.ts` minus the
   learning group and `hasCredential` from `data/certifications.ts`, with
   the `url` a certificate may carry — which also makes its card a link; a
-  card without one shows no `›` and no hover border —
+  card without one shows no `›` —
   BlogPosting + image + BreadcrumbList per post), RSS at `/feed.xml` +
   `/en/feed.xml`, hreflang between language twins (pages + sitemap),
   prev/next + tag pages. Tag pages are noindex and out of the sitemap unless

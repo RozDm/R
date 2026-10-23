@@ -2,8 +2,9 @@ import { certifications } from '@/data/certifications'
 import { DICT } from '@/data/i18n'
 import { pick, type Lang } from '@/lib/i18n'
 
+// The front-page card, with the same hover border as the Skills cards.
 const CARD =
-  'flex items-start gap-3 p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800'
+  'flex items-start gap-3 p-4 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500'
 
 export default function Certifications({ lang }: { lang: Lang }) {
   const t = DICT[lang].certs
@@ -30,15 +31,15 @@ export default function Certifications({ lang }: { lang: Lang }) {
               </p>
             </div>
           )
-          // Only a card with a verification URL looks clickable (the › and
-          // the hover border); a plain card promised a link it didn't have.
+          // Only a card with a verification URL is a link and shows the ›; a
+          // plain card promised a link it didn't have.
           return cert.url ? (
             <a
               key={pick('nb', cert.title)}
               href={cert.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${CARD} hover:border-red-500/30 dark:hover:border-red-500/20 transition-colors duration-300 ease-out`}
+              className={CARD}
             >
               <span aria-hidden className="font-mono text-red-600 dark:text-red-400 mt-0.5 select-none">
                 ›
