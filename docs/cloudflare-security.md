@@ -90,18 +90,23 @@ Open as of 2026-10-17; tick them off here when done.
   outside Cloudflare logs a certificate for the zone (mis-issuance, a hijack).
   Free on every plan. (API: `PATCH /zones/{id}/ct/alerting {"enabled":true}`
   needs SSL and Certificates: Edit — deliberately not on the zone token.)
-- [ ] **Notifications** — account level, e-mail to the owner. The dashboard
-  calls them Alerts now: account home → Observability → Alerts → Platform
-  Notifications → Create a Notification → pick the type → Select → name it,
-  add the e-mail → Create. One alert per type. All on Free:
+- [x] **Notifications** — done 2026-10-23, e-mail to the owner. The
+  dashboard calls them Alerts now: account home → Observability → Alerts →
+  Platform Notifications → Create a Notification → pick the type → Select →
+  name it, add the e-mail → Create. One alert per type, all on Free. The set
+  (owner's call):
   - HTTP DDoS Attack Alert (`dos_attack_l7`);
-  - Universal SSL Alert (`universal_ssl_event_type`) and Advanced Certificate
-    Alert (the www custom-domain certificate);
-  - Incident Alerts (category Cloudflare Status), filtered to Workers, Workers Assets, Workers KV, D1,
-    Email Routing, Turnstile, SSL Certificate Provisioning, Authoritative DNS;
-  - Abuse Report (`abuse_report_alert`) and, under Trust and Safety Blocks,
-    New Blocks (a false phishing block of a URL);
-  - Security Insights.
+  - Advanced Certificate Alert (the www custom-domain certificate);
+  - Incident alert (Cloudflare Status) — filtering it to Workers, Workers
+    Assets, KV, D1, Email Routing, Turnstile, SSL, DNS keeps the noise down;
+  - Cloudflare abuse report alert and Alerts for New Blocks (Trust & Safety
+    Blocks: a false phishing block of a URL);
+  - New insight detected (Security Insights);
+  - also on, and never firing here: Access mTLS certificate expiration and
+    Expiring Access Service Token (no Access in use), Health Checks status
+    (standalone Health Checks are Pro and up).
+  Universal SSL Alert is not set (owner's call): a failing apex certificate
+  still shows as the status watchdog's HTTPS check going red.
   Free has no alert for the Workers 100k/day limit.
 - [x] **Old CI credentials gone** — done 2026-10-22, after deploy,
   `analytics-report`, `d1-repair` (`info`) and `zone-rules` ran green on the
