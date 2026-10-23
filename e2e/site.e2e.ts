@@ -3,6 +3,14 @@ import { expect, test } from './fixtures'
 
 // User-level flows on the built export, desktop and mobile (playwright.config.ts).
 
+// Reload once the network is quiet: WebKit fails a reload that cancels
+// in-flight requests (Next's viewport prefetches) with "WebKit encountered an
+// internal error" — the reload itself, not the page under test.
+async function reloadWhenIdle(page: import('@playwright/test').Page) {
+  await page.waitForLoadState('networkidle')
+  await page.reload()
+}
+
 test('front page renders every section and the live widgets', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Rozsoshnykh')
@@ -65,7 +73,7 @@ test.describe('first visit', () => {
     await page.keyboard.press('Space')
     await expect(greeting).toHaveCount(0, { timeout: 5_000 })
     expect(await page.evaluate(() => localStorage.getItem('intro-seen'))).toBe('1')
-    await page.reload()
+    await reloadWhenIdle(page)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await expect(page.getByText('HEI %USERNAME%')).toHaveCount(0)
   })
@@ -78,7 +86,7 @@ test('theme toggle switches and remembers the theme', async ({ page }) => {
   await expect(html).not.toHaveClass(/\bdark\b/)
   await page.getByRole('button', { name: 'Bytt til mørkt tema' }).click()
   await expect(html).toHaveClass(/\bdark\b/)
-  await page.reload()
+  await reloadWhenIdle(page)
   await expect(html).toHaveClass(/\bdark\b/)
 })
 
@@ -210,7 +218,7 @@ test.describe('visit beacon (lib/visit.ts)', () => {
     // Another page, a reload, more input: the same browser, the same day.
     await page.goto('/blogg/')
     await page.keyboard.press('ArrowDown')
-    await page.reload()
+    await reloadWhenIdle(page)
     await page.keyboard.press('ArrowDown')
     await page.waitForTimeout(500)
     expect(sent).toHaveLength(1)
@@ -245,7 +253,7 @@ test.describe('post view counter', () => {
     expect(methods, 'nothing on load alone').toEqual([])
     await page.keyboard.press('ArrowDown')
     await expect.poll(() => methods).toEqual(['POST'])
-    await page.reload()
+    await reloadWhenIdle(page)
     await expect.poll(() => methods).toEqual(['POST', 'GET'])
   })
 
