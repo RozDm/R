@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           Privacy notice
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-4">
-          Last updated: 22 October 2026
+          Last updated: 23 October 2026
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-10 max-w-xl">
           This is a translation for convenience. The{' '}
@@ -89,7 +89,10 @@ export default function PrivacyPage() {
             network it came through (the network operator, for example an internet provider or a
             data centre — used to tell bots from people), both derived by Cloudflare at the edge of
             its network, and how many times a blog post has been read. The figures cannot be linked
-            to individuals, and no IP addresses are stored in the statistics.
+            to individuals, and no IP addresses are stored in the statistics. A visit counts at
+            most once per browser per day, and only once the page is actually used (the mouse
+            moves, the screen is touched or a key is pressed) — never from a browser under
+            automated control.
           </p>
           <p>
             If your browser blocks something on a page for security reasons (a so-called Content
@@ -110,8 +113,8 @@ export default function PrivacyPage() {
           <p>
             The website uses no cookies for tracking or marketing. The browser’s local storage is
             used only for functional choices — the colour theme, whether the intro animation has
-            been shown, how many times the screensaver has appeared, and whether your visit and the
-            posts you have read have already been counted. These values stay in your browser and are
+            been shown, how many times the screensaver has appeared, the date your visit was last
+            counted and which posts you have already read. These values stay in your browser and are
             not passed on.
           </p>
 

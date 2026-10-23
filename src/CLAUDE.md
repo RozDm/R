@@ -84,7 +84,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   never cached), not an empty map: `smoke.sh` and the hourly
   `status-watchdog.yml` probe D1 through it, and the map shows its "failed"
   state instead of «no visitors yet».
-- `/api/visit` — POST is the Besøk beacon:
+- `/api/visit` — POST is the Besøk beacon (sent once per browser per day on
+  the first human input, never under automation — `lib/visit.ts`; nothing
+  here can check that, so the gates below still matter):
   `recordGeo(env, ctx, request.cf?.country, { asn, org })` writes the D1
   `geo` row and the AE point. GET is a harmless self-diagnostic (the
   caller's country + whether it counts).

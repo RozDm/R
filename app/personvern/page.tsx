@@ -32,7 +32,7 @@ export default function PersonvernPage() {
           Personvernerklæring
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-10">
-          Sist oppdatert: 22. oktober 2026
+          Sist oppdatert: 23. oktober 2026
         </p>
 
         <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold">
@@ -77,7 +77,10 @@ export default function PersonvernPage() {
             det kom gjennom (nettverksoperatøren, for eksempel en internettleverandør eller et
             datasenter — brukt til å skille roboter fra mennesker), begge avledet av Cloudflare
             på kanten av nettverket, og hvor mange ganger et blogginnlegg er lest. Tallene kan
-            ikke knyttes til enkeltpersoner, og ingen IP-adresser lagres i statistikken.
+            ikke knyttes til enkeltpersoner, og ingen IP-adresser lagres i statistikken. Et
+            besøk telles høyst én gang per nettleser per dag, og først når siden faktisk tas i
+            bruk (musen beveges, skjermen berøres eller en tast trykkes) — ikke av nettlesere
+            som styres automatisk.
           </p>
           <p>
             Hvis nettleseren din blokkerer noe på en side av sikkerhetshensyn (såkalt
@@ -99,8 +102,8 @@ export default function PersonvernPage() {
           <p>
             Nettstedet bruker ingen informasjonskapsler til sporing eller markedsføring.
             Nettleserens lokale lagring brukes kun til funksjonelle valg — fargetema, om
-            introanimasjonen er vist, hvor mange ganger skjermspareren har dukket opp, og om
-            besøket og innleggene du har lest allerede er telt. Disse verdiene blir værende
+            introanimasjonen er vist, hvor mange ganger skjermspareren har dukket opp, datoen
+            besøket ditt sist ble telt og hvilke innlegg du allerede har lest. Disse verdiene blir værende
             i nettleseren din og sendes ikke videre.
           </p>
 
