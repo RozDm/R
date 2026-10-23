@@ -130,6 +130,16 @@ incident background: `docs/history.md`.
   digest: the `Docker-Content-Digest` header of
   `https://mcr.microsoft.com/v2/playwright/manifests/v<version>-noble`);
   pushing to a Dependabot branch stops Dependabot rebasing it.
+- Repository security (Settings → Advanced Security; owner-only — no CI or
+  session token can switch them): CodeQL code scanning in **default setup**
+  (JavaScript/TypeScript and the workflows themselves; GitHub-managed, so no
+  workflow file and no `security-events: write` token here — its PR checks
+  aren't required, the merge gate stays `check`), **private vulnerability
+  reporting** (`.github/SECURITY.md` and `security.txt`'s `Contact`/`Policy`
+  point at it), and **secret scanning with push protection**. Checkable from
+  outside: `GET /repos/RozDm/R/private-vulnerability-reporting` →
+  `{"enabled": true}`, and a `CodeQL` entry (`dynamic/github-code-scanning/…`)
+  in `/repos/RozDm/R/actions/workflows`; push protection has no public read.
 - Every workflow runs with a read-only `GITHUB_TOKEN`. All secrets live in
   the GitHub environment `production`, whose deployment branch policy allows
   `main` only — none at repository level: `CLOUDFLARE_API_TOKEN` (deploy:

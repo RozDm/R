@@ -106,17 +106,20 @@ describe('asset server headers (public/_headers)', () => {
 // one more than a year out is discouraged. Fails 30 days ahead, so the yearly
 // bump happens in time (CLAUDE.md, Architecture).
 describe('/.well-known/security.txt', () => {
-  const fields = new Map(
-    readFileSync('public/.well-known/security.txt', 'utf8')
-      .split('\n')
-      .map((line) => line.match(/^([\w-]+):\s*(.+)$/))
-      .filter((m): m is RegExpMatchArray => m !== null)
-      .map((m) => [m[1], m[2].trim()]),
-  )
+  const lines = readFileSync('public/.well-known/security.txt', 'utf8')
+    .split('\n')
+    .map((line) => line.match(/^([\w-]+):\s*(.+)$/))
+    .filter((m): m is RegExpMatchArray => m !== null)
+  const fields = new Map(lines.map((m) => [m[1], m[2].trim()]))
+  const all = (name: string) => lines.filter((m) => m[1] === name).map((m) => m[2].trim())
 
-  it('names the site address and its own URL', () => {
-    expect(fields.get('Contact')).toBe(`mailto:${CONTACT_ADDRESS}`)
+  it('names the site address first, the private advisory form and the policy', () => {
+    expect(all('Contact')).toEqual([
+      `mailto:${CONTACT_ADDRESS}`,
+      'https://github.com/RozDm/R/security/advisories/new',
+    ])
     expect(fields.get('Canonical')).toBe(`${SITE_URL}/.well-known/security.txt`)
+    expect(fields.get('Policy')).toBe('https://github.com/RozDm/R/security/policy')
   })
 
   it('expires more than 30 days and at most a year from now', () => {
