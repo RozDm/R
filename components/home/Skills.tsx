@@ -19,10 +19,10 @@ export default function Skills({ lang }: { lang: Lang }) {
         {skillGroups.map((group) => (
           <div
             key={group.title.nb}
-            className={`group p-5 bg-white dark:bg-gray-900/50 rounded-xl transition-all duration-500 ${
-              group.learning
-                ? 'sm:col-span-2 border border-dashed border-gray-300 dark:border-gray-700'
-                : 'border border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20'
+            // One card style for every group; the learning one only spans the
+            // row (it's the odd seventh card) and carries its «pågår» badge.
+            className={`group p-5 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500 ${
+              group.learning ? 'sm:col-span-2' : ''
             }`}
           >
             <h3 className="font-mono text-sm text-red-600 dark:text-red-400 mb-4 flex items-center gap-2">
@@ -39,11 +39,7 @@ export default function Skills({ lang }: { lang: Lang }) {
                 return (
                 <span
                   key={item}
-                  className={`text-[12px] px-2.5 py-1 rounded-md border font-mono transition-colors ${
-                    group.learning
-                      ? 'border-gray-200 dark:border-gray-700/60 text-gray-500 dark:text-gray-400 border-dashed hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400'
-                  }`}
+                  className="text-[12px] px-2.5 py-1 rounded-md border font-mono transition-colors border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400"
                 >
                   {item}
                 </span>
