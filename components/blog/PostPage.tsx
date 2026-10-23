@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
+import { rehypePostImages } from '@/lib/post-images'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import ShareRow from './ShareRow'
@@ -170,7 +171,9 @@ export default function PostPage({ lang, slug }: { lang: Lang; slug: string }) {
           </header>
 
           <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold prose-pre:border prose-pre:border-gray-200 dark:prose-pre:border-gray-800 prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>{post.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight, [rehypePostImages, { post: post.slug }]]}>
+              {post.content}
+            </ReactMarkdown>
           </div>
 
           <ShareRow url={`${SITE_URL}${postPath(lang, slug)}`} lang={lang} />

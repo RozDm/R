@@ -34,7 +34,7 @@ export async function blogFeed(lang: Lang): Promise<Response> {
   const items = await Promise.all(
     posts.map(async (post) => {
       const url = `${SITE_URL}${postPath(lang, post.slug)}`
-      const html = await markdownToHtml(post.content)
+      const html = await markdownToHtml(post.content, post.slug)
       const updatedTag =
         post.updated && post.updated > post.date
           ? `\n      <atom:updated>${new Date(post.updated).toISOString()}</atom:updated>`

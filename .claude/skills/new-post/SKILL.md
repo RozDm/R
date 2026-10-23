@@ -51,6 +51,7 @@ draft: true
 ```
 
 6. Body: tight and technical, a short hook then sections. Fenced code blocks with a language tag (`bash`, `ts`, `yaml`, …) — highlighted at build; comments inside code stay English in both versions. The two bodies say the same thing; translate meaning, not word order, and keep commands/config identical.
+   Images (only if the post needs them): put the file in `public/images/<slug>/` (WebP, PNG, JPEG, GIF or SVG; keep it small) and reference it from both versions as `![<alt in that language>](/images/<slug>/<file>)`. Never link an external image — the CSP blocks it and the build fails on purpose; alt text is required (the build fails without it).
 7. Run `npx vitest run tests/blog-pairs.test.ts` — it fails if the twins' date, `updated`, tags or draft state differ.
 8. Both start as `draft: true` (invisible in production everywhere). Tell the user in one line: "Read both, then remove `draft: true` from both files and merge to publish." Edits later go to both files; bump `updated` in both.
 9. Only if it applies: when the first post goes public, flip `robots: { index: false }` in `app/layout.tsx` and submit the sitemap in Search Console.

@@ -1,5 +1,7 @@
 import { Certification } from '@/types'
 
+// Add `url` (a public verification page) to make a card a link.
+
 export const certifications: Certification[] = [
   { title: 'CCNA Routing and Switching', issuer: 'Cisco Networking Academy' },
   { title: 'NDG Linux Essentials', issuer: 'Cisco Networking Academy' },
