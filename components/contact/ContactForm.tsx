@@ -14,6 +14,7 @@ type FormState =
   | 'ratelimited'
   | 'challenge'
   | 'blocked'
+  | 'widget'
 
 const CONTACT_EMAIL = 'contact@rozsoshnykh.no'
 
@@ -26,6 +27,20 @@ const inputClass =
   'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900/50 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500/50 focus:outline-none transition-colors duration-200 ease-out'
 
 type Field = HTMLInputElement | HTMLTextAreaElement
+
+// What a refused submission means, from the status and the Worker's
+// `{"error": …}` (src/routes/contact.ts). Only a Turnstile refusal asks the
+// visitor to solve the challenge; the Sec-Fetch/UA filter ("forbidden") and
+// anything that isn't the Worker's own answer (an edge 429 when the daily
+// request quota is spent) send them to e-mail instead.
+function refusedState(status: number, error: unknown): FormState {
+  if (status === 429) return error === 'rate limited' ? 'ratelimited' : 'error'
+  if (status === 422) return 'invalid'
+  if (status === 403) {
+    return SITE_KEY && (error === 'challenge required' || error === 'challenge failed') ? 'challenge' : 'blocked'
+  }
+  return 'error'
+}
 
 // Force a Norwegian browser-validation bubble instead of the browser-locale
 // default; clearValidity lets the field re-validate as the user types.
@@ -42,12 +57,20 @@ export default function ContactForm() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
 
-  const onToken = useCallback((token: string | null) => setTurnstileToken(token), [])
+  // A fresh token clears a challenge prompt, and a widget that failed to
+  // load but recovered clears its notice.
+  const onToken = useCallback((token: string | null) => {
+    setTurnstileToken(token)
+    if (token) setState((s) => (s === 'challenge' || s === 'widget' ? 'idle' : s))
+  }, [])
+  // The widget's script was blocked or the widget errored: no challenge can be
+  // solved here, so say so (with the e-mail) instead of asking for one.
+  const onWidgetError = useCallback(() => setState((s) => (s === 'idle' || s === 'challenge' ? 'widget' : s)), [])
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (SITE_KEY && !turnstileToken) {
-      setState('challenge')
+      setState((s) => (s === 'widget' ? 'widget' : 'challenge'))
       return
     }
     const form = e.currentTarget
@@ -67,27 +90,27 @@ export default function ContactForm() {
         // The server verified (and thereby spent) the single-use token before
         // it rate-limited or failed to mail, so a retry needs a fresh one.
         turnstileRef.current?.reset()
-        // A 403 without a Turnstile widget on the page means the server-side
-        // filters (Sec-Fetch / UA) refused the request — asking the user to
-        // "confirm you're not a bot" would point at a challenge that doesn't
-        // exist. Send them to e-mail instead.
-        setState(
-          res.status === 429
-            ? 'ratelimited'
-            : res.status === 422
-              ? 'invalid'
-              : res.status === 403
-                ? SITE_KEY
-                  ? 'challenge'
-                  : 'blocked'
-                : 'error',
+        const error = await res.json().then(
+          (d: { error?: unknown } | null) => d?.error,
+          () => null,
         )
+        setState(refusedState(res.status, error))
       }
     } catch {
       turnstileRef.current?.reset()
       setState('error')
     }
   }
+
+  // The refusal, if any; `mail` appends the address where the form can't help.
+  const message =
+    state === 'error' ? { text: t.errorFailed, mail: true }
+    : state === 'invalid' ? { text: t.errorInvalid, mail: false }
+    : state === 'ratelimited' ? { text: t.errorRate, mail: true }
+    : state === 'challenge' ? { text: t.errorChallenge, mail: false }
+    : state === 'blocked' ? { text: t.errorBlocked, mail: true }
+    : state === 'widget' ? { text: t.errorWidget, mail: true }
+    : null
 
   if (state === 'sent') {
     return (
@@ -164,7 +187,7 @@ export default function ContactForm() {
         />
       </label>
 
-      {SITE_KEY && <Turnstile ref={turnstileRef} siteKey={SITE_KEY} onToken={onToken} />}
+      {SITE_KEY && <Turnstile ref={turnstileRef} siteKey={SITE_KEY} onToken={onToken} onError={onWidgetError} />}
 
       <div className="flex items-center gap-4">
         <button
@@ -174,37 +197,18 @@ export default function ContactForm() {
         >
           {state === 'sending' ? t.sending : t.send}
         </button>
-        {state === 'error' && (
+        {message && (
           <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {t.errorFailed}{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
-              {CONTACT_EMAIL}
-            </a>
-            .
-          </p>
-        )}
-        {state === 'invalid' && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {t.errorInvalid}
-          </p>
-        )}
-        {state === 'ratelimited' && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {t.errorRate}
-          </p>
-        )}
-        {state === 'challenge' && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {t.errorChallenge}
-          </p>
-        )}
-        {state === 'blocked' && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {t.errorBlocked}{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
-              {CONTACT_EMAIL}
-            </a>
-            .
+            {message.text}
+            {message.mail && (
+              <>
+                {' '}
+                <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
+                  {CONTACT_EMAIL}
+                </a>
+                .
+              </>
+            )}
           </p>
         )}
       </div>

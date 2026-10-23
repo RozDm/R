@@ -1,9 +1,10 @@
 // POST /api/contact — validate, Turnstile, rate-limit, store in D1, mail via
-// Email Routing. Defence in depth: same-origin + bot-UA + honeypot + Turnstile
-// (when configured) + per-IP and per-email rate limits.
+// Email Routing. Defence in depth: same-origin + bot-UA + honeypot + a burst
+// cap (WRITE_LIMITER) + Turnstile (when configured) + per-IP and per-email
+// rate limits.
 import { EmailMessage } from 'cloudflare:email'
-import { apiJson, readCapped } from '../http'
-import { looksLikeBot } from '../metrics'
+import { allowWrite, apiJson, readCapped } from '../http'
+import { isWriteAllowed } from '../metrics'
 import { clientKey } from '../ip'
 import { CONTACT_WINDOWS_MS, buildContactMime, isoCutoff, validateContact, verifyTurnstile } from '../contact'
 
@@ -27,10 +28,7 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     return apiJson('{"error":"payload too large"}', 413)
   }
 
-  if (
-    request.headers.get('sec-fetch-site') !== 'same-origin' ||
-    looksLikeBot(request.headers.get('user-agent'))
-  ) {
+  if (!isWriteAllowed(request.headers, url.origin)) {
     return apiJson('{"error":"forbidden"}', 403)
   }
 
@@ -50,6 +48,12 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
 
   const payload = validateContact(raw)
   if (!payload) return apiJson('{"error":"invalid"}', 422)
+
+  // Burst cap per sender, independent of D1: the windows below are D1 counts,
+  // which fail open when D1 errors (and a burst of parallel requests all read
+  // the same count before any row lands). Ahead of Turnstile, so a flood
+  // doesn't spend siteverify calls.
+  if (!(await allowWrite(env, request, 'contact'))) return apiJson('{"error":"rate limited"}', 429)
 
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown'
   // The per-IP window counts a whole IPv6 /64 as one sender (src/ip.ts) — and

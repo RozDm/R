@@ -112,10 +112,10 @@ export default function PrivacyPage() {
           <h2>Cookies and local storage</h2>
           <p>
             The website uses no cookies for tracking or marketing. The browser’s local storage is
-            used only for functional choices — the colour theme, whether the intro animation has
-            been shown, how many times the screensaver has appeared, the date your visit was last
-            counted and which posts you have already read. These values stay in your browser and are
-            not passed on.
+            used for functional choices — the colour theme, whether the intro animation has been
+            shown and how many times the screensaver has appeared — and so that visits and reads are
+            counted only once: the date your visit was last counted and which posts you have already
+            read. These values stay in your browser and are not passed on.
           </p>
 
           <h2>Legal basis</h2>

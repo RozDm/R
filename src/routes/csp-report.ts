@@ -9,7 +9,7 @@
 // Always answers 204 to a POST, even for junk: a browser's report delivery
 // must never see an error it would retry, and an attacker learns nothing.
 // GET gets a 405 so the smoke test can confirm the route is wired.
-import { allowWrite, apiJson } from '../http'
+import { allowWrite, apiJson, readCapped } from '../http'
 import { CSP_REPORT_PATH, applyBaseHeaders, parseCspReports } from '../csp'
 
 // A real report is a few hundred bytes; Reporting API batches stay well
@@ -29,8 +29,10 @@ export async function handleCspReport(url: URL, request: Request, env: Env): Pro
   if (Number(request.headers.get('content-length') ?? '0') > MAX_BODY_BYTES) return noContent()
   // Anyone can POST here; past the per-IP budget, drop reports silently.
   if (!(await allowWrite(env, request, 'csp'))) return noContent()
-  const text = await request.text().catch(() => '')
-  if (!text || text.length > MAX_BODY_BYTES) return noContent()
+  // Read with the cap, not request.text(): a chunked body has no
+  // Content-Length to refuse it by above.
+  const text = await readCapped(request, MAX_BODY_BYTES).catch(() => null)
+  if (!text) return noContent()
 
   let payload: unknown
   try {

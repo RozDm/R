@@ -18,7 +18,7 @@
 import { EmailMessage } from 'cloudflare:email'
 import { ENFORCED_CSP, HEADER_CSP, HSTS, applyBaseHeaders } from './csp'
 import { MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, monitors, parseHistory } from './status'
-import { CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
+import { CONTACT_PRUNE_CRON, CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
 import { handleGeo } from './routes/geo'
@@ -30,8 +30,6 @@ import { handleMtaSts } from './routes/mta-sts'
 
 const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
 const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
-// Daily prune cron pattern — must match the entry in wrangler.jsonc.
-const PRUNE_CRON = '0 3 * * *'
 
 // `secure` flags whether the incoming request was HTTPS. Per RFC 6797, HSTS
 // must not be emitted on responses to plain-HTTP requests (the client is
@@ -113,7 +111,7 @@ async function pruneContactRows(env: Env): Promise<void> {
 
 export default {
   async scheduled(controller, env, ctx) {
-    if (controller.cron === PRUNE_CRON) {
+    if (controller.cron === CONTACT_PRUNE_CRON) {
       ctx.waitUntil(pruneContactRows(env))
     } else {
       ctx.waitUntil(runHealthChecks(env))

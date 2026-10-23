@@ -27,9 +27,12 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `NETBOX_URL` secret) + pure snapshot/alert logic.
 - `contact.ts` — pure contact/alert mail logic: validation limits, Turnstile
   verify, MIME building, the time windows over `contact`
-  (`CONTACT_WINDOWS_MS`, `isoCutoff`).
+  (`CONTACT_WINDOWS_MS`, `isoCutoff`) and the daily prune's cron pattern
+  (`CONTACT_PRUNE_CRON`, held equal to `wrangler.jsonc` by a test — the
+  privacy notice promises 30 days).
 - `metrics.ts` — slug/country validation, bot filter, the `isWriteAllowed`
-  header gate.
+  header gate (Sec-Fetch-Site when sent; without it — Safari < 16.4 — the
+  `Origin` must be our own).
 - `ip.ts` — `clientKey(ip)`: the rate-limit identity of an address — IPv4
   as is, IPv6 as its /64 (`expandIpv6` first: a naive split of
   `2001:db8::1` keys every address apart), IPv4-mapped back to IPv4.
@@ -61,9 +64,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `WRITE_LIMITER` (ratelimits, 20/min per key, per Cloudflare location):
   `allowWrite(env, request, scope)` in `http.ts` keys it
   `<scope>:<clientKey(ip)>` (IPv6 → its /64, `ip.ts`) for
-  `/api/visit` (429), `/api/views` POST (falls back to a read) and
-  `/api/csp-report` (silent 204). It fails open. The header gates are
-  spoofable; this is what stops a POST loop from burning D1's write quota.
+  `/api/visit` (429), `/api/views` POST (falls back to a read),
+  `/api/csp-report` (silent 204) and `/api/contact` (429, a burst cap ahead
+  of Turnstile — its D1 windows fail open when D1 errors). It fails open.
+  The header gates are spoofable; this is what stops a POST loop from
+  burning D1's write quota.
 - Runtime secrets (`TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN`,
   `NETBOX_URL` — NetBox's admin URL for `monitors()`) are
   not in `wrangler.jsonc`; they're typed in `src/env.d.ts` and synced by
@@ -75,8 +80,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `/api/status` — GET, edge-cached 60s. Public, so `buildStatusData` strips
   monitor URLs (`PublicMonitorResult`); don't put them back — one monitor is
   an admin login page. Alert mails take the URL from the cron's own probes.
-- `/api/views/<slug>` — GET reads; POST counts, gated by `isWriteAllowed`
-  AND the slug resolving to a published post page via ASSETS (`/blogg/<slug>/`
+- `/api/views/<slug>` — GET reads; POST counts, gated by `isWriteAllowed`,
+  a non-datacenter ASN (as for `geo`) AND the slug resolving to a published
+  post page via ASSETS (`/blogg/<slug>/`
   or, for an English-only post, `/en/blog/<slug>/`), so junk slugs can't mint
   D1 rows. The slug is the post's view key (`lib/blog.ts viewKey`): both
   language versions of a post count into the Norwegian slug.
@@ -92,18 +98,22 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   caller's country + whether it counts).
 - `/api/timeseries?metric=view|geo&range=24h|7d|30d|all` — GET, edge-cached
   per metric+range; `view` is still served for API compat, only `geo` is
-  graphed; `all` spans ~90 days at 6h buckets.
+  graphed; `all` spans ~90 days at 6h buckets. No AE secrets or a failed AE
+  read → 200 with empty `points` and `degraded: true`, never cached;
+  `status-watchdog.yml` fails on `degraded`.
 - `/api/contact` — POST: a 32 KB body cap first (413, by Content-Length
-  and while reading — smoke-checked), Sec-Fetch + UA filter, honeypot,
-  Turnstile (when `TURNSTILE_SECRET` is set; siteverify bounded at 5 s and
-  its `hostname` must be the request's host), an e-mail pattern without
+  and while reading — smoke-checked), `isWriteAllowed` (Sec-Fetch/Origin +
+  UA; 403 `forbidden`), honeypot, the `WRITE_LIMITER` burst cap, Turnstile
+  (when `TURNSTILE_SECRET` is set; siteverify bounded at 5 s and its
+  `hostname` must be the request's host), an e-mail pattern without
   `<>,;"()[]\:` (it lands in `Reply-To: <…>`), D1 rate limits (per sender — `contact.ip`
   holds `clientKey(ip)`, an IPv6 /64 rather than the address — and per
   e-mail), and a 2-minute content dedup
   (same address + message → ack'd without a second mail).
 - `/api/csp-report` — POST → always 204, AE only, never D1/KV (anyone can
-  POST to it); `parseCspReports` keeps own-origin reports only (origin +
-  path; no query, UA or IP). GET → 405, which the smoke test checks.
+  POST to it); the body is read with `readCapped` (64 KB); `parseCspReports`
+  keeps own-origin reports only (origin + path; no query, UA or IP). GET →
+  405, which the smoke test checks.
 - `/.well-known/mta-sts.txt` — GET, any host; senders fetch it from
   `mta-sts.rozsoshnykh.no` (a custom domain in `wrangler.jsonc`). Proxies
   Cloudflare Email Routing's policy (`mta-sts.mx.cloudflare.net`; edge-cached
@@ -134,7 +144,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   Anything that needs the site goes through the ASSETS binding: the
   `/api/views` slug check and `internal: true` monitors (supported, none
   configured). Don't monitor the site itself — it serves the dashboard.
-- The write gates (`isWriteAllowed`: Sec-Fetch-Site + UA filter) are bot
+- The write gates (`isWriteAllowed`: Sec-Fetch-Site/Origin + UA filter) are bot
   hygiene, NOT security — the headers are trivially spoofable. Anything with
   real consequences needs its own defence (contact: Turnstile + rate limits;
   views: the ASSETS slug check).
@@ -226,10 +236,12 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 
 ## Tests
 
-- Route handlers are tested in `tests/worker/` under plain Vitest with
-  in-process bindings from `tests/worker/fakes.ts`: D1 is REAL SQLite
-  (`node:sqlite`, Node ≥ 22.5) loaded with `schema/metrics.sql`, so SQL
-  semantics match production; AE, Email Routing and ASSETS are fakes, and
+- Route handlers — and the entry's dispatch and both crons
+  (`tests/worker/index.test.ts`) — are tested in `tests/worker/` under plain
+  Vitest with in-process bindings from `tests/worker/fakes.ts`: D1 is REAL
+  SQLite (`node:sqlite`, Node ≥ 22.5) loaded with `schema/metrics.sql`, so
+  SQL semantics match production; KV, AE, Email Routing and ASSETS are
+  fakes, and
   `cloudflare:email` is aliased to a stub in `vitest.config.ts`. They
   type-check under `tsconfig.worker.json` (Node bits in `node-shims.d.ts`)
   and are excluded from the app tsconfig.

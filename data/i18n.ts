@@ -83,6 +83,9 @@ const nb = {
     numberNote: 'Tallet gjelder valgt periode; «Alt» viser det eksakte totaltallet fra D1, det samme som kartet over.',
     capped: (days: number) => `Grafen viser de siste ${days} dagene; tallet gjelder hele perioden.`,
     cappedQuiet: (days: number) => `Grafen viser de siste ${days} dagene.`,
+    // Under the chart while the numbers are hidden: the shape alone, unlabelled,
+    // read as a broken chart.
+    collecting: (n: number) => `Samler data — tallene vises fra ${n} besøk.`,
   },
   intro: { greeting: 'HEI %USERNAME%', skip: 'Klikk eller trykk en tast for å fortsette' },
   hal: {
@@ -127,9 +130,10 @@ const nb = {
     sendAnother: 'Send en til',
     errorFailed: 'Meldingen ble ikke sendt. Prøv igjen, eller send en e-post direkte til',
     errorInvalid: 'Sjekk feltene: en gyldig e-postadresse og minst 10 tegn i meldingen.',
-    errorRate: 'For mange meldinger på kort tid — prøv igjen om noen minutter.',
+    errorRate: 'For mange meldinger på kort tid — prøv igjen om noen minutter, eller send en e-post direkte til',
     errorChallenge: 'Bekreft at du ikke er en bot, så prøv igjen.',
     errorBlocked: 'Meldingen ble stanset av sikkerhetsfiltrene. Prøv på nytt, eller send en e-post direkte til',
+    errorWidget: 'Sikkerhetssjekken lastet ikke (kanskje blokkert av en nettleserutvidelse). Send gjerne en e-post direkte til',
   },
   blog: {
     eyebrow: 'Blogg',
@@ -236,6 +240,7 @@ const en: Dict = {
     numberNote: 'The number covers the selected period; “All” shows the exact total from D1, the same as the map above.',
     capped: (days) => `The chart shows the last ${days} days; the number covers the whole period.`,
     cappedQuiet: (days) => `The chart shows the last ${days} days.`,
+    collecting: (n) => `Collecting data — the numbers appear from ${n} visits.`,
   },
   intro: { greeting: 'HELLO %USERNAME%', skip: 'Click or press any key to continue' },
   hal: {
@@ -279,9 +284,10 @@ const en: Dict = {
     sendAnother: 'Send another',
     errorFailed: 'The message was not sent. Try again, or email me directly at',
     errorInvalid: 'Check the fields: a valid email address and at least 10 characters in the message.',
-    errorRate: 'Too many messages in a short time — try again in a few minutes.',
+    errorRate: 'Too many messages in a short time — try again in a few minutes, or email me directly at',
     errorChallenge: 'Please confirm you are not a bot, then try again.',
     errorBlocked: 'The message was stopped by the security filters. Try again, or email me directly at',
+    errorWidget: 'The security check did not load (perhaps blocked by a browser extension). Feel free to email me directly at',
   },
   blog: {
     eyebrow: 'Blog',

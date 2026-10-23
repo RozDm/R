@@ -64,3 +64,23 @@ jobs:
             -A 'status-watchdog/1.0 (+https://github.com/RozDm/R)' https://rozsoshnykh.no/api/geo)
           echo "GET /api/geo -> $code"
           [ "$code" = "200" ] || { echo "::error::/api/geo answered $code — D1 read failed (Workers Logs: 'geo: D1 read failed')"; exit 1; }
+
+      # The Trends chart reads Analytics Engine with the AE_API_TOKEN secret.
+      # When AE fails (an expired or revoked token, an AE outage) the endpoint
+      # still answers 200 with an empty series, flagged `degraded` — the chart
+      # then just looks quiet. Degraded answers are never edge-cached, so a
+      # retry asks AE again; three in a row is not a blip.
+      - name: Time series (Analytics Engine) answers
+        run: |
+          for try in 1 2 3; do
+            body=$(curl -sf --max-time 20 -A 'status-watchdog/1.0 (+https://github.com/RozDm/R)' \
+              'https://rozsoshnykh.no/api/timeseries?metric=geo&range=24h') || body=''
+            if printf '%s' "$body" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if "points" in d and not d.get("degraded") else 1)' 2>/dev/null; then
+              echo "GET /api/timeseries -> AE answered (try $try)"
+              exit 0
+            fi
+            echo "try $try: degraded or no answer"
+            [ "$try" = 3 ] || sleep 30
+          done
+          echo "::error::/api/timeseries is degraded — AE read failed (Workers Logs: 'timeseries: AE …'; check the AE_API_TOKEN secret)"
+          exit 1
