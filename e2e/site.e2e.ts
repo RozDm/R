@@ -123,6 +123,43 @@ test.describe('contact form', () => {
   })
 })
 
+test.describe('visit beacon (lib/visit.ts)', () => {
+  const visits = (page: import('@playwright/test').Page) => {
+    const sent: string[] = []
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && new URL(r.url()).pathname === '/api/visit') sent.push(r.url())
+    })
+    return sent
+  }
+
+  test('waits for a human input, then counts once a day', async ({ page }) => {
+    // Playwright's browser reports navigator.webdriver; pose as a person.
+    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }))
+    const sent = visits(page)
+    await page.goto('/')
+    await page.waitForTimeout(1_000)
+    expect(sent, 'nothing on load alone').toHaveLength(0)
+    await page.keyboard.press('ArrowDown')
+    await expect.poll(() => sent.length).toBe(1)
+    // Another page, a reload, more input: the same browser, the same day.
+    await page.goto('/blogg/')
+    await page.keyboard.press('ArrowDown')
+    await page.reload()
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(500)
+    expect(sent).toHaveLength(1)
+  })
+
+  test('never counts a browser under automation', async ({ page }) => {
+    const sent = visits(page)
+    await page.goto('/')
+    await page.keyboard.press('ArrowDown')
+    await page.mouse.move(200, 200)
+    await page.waitForTimeout(1_000)
+    expect(sent).toHaveLength(0)
+  })
+})
+
 test('404 page: HAL, a 404 status and the body font', async ({ page }) => {
   const res = await page.goto('/finnes-ikke/')
   expect(res?.status()).toBe(404)

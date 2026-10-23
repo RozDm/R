@@ -113,7 +113,7 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     metadata.ts (pageMetadata), i18n.ts + use-lang.ts (NO/EN
                     paths and language), blog-paths.ts, feed.ts (RSS per
                     language), og-site-card.tsx, og-post-card.tsx, geo.ts,
-                    timeseries-fill.ts, trends-axis.ts
+                    timeseries-fill.ts, trends-axis.ts, visit.ts
 schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
                     (postbuild), check-csp.mjs, check-waf.mjs, check-docs.mjs
@@ -160,8 +160,10 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
   against the static export via the ASSETS binding), so spoofed headers can't
   mint junk rows in D1.
 - **Visitors by country**: every page mounts a tiny `VisitBeacon` that fires
-  a single `POST /api/visit` per browser session (sessionStorage-deduped, so
-  clicking through several pages counts as one besøk). The Worker reads
+  a single `POST /api/visit` per browser per day (a localStorage date, so
+  several pages, tabs or a return that day count as one besøk), and only on
+  the first human input — never on load alone, never from an automated
+  browser (`lib/visit.ts`). The Worker reads
   `request.cf.country` on that one POST and upserts `geo` in D1.
   `GET /api/geo` feeds the world map on the front page (a build-time
   `public/world.svg`, not a JS bundle) and is edge-cached for 60s. No
@@ -173,7 +175,7 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
 - **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
 - **Time-series** of visits lives in a Workers Analytics Engine dataset
   (`rozsoshnykh_metrics`, binding `METRICS_AE`). The `/api/visit` beacon
-  appends one AE point per session (country plus the network's ASN and
+  appends one AE point per counted visit (country plus the network's ASN and
   operator name — a bot diagnostic, never stored in D1, no IP); `GET /api/timeseries?metric=geo&range=24h|7d|30d|all`
   reads them back via the AE SQL API and feeds the front-page **Trends**
   card (dot plot over a zero-filled bucket grid). The windowed tabs

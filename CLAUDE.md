@@ -141,12 +141,16 @@ answered, keep output and replies short.
   now sets it to Respect Existing Headers, but a drifted setting would
   bring the rewrite back).
 - Visit counting: `components/effects/VisitBeacon.tsx` (mounted by
-  `app/layout.tsx`) fires one `POST /api/visit` per sessionStorage session
-  (per tab), which writes the D1 `geo` row and an AE point — the map and the
-  Trends chart are two views of one dataset. Rule for ALL client counters
-  (`VisitBeacon`, `ViewCounter`): set the sessionStorage dedupe flag BEFORE
-  the fetch, so StrictMode's double-invoke and remount races can't
-  double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`); the map
+  `app/layout.tsx`) aims at people, not page loads (`lib/visit.ts`): one
+  `POST /api/visit` per browser per local day (localStorage `visit-day`),
+  sent only on the first trusted human input (pointer move/press, touch, key,
+  wheel — never on load, never `scroll`, which a script can cause) and never
+  under `navigator.webdriver` (automation); the Worker's filters still apply
+  on top. It writes the D1 `geo` row and an AE point — the map and the
+  Trends chart are two views of one dataset. `e2e/site.e2e.ts` holds the
+  beacon to that. Rule for ALL client counters (`VisitBeacon`,
+  `ViewCounter`): set the dedupe flag BEFORE the fetch, so StrictMode's
+  double-invoke, remount races and a second tab can't double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`); the map
   and Trends hide every absolute visit number (legend, tooltips, headline,
   y-axis) until the all-time D1 total reaches `MIN_PUBLIC_VISITS`
   (`lib/geo.ts`) — shades and the chart's shape stay.
