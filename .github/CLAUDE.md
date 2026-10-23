@@ -118,7 +118,8 @@ incident background: `docs/history.md`.
 - Every workflow runs with a read-only `GITHUB_TOKEN`. All secrets live in
   the GitHub environment `production`, whose deployment branch policy allows
   `main` only — none at repository level: `CLOUDFLARE_API_TOKEN` (deploy:
-  Workers Scripts/KV/D1 + Workers Routes; `deploy`, `d1-*`,
+  Workers Scripts/KV/D1 + Workers Routes, plus template extras the owner
+  kept — `docs/cloudflare-security.md`; `deploy`, `d1-*`,
   `reset-metrics`), `CLOUDFLARE_ZONE_TOKEN` (`zone-rules` only),
   `CLOUDFLARE_ACCOUNT_ID` (also synced to the Worker as `CF_ACCOUNT_ID`),
   `TURNSTILE_SECRET`, `AE_API_TOKEN` (Account → Account Analytics: Read),
