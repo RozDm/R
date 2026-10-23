@@ -38,8 +38,8 @@ export interface PageMetadataInput {
   absoluteTitle?: boolean
   ogTitle?: string
   ogDescription?: string
-  // noindex: utility pages for good (/kontakt, /personvern), thin topic
-  // pages until they grow (lib/blog.ts MIN_TAG_POSTS).
+  // noindex: utility pages for good (/kontakt, /personvern), topic pages
+  // until the owner lists them (data/tags.ts INDEXED_TAGS).
   noindex?: boolean
   // The route has its own opengraph-image file.
   ownImage?: boolean

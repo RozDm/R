@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags, filterPublished, isThinTag, MIN_TAG_POSTS } from '@/lib/blog'
+import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags, filterPublished, isTagIndexed } from '@/lib/blog'
+import { INDEXED_TAGS } from '@/data/tags'
 
 // lib/blog reads markdown off disk; mock node:fs so these tests exercise the
 // ordering / adjacency / tag logic against a fixed set, independent of whatever
@@ -110,11 +111,15 @@ describe('filterPublished', () => {
   })
 })
 
-describe('isThinTag', () => {
-  it('calls a topic thin until it has MIN_TAG_POSTS posts', () => {
-    for (const tag of getAllTags('nb')) {
-      expect(isThinTag(tag, 'nb')).toBe(getPostsByTag(tag, 'nb').length < MIN_TAG_POSTS)
+describe('isTagIndexed', () => {
+  it('indexes only the tags the owner listed in INDEXED_TAGS', () => {
+    for (const tag of [...getAllTags('nb'), ...getAllTags('en')]) {
+      expect(isTagIndexed(tag)).toBe(INDEXED_TAGS.some((t) => t.toLowerCase() === tag.toLowerCase()))
     }
-    expect(MIN_TAG_POSTS).toBe(3)
+  })
+
+  it('starts with no tag page indexed (owner command only)', () => {
+    expect(INDEXED_TAGS).toEqual([])
+    expect(isTagIndexed('Velkommen')).toBe(false)
   })
 })

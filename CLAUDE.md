@@ -272,9 +272,9 @@ answered, keep output and replies short.
   learning group and `hasCredential` from `data/certifications.ts` —
   BlogPosting + image + BreadcrumbList per post), RSS at `/feed.xml` +
   `/en/feed.xml`, hreflang between language twins (pages + sitemap),
-  prev/next + tag pages. A tag page with fewer than `MIN_TAG_POSTS` (3,
-  `lib/blog.ts`) posts is a thin copy of the blog index: noindex and out of
-  the sitemap until the topic grows. `robots.index: false` in
+  prev/next + tag pages. Tag pages are noindex and out of the sitemap unless
+  listed in `INDEXED_TAGS` (`data/tags.ts`) — add a tag ONLY on the owner's
+  explicit command, never by post count. `robots.index: false` in
   `app/layout.tsx` until launch — flip it only when asked (the e2e test
   "pre-launch: every page tells search engines noindex" flips with it), then
   submit the sitemap in Search Console. `/kontakt`, `/personvern` and
