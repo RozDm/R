@@ -39,7 +39,7 @@ export default function ContactPage({ lang }: { lang: Lang }) {
 
         <ContactForm />
       </main>
-      <Footer lang={lang} />
+      <Footer lang={lang} invite={false} />
     </>
   )
 }

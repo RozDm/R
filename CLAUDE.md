@@ -96,7 +96,9 @@ answered, keep output and replies short.
   `pageMetadata({ languages })` (hreflang). Bilingual data uses
   `Localized` + `pick()`. The export always says `<html lang="nb">`: the
   build (`scripts/finalize-export.mjs`) rewrites `/en/` documents to `en`,
-  `HtmlLang` keeps it right on client navigation. `/en/privacy/` translates `/personvern/` (the Norwegian
+  `HtmlLang` keeps it right on client navigation, and the theme head script
+  sets it on any `/en/` path before paint: the one `404.html` answers `/en/`
+  misses too and shows its English copy on `html[lang=en]`. `/en/privacy/` translates `/personvern/` (the Norwegian
   one is authoritative) — change both.
 - Metadata: every page builds it with `pageMetadata()` (`lib/metadata.ts`;
   `lang: 'en'` on English pages sets og:locale, hreflang, the English OG card

@@ -107,9 +107,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Theme before the first paint; and lang="en" on any /en/ path —
+            the build already writes it into the /en/ pages, but the one
+            404.html also answers /en/ misses, and its English copy shows on
+            html[lang=en] (app/not-found.tsx). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
+            __html: `(function(){var d=document.documentElement,p=location.pathname;if(p==='/en'||p.indexOf('/en/')===0)d.lang='en';try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){d.classList.add('dark')}}catch(e){}})()`,
           }}
         />
         {/* The intro is the front door only: a visitor who lands on any other

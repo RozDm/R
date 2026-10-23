@@ -9,6 +9,12 @@ const nb = {
   skipToContent: 'Hopp til hovedinnhold',
   // backHome + error: shared with app/error.tsx (see i18n-error.ts).
   ...ERROR_COPY.nb,
+  // app/not-found.tsx (a server component, so no client cost).
+  notFound: {
+    eyebrow: 'Feil 404',
+    title: 'Beklager %username%. Jeg er redd jeg ikke kan finne den siden.',
+    note: '// this page could not be found',
+  },
   nav: {
     label: 'Hovednavigasjon',
     mobileLabel: 'Mobilnavigasjon',
@@ -169,6 +175,11 @@ export type Dict = typeof nb
 const en: Dict = {
   skipToContent: 'Skip to main content',
   ...ERROR_COPY.en,
+  notFound: {
+    eyebrow: 'Error 404',
+    title: 'I’m sorry %username%. I’m afraid I can’t find that page.',
+    note: '// this page could not be found',
+  },
   nav: {
     label: 'Main navigation',
     mobileLabel: 'Mobile navigation',

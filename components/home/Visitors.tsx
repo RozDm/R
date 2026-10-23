@@ -17,7 +17,10 @@ export default function Visitors({ lang }: { lang: Lang }) {
           {t.lead}
         </p>
       </div>
-      <GeoMap />
+      {/* The same card as Driftsstatus and Trafikk over tid around it. */}
+      <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500">
+        <GeoMap />
+      </div>
     </section>
   )
 }
