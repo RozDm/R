@@ -3,8 +3,16 @@
 // trailing-slash path, a 301 from the slash-less one, and the 404 page (with a
 // 404) for a miss. /api/* belongs to the Worker — the tests stub it with
 // page.route, so here it is a plain miss. Zero dependencies; test-only.
+//
+// TLS=1 serves HTTPS with a throwaway self-signed certificate (openssl), for
+// WebKit: the pages' CSP carries upgrade-insecure-requests, which WebKit
+// applies to http://localhost too (Chromium exempts it), so over plain HTTP
+// every script and font would be "upgraded" to a TLS port that isn't there.
+import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { createServer as createTlsServer } from 'node:https'
+import { existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { extname, join, resolve, sep } from 'node:path'
 
 const ROOT = resolve('out')
@@ -30,7 +38,7 @@ function send(res, status, file) {
   res.end(readFileSync(file))
 }
 
-createServer((req, res) => {
+function handle(req, res) {
   const url = new URL(req.url ?? '/', 'http://localhost')
   let path
   try {
@@ -48,4 +56,19 @@ createServer((req, res) => {
     return res.end()
   }
   return send(res, 404, join(ROOT, '404.html'))
-}).listen(PORT, () => console.log(`serve-out: out/ on http://localhost:${PORT}`))
+}
+
+if (process.env.TLS === '1') {
+  const dir = mkdtempSync(join(tmpdir(), 'serve-out-'))
+  const [key, cert] = [join(dir, 'key.pem'), join(dir, 'cert.pem')]
+  execFileSync(
+    'openssl',
+    ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-subj', '/CN=localhost', '-keyout', key, '-out', cert],
+    { stdio: 'ignore' },
+  )
+  createTlsServer({ key: readFileSync(key), cert: readFileSync(cert) }, handle).listen(PORT, () =>
+    console.log(`serve-out: out/ on https://localhost:${PORT}`),
+  )
+} else {
+  createServer(handle).listen(PORT, () => console.log(`serve-out: out/ on http://localhost:${PORT}`))
+}

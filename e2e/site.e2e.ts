@@ -24,7 +24,12 @@ test.describe('first visit', () => {
   test('plays the intro once; any key skips it', async ({ page }) => {
     await page.goto('/')
     const greeting = page.getByText('HEI %USERNAME%')
-    await expect(greeting).toBeVisible()
+    // Fading in (phase 1 began), not merely in the DOM: Playwright calls an
+    // opacity-0 node visible, and a key pressed before the intro's keydown
+    // listener is attached is lost (seen under load in WebKit). Phase 1's
+    // timer is set in the same effect flush that attaches the listener.
+    const card = greeting.locator('..')
+    await expect.poll(() => card.evaluate((el) => Number(getComputedStyle(el).opacity))).toBeGreaterThan(0)
     await page.keyboard.press('Space')
     await expect(greeting).toHaveCount(0, { timeout: 5_000 })
     expect(await page.evaluate(() => localStorage.getItem('intro-seen'))).toBe('1')
