@@ -9,9 +9,14 @@ incident background: `docs/history.md`.
   Gotchas), `check:waf` (`scripts/check-waf.mjs`: the WAF expression
   must block no URL in `out/` and still block its scanner list) and
   `check:csp` (`scripts/check-csp.mjs`: every page's baked-in `<meta>` CSP
-  hashes each of its inline scripts), then the browser tests (`npx playwright
-  install --with-deps chromium`, `npm run test:e2e`; on a failure their
-  traces are a 3-day `e2e-traces` artifact). `deploy.yml` doesn't repeat
+  hashes each of its inline scripts), then the browser tests
+  (`npm run test:e2e`; on a failure their traces are a 3-day `e2e-traces`
+  artifact). The job runs in the official Playwright image
+  (`mcr.microsoft.com/playwright:v<version>-noble@sha256:…`, `--user 1001`),
+  which brings Chromium, WebKit and their system packages — installing
+  them on the bare runner took 3–37 min. Its tag must equal
+  `@playwright/test`'s version (`tests/workflows.test.ts`); bump tag and
+  digest together with the package. `deploy.yml` doesn't repeat
   them: nothing reaches `main` without this job. It is the one
   required status check on `main`, so its result decides the auto-merge.
 - `deploy.yml` — on push to `main`, two jobs, both `npm ci --ignore-scripts`.
@@ -110,13 +115,17 @@ incident background: `docs/history.md`.
   `tests/workflows.test.ts` fails on a bare tag. Dependabot reads the
   comment and bumps SHA and comment together.
 - `dependabot.yml` — weekly (Monday, Europe/Oslo, 7-day cooldown) grouped
-  PRs: npm minor+patch in one, wrangler alone, GitHub Actions in one; every
+  PRs: npm minor+patch in one, wrangler alone, Playwright alone, GitHub
+  Actions in one; every
   semver-major is ignored (migrations are done by hand — ESLint stays 9).
   Dependabot PRs get no secrets, which `check` doesn't need. Merge one
   by enabling squash auto-merge as the owner, so the merge push is the
   owner's and `deploy.yml` runs with its secrets (never a GITHUB_TOKEN merge
   workflow). The wrangler PR stays red until `npm run cf-typegen` is
-  committed on it (`wrangler types --check` compares the workerd version);
+  committed on it (`wrangler types --check` compares the workerd version),
+  the Playwright PR until `ci.yml`'s image tag and digest follow it (the
+  digest: the `Docker-Content-Digest` header of
+  `https://mcr.microsoft.com/v2/playwright/manifests/v<version>-noble`);
   pushing to a Dependabot branch stops Dependabot rebasing it.
 - Every workflow runs with a read-only `GITHUB_TOKEN`. All secrets live in
   the GitHub environment `production`, whose deployment branch policy allows

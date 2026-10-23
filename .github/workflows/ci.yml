@@ -14,6 +14,15 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # The official Playwright image: Chromium and WebKit and their system
+    # packages are preinstalled. On the bare runner `playwright install
+    # --with-deps chromium webkit` took 3–37 min, at the mercy of apt mirrors.
+    # The tag must equal @playwright/test's version (tests/workflows.test.ts),
+    # the digest pins it like the actions' SHAs; uid 1001 is the runner's, so
+    # the checkout stays writable.
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble@sha256:f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a
+      options: --user 1001
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -38,7 +47,7 @@ jobs:
       - run: npm run check:csp
       # Browser tests on the built export (playwright.config.ts, e2e/): the
       # user flows, axe in both themes, no console error or CSP violation.
-      - run: npx playwright install --with-deps chromium webkit
+      # The browsers come with the image (PLAYWRIGHT_BROWSERS_PATH).
       - run: npm run test:e2e
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
