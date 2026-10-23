@@ -36,6 +36,7 @@ Look for:
 - **`%USERNAME%` in the intro is a literal joke**, not a template variable.
 - **`/kontakt`, `/personvern` and `/status` stay `noindex`** permanently; never propose adding them to the sitemap.
 - **`StatusDashboard`, `GeoMap` and `TrendsChart` are code-split** (`Lazy*.tsx`), so the smoke-checked headings must stay in the server components `Status.tsx`, `Visitors.tsx` and `Trends.tsx`.
+- **No external uptime monitor** (owner's call, 2026-10-23): the watchdog's few-hours lag is accepted. Don't re-propose it.
 - **No "Required reviewers" on the `production` environment** (owner's call, 2026-10-22: sessions merge and deploy unattended). Don't re-propose it.
 
 ## Workflow

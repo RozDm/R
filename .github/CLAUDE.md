@@ -44,7 +44,9 @@ incident background: `docs/history.md`.
 - `status-watchdog.yml` — outside Cloudflare, scheduled hourly
   (`17 * * * *`); GitHub runs a public repo's schedule late or skips it —
   measured 2026-10-16…23: 40 runs 2–8 h apart (median ~4.5 h), all green —
-  so each check below lands within a few hours, not one. Fails (GitHub
+  so each check below lands within a few hours, not one. That lag is
+  accepted: an external uptime monitor was declined (owner's call,
+  2026-10-23) — don't re-propose it. Fails (GitHub
   e-mails the owner) when the site is down, `/api/status` is older than
   20 min — the one failure the Worker can't report about itself — or
   `/api/geo` isn't a 200 (a 503 there is a failed D1 read; the snapshot
