@@ -1,6 +1,16 @@
 // Pure logic for outbound mail: contact-form validation/MIME and status-alert
 // MIME. (DOM-compatible APIs only — tests import this under the app tsconfig.)
 
+// The site's public address (the form's fallback, the footer, the privacy
+// notice; public/.well-known/security.txt is held to it by a test) — also the
+// contact mail's sender. The app imports it from here, so the Worker and the
+// pages can't drift apart.
+export const CONTACT_ADDRESS = 'contact@rozsoshnykh.no'
+// Where Email Routing delivers the contact and status mail. It must also be
+// wrangler.jsonc's send_email destination_address (tested): Email Routing
+// sends only to that verified address.
+export const OWNER_INBOX = 'd.rossoshnyh@gmail.com'
+
 export const CONTACT_LIMITS = {
   name: 100,
   email: 200,
@@ -46,7 +56,13 @@ export interface ContactInput extends ContactPayload {
 // Loose but practical: something@something.tld. No whitespace and none of
 // <>,;"()[]\: — the address lands in `Reply-To: <…>`, and a `>, <…` inside
 // it would add a second recipient (CR/LF were already refused).
-const EMAIL_RE = /^[^\s@<>,;"()[\]\\:]+@[^\s@<>,;"()[\]\\:]+\.[^\s@<>,;"()[\]\\:]{2,}$/
+// Every class character escaped, so the same source also compiles under the
+// `v` flag that browsers use for an HTML pattern attribute.
+const EMAIL_CHAR = '[^\\s@<>,;"\\(\\)\\[\\]\\\\:]'
+// The contact form's `pattern` (the browser anchors it itself): the same rule
+// as the Worker's, so the browser refuses what the Worker would 422.
+export const EMAIL_PATTERN = `${EMAIL_CHAR}+@${EMAIL_CHAR}+\\.${EMAIL_CHAR}{2,}`
+const EMAIL_RE = new RegExp(`^${EMAIL_PATTERN}$`)
 
 export function validateContact(input: unknown): ContactInput | null {
   if (typeof input !== 'object' || input === null) return null

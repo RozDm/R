@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  EMAIL_PATTERN,
   buildContactMime,
   buildStatusAlertMime,
   encodeMimeHeader,
@@ -8,6 +9,23 @@ import {
 } from '@/src/contact'
 
 const valid = { name: 'Ola Nordmann', email: 'ola@example.no', message: 'Hei! Dette er en testmelding.' }
+
+// The form's pattern attribute is the Worker's rule: what the browser lets
+// through, validateContact accepts, and the other way round. Browsers compile
+// a pattern as ^(?:…)$ with the `v` flag, which is stricter about escapes —
+// an invalid pattern is silently ignored, so it must compile there.
+describe('EMAIL_PATTERN', () => {
+  const browser = new RegExp(`^(?:${EMAIL_PATTERN})$`, 'v')
+  const worker = (email: string) => validateContact({ ...valid, email }) !== null
+  const samples = [
+    'ola@example.no', 'ø.å@bergen.no', 'a+tag@sub.example.com', 'a@b', 'a@b.c', 'a b@example.no',
+    'a"b@example.no', 'a(b@example.no', 'a[b]@example.no', 'a\\b@example.no', 'a:b@example.no',
+    'a>b@example.no', 'a,b@example.no', 'a@b@example.no', '@example.no', 'ola@.no',
+  ]
+  it.each(samples)('agrees with the Worker on %s', (email) => {
+    expect(browser.test(email)).toBe(worker(email))
+  })
+})
 
 describe('validateContact', () => {
   it('accepts a normal payload and trims fields', () => {

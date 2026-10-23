@@ -242,7 +242,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   SQLite (`node:sqlite`, Node ≥ 22.5) loaded with `schema/metrics.sql`, so
   SQL semantics match production; KV, AE, Email Routing and ASSETS are
   fakes, and
-  `cloudflare:email` is aliased to a stub in `vitest.config.ts`. They
+  `cloudflare:email` is aliased to a stub in `vitest.config.mts`. They
   type-check under `tsconfig.worker.json` (Node bits in `node-shims.d.ts`)
   and are excluded from the app tsconfig.
 - A new endpoint or route behaviour gets a test there AND a

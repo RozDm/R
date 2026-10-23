@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { isStale } from '@/src/status'
+import { fetchStatus } from '@/lib/status-fetch'
 import { DICT } from '@/data/i18n'
 import { useLang } from '@/lib/use-lang'
 
@@ -16,18 +17,20 @@ export default function StatusDot() {
   const label = DICT[useLang()].footer.dot
 
   useEffect(() => {
-    const controller = new AbortController()
-    fetch('/api/status', { signal: controller.signal, cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d: { updatedAt?: string; results?: { ok: boolean }[] }) => {
+    let cancelled = false
+    // Shared with the front page's dashboard: one request (lib/status-fetch.ts).
+    fetchStatus()
+      .then((d) => {
         const results = d.results || []
-        if (results.length === 0) return
+        if (cancelled || results.length === 0) return
         // A frozen snapshot can't vouch for anything — stay gray.
         if (!d.updatedAt || isStale(d.updatedAt, Date.now())) return
         setState(results.every((r) => r.ok) ? 'up' : 'down')
       })
       .catch(() => {})
-    return () => controller.abort()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const color =

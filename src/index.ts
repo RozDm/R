@@ -18,7 +18,7 @@
 import { EmailMessage } from 'cloudflare:email'
 import { ENFORCED_CSP, HEADER_CSP, HSTS, applyBaseHeaders } from './csp'
 import { MONITOR_TIMEOUT_MS, STATUS_KEY, buildStatusData, detectTransitions, monitors, parseHistory } from './status'
-import { CONTACT_PRUNE_CRON, CONTACT_WINDOWS_MS, buildStatusAlertMime, isoCutoff } from './contact'
+import { CONTACT_PRUNE_CRON, CONTACT_WINDOWS_MS, OWNER_INBOX, buildStatusAlertMime, isoCutoff } from './contact'
 import { handleStatus } from './routes/status'
 import { handleViews } from './routes/views'
 import { handleGeo } from './routes/geo'
@@ -29,7 +29,7 @@ import { handleCspReport } from './routes/csp-report'
 import { handleMtaSts } from './routes/mta-sts'
 
 const STATUS_ALERT_FROM = 'status@rozsoshnykh.no'
-const STATUS_ALERT_TO = 'd.rossoshnyh@gmail.com'
+const STATUS_ALERT_TO = OWNER_INBOX
 
 // `secure` flags whether the incoming request was HTTPS. Per RFC 6797, HSTS
 // must not be emitted on responses to plain-HTTP requests (the client is

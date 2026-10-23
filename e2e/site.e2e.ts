@@ -18,6 +18,38 @@ test('front page renders every section and the live widgets', async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 })
 
+// Each /api/* call is a Worker request against the free plan's daily quota.
+test('the footer dot and the dashboard share one /api/status request', async ({ page }) => {
+  let calls = 0
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname === '/api/status') calls++
+  })
+  await page.goto('/')
+  await page.locator('#status').scrollIntoViewIfNeeded()
+  await expect(page.getByText('Alle systemer operative').first()).toBeVisible()
+  await page.waitForTimeout(500)
+  expect(calls).toBe(1)
+})
+
+test('the dashboard polls only while it is on screen', async ({ page }) => {
+  await page.clock.install()
+  let calls = 0
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname === '/api/status') calls++
+  })
+  await page.goto('/')
+  // The code-split dashboard has mounted and drawn the shared first answer.
+  await expect(page.locator('#status').getByText('Alle systemer operative').first()).toBeAttached()
+  expect(calls).toBe(1)
+  // Past the 90 s refresh with #status below the fold: nothing is fetched…
+  await page.clock.runFor(100_000)
+  await page.waitForTimeout(300)
+  expect(calls).toBe(1)
+  // …until it comes into view, when the overdue refresh runs at once.
+  await page.locator('#status').scrollIntoViewIfNeeded()
+  await expect.poll(() => calls).toBe(2)
+})
+
 test.describe('first visit', () => {
   test.use({ introSeen: false })
 
@@ -47,6 +79,24 @@ test('theme toggle switches and remembers the theme', async ({ page }) => {
   await page.getByRole('button', { name: 'Bytt til mørkt tema' }).click()
   await expect(html).toHaveClass(/\bdark\b/)
   await page.reload()
+  await expect(html).toHaveClass(/\bdark\b/)
+})
+
+test('flipping back to the OS theme follows the OS again, live', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/')
+  const html = page.locator('html')
+  await page.getByRole('button', { name: 'Bytt til mørkt tema' }).click()
+  await expect(html).toHaveClass(/\bdark\b/)
+  // Picked by hand: an OS switch doesn't override it.
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expect(html).toHaveClass(/\bdark\b/)
+  // Back to the OS's own theme: nothing stored, and the OS leads again.
+  await page.getByRole('button', { name: 'Bytt til lyst tema' }).click()
+  await expect(html).not.toHaveClass(/\bdark\b/)
+  expect(await page.evaluate(() => localStorage.getItem('theme'))).toBeNull()
+  await page.emulateMedia({ colorScheme: 'dark' })
   await expect(html).toHaveClass(/\bdark\b/)
 })
 

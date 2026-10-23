@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { pageMetadata } from '@/lib/metadata'
+import { CONTACT_ADDRESS } from '@/src/contact'
 
 // Utility page, like /kontakt: keep it out of search results (and out of
 // the sitemap — a sitemap must not list noindex URLs).
@@ -40,7 +41,7 @@ export default function PersonvernPage() {
           <p>
             Dmytro Rozsoshnykh er ansvarlig for behandlingen av personopplysninger på dette
             nettstedet. Spørsmål om personvern kan sendes til{' '}
-            <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a>.
+            <a href={`mailto:${CONTACT_ADDRESS}`}>{CONTACT_ADDRESS}</a>.
           </p>
 
           <h2>Kontaktskjemaet</h2>
@@ -150,7 +151,7 @@ export default function PersonvernPage() {
           <p>
             Du har rett til innsyn i, retting og sletting av opplysninger om deg, og til å kreve
             at behandlingen begrenses. Du kan også protestere mot behandling som bygger på
-            berettiget interesse. Send en e-post til <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a>, så
+            berettiget interesse. Send en e-post til <a href={`mailto:${CONTACT_ADDRESS}`}>{CONTACT_ADDRESS}</a>, så
             ordner jeg det. Du kan også klage til{' '}
             <a href="https://www.datatilsynet.no/" target="_blank" rel="noopener noreferrer">
               Datatilsynet

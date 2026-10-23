@@ -4,6 +4,7 @@ import StatusDot from './StatusDot'
 import CopyEmail from './CopyEmail'
 import { DICT } from '@/data/i18n'
 import { localePath, type Lang } from '@/lib/i18n'
+import { CONTACT_ADDRESS } from '@/src/contact'
 
 export default function Footer({ lang = 'nb' }: { lang?: Lang }) {
   const t = DICT[lang].footer
@@ -51,7 +52,7 @@ export default function Footer({ lang = 'nb' }: { lang?: Lang }) {
           </a>
         </div>
 
-        <CopyEmail email="contact@rozsoshnykh.no" />
+        <CopyEmail email={CONTACT_ADDRESS} />
 
         <HashLink
           href={localePath(lang, '/#status')}
