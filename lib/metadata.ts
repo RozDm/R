@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { AUTHOR, SITE_CARD_SIZE, SITE_URL, siteCardAlt } from './site'
-import { OG_LOCALE, languageAlternates, type Lang } from './i18n'
+import { OG_LOCALE, languageAlternates, pick, type Lang } from './i18n'
+import { certifications } from '@/data/certifications'
+import { skillGroups } from '@/data/skills'
 
 // Next merges route metadata SHALLOWLY: a page that sets `openGraph` or
 // `alternates` replaces the parent's object wholesale instead of extending
@@ -36,7 +38,8 @@ export interface PageMetadataInput {
   absoluteTitle?: boolean
   ogTitle?: string
   ogDescription?: string
-  // Permanent noindex for utility pages (/kontakt, /personvern).
+  // noindex: utility pages for good (/kontakt, /personvern), topic pages
+  // until the owner lists them (data/tags.ts INDEXED_TAGS).
   noindex?: boolean
   // The route has its own opengraph-image file.
   ownImage?: boolean
@@ -81,6 +84,34 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
     },
     openGraph,
     ...(input.noindex ? { robots: { index: false, follow: true } } : {}),
+  }
+}
+
+// The sitewide Person (app/layout.tsx). knowsAbout lists the skills the site
+// claims (not the "learning" group); hasCredential the certificates, so a
+// search engine reads the same CV the page shows. Norwegian names: the
+// site's default language.
+export function personJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: AUTHOR.name,
+    jobTitle: AUTHOR.jobTitle,
+    url: SITE_URL,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Askøy',
+      addressRegion: 'Vestland',
+      addressCountry: 'NO',
+    },
+    sameAs: AUTHOR.sameAs,
+    knowsAbout: skillGroups.filter((g) => !g.learning).flatMap((g) => g.items.map((i) => pick('nb', i))),
+    hasCredential: certifications.map((c) => ({
+      '@type': 'EducationalOccupationalCredential',
+      name: pick('nb', c.title),
+      credentialCategory: 'certificate',
+      recognizedBy: { '@type': 'Organization', name: pick('nb', c.issuer) },
+    })),
   }
 }
 

@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/context/ThemeContext'
 import VisitBeacon from '@/components/effects/VisitBeacon'
 import HtmlLang from '@/components/effects/HtmlLang'
 import { SITE_URL, AUTHOR, SITE_TITLE, SITE_DESCRIPTION, SITE_TAGLINE, THEME_BG } from '@/lib/site'
-import { RSS_ALTERNATE, serializeJsonLd } from '@/lib/metadata'
+import { RSS_ALTERNATE, personJsonLd as buildPersonJsonLd, serializeJsonLd } from '@/lib/metadata'
 
 const intelOneMono = Intel_One_Mono({
   subsets: ['latin'],
@@ -84,20 +84,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const personJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Person',
-    name: AUTHOR.name,
-    jobTitle: AUTHOR.jobTitle,
-    url: SITE_URL,
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Askøy',
-      addressRegion: 'Vestland',
-      addressCountry: 'NO',
-    },
-    sameAs: AUTHOR.sameAs,
-  }
+  const personJsonLd = buildPersonJsonLd()
 
   const webSiteJsonLd = {
     '@context': 'https://schema.org',

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { getAllPosts, getAllTags, getPostsByTag, getTranslation } from '@/lib/blog'
+import { getAllPosts, getAllTags, getPostsByTag, getTranslation, isTagIndexed } from '@/lib/blog'
 import { blogPath, postPath, tagPath } from '@/lib/blog-paths'
 import { SITE_URL } from '@/lib/site'
 import { languageAlternates, type Lang } from '@/lib/i18n'
@@ -34,7 +34,9 @@ function pairAlternates(nbPath: string | null, enPath: string | null) {
 function blogEntries(lang: Lang): MetadataRoute.Sitemap {
   const posts = getAllPosts(lang)
   const twinLang: Lang = lang === 'nb' ? 'en' : 'nb'
-  const twinTags = new Set(getAllTags(twinLang))
+  // Topic pages are noindex unless the owner listed them (data/tags.ts
+  // INDEXED_TAGS): not listed, and not offered as a twin either.
+  const twinTags = new Set(getAllTags(twinLang).filter(isTagIndexed))
   return [
     { url: `${SITE_URL}${blogPath(lang)}`, lastModified: newest(posts), alternates: alternates(blogPath(lang)) },
     ...posts.map((post) => {
@@ -47,15 +49,17 @@ function blogEntries(lang: Lang): MetadataRoute.Sitemap {
         alternates: lang === 'nb' ? pairAlternates(own, other) : pairAlternates(other, own),
       }
     }),
-    ...getAllTags(lang).map((tag) => {
-      const own = tagPath(lang, tag)
-      const other = twinTags.has(tag) ? tagPath(twinLang, tag) : null
-      return {
-        url: `${SITE_URL}${own}`,
-        lastModified: newest(getPostsByTag(tag, lang)),
-        alternates: lang === 'nb' ? pairAlternates(own, other) : pairAlternates(other, own),
-      }
-    }),
+    ...getAllTags(lang)
+      .filter(isTagIndexed)
+      .map((tag) => {
+        const own = tagPath(lang, tag)
+        const other = twinTags.has(tag) ? tagPath(twinLang, tag) : null
+        return {
+          url: `${SITE_URL}${own}`,
+          lastModified: newest(getPostsByTag(tag, lang)),
+          alternates: lang === 'nb' ? pairAlternates(own, other) : pairAlternates(other, own),
+        }
+      }),
   ]
 }
 

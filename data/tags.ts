@@ -77,6 +77,12 @@ export const STANDARD_TAGS = [
   'SRE',
 ] as const
 
+// Topic pages search engines may index, as canonical tags. Owner's call
+// (2026-10-23): a tag page goes in ONLY on the owner's explicit command —
+// never automatically, whatever its post count. Every other tag page is
+// noindex and out of the sitemap (lib/blog.ts isTagIndexed); its links work.
+export const INDEXED_TAGS: readonly string[] = []
+
 // English labels for the canonical tags that are Norwegian words. Posts in
 // both languages carry the canonical tag (English frontmatter like "Security"
 // resolves to «Sikkerhet» through TAG_ALIASES); the English blog shows these

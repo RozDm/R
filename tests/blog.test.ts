@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags, filterPublished } from '@/lib/blog'
+import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags, filterPublished, isTagIndexed } from '@/lib/blog'
+import { INDEXED_TAGS } from '@/data/tags'
 
 // lib/blog reads markdown off disk; mock node:fs so these tests exercise the
 // ordering / adjacency / tag logic against a fixed set, independent of whatever
@@ -107,5 +108,18 @@ describe('filterPublished', () => {
     const before = [...set]
     filterPublished(set, { includeDrafts: false })
     expect(set).toEqual(before)
+  })
+})
+
+describe('isTagIndexed', () => {
+  it('indexes only the tags the owner listed in INDEXED_TAGS', () => {
+    for (const tag of [...getAllTags('nb'), ...getAllTags('en')]) {
+      expect(isTagIndexed(tag)).toBe(INDEXED_TAGS.some((t) => t.toLowerCase() === tag.toLowerCase()))
+    }
+  })
+
+  it('starts with no tag page indexed (owner command only)', () => {
+    expect(INDEXED_TAGS).toEqual([])
+    expect(isTagIndexed('Velkommen')).toBe(false)
   })
 })

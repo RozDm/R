@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import matter from 'gray-matter'
 import { normalizeTags } from './tags'
+import { INDEXED_TAGS } from '@/data/tags'
 import { readingTimeMinutes } from './reading-time'
 import { INTL_LOCALE, type Lang } from './i18n'
 import type { Post, PostMeta } from '@/types'
@@ -90,6 +91,14 @@ export function getAllTags(lang: Lang = 'nb'): string[] {
 export function getPostsByTag(tag: string, lang: Lang = 'nb'): PostMeta[] {
   const key = tag.toLowerCase()
   return getAllPosts(lang).filter((p) => p.tags.some((t) => t.toLowerCase() === key))
+}
+
+// Topic pages stay out of the index and the sitemap unless the owner listed
+// them in INDEXED_TAGS (data/tags.ts) — components/blog/TagPage.tsx,
+// app/sitemap.ts. Tags are canonical across languages, so one list covers both.
+export function isTagIndexed(tag: string): boolean {
+  const key = tag.toLowerCase()
+  return INDEXED_TAGS.some((t) => t.toLowerCase() === key)
 }
 
 // The published twin of a post in the other language, if there is one.

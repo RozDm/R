@@ -160,6 +160,21 @@ test.describe('visit beacon (lib/visit.ts)', () => {
   })
 })
 
+// Pre-launch (CLAUDE.md, SEO): no page may be indexed until the owner says
+// "launch" — this test flips together with robots.index in app/layout.tsx.
+test('pre-launch: every page tells search engines noindex', async ({ page, request, isMobile }) => {
+  test.skip(isMobile, 'markup, not layout')
+  const xml = await (await request.get('/sitemap.xml')).text()
+  const paths = [...xml.matchAll(/<loc>https:\/\/rozsoshnykh\.no([^<]*)<\/loc>/g)].map((m) => m[1])
+  expect(paths.length).toBeGreaterThan(0)
+  for (const path of [...paths, '/kontakt/', '/personvern/', '/blogg/tag/velkommen/']) {
+    await page.goto(path)
+    const robots = await page.locator('meta[name="robots"]').evaluateAll((els) => els.map((e) => e.getAttribute('content')))
+    expect(robots.length, path).toBeGreaterThan(0)
+    for (const r of robots) expect(r, path).toMatch(/noindex/)
+  }
+})
+
 test('404 page: HAL, a 404 status and the body font', async ({ page }) => {
   const res = await page.goto('/finnes-ikke/')
   expect(res?.status()).toBe(404)
