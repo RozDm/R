@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags, filterPublished } from '@/lib/blog'
+import { getAllPosts, getAdjacentPosts, getPostsByTag, getAllTags, filterPublished, isThinTag, MIN_TAG_POSTS } from '@/lib/blog'
 
 // lib/blog reads markdown off disk; mock node:fs so these tests exercise the
 // ordering / adjacency / tag logic against a fixed set, independent of whatever
@@ -107,5 +107,14 @@ describe('filterPublished', () => {
     const before = [...set]
     filterPublished(set, { includeDrafts: false })
     expect(set).toEqual(before)
+  })
+})
+
+describe('isThinTag', () => {
+  it('calls a topic thin until it has MIN_TAG_POSTS posts', () => {
+    for (const tag of getAllTags('nb')) {
+      expect(isThinTag(tag, 'nb')).toBe(getPostsByTag(tag, 'nb').length < MIN_TAG_POSTS)
+    }
+    expect(MIN_TAG_POSTS).toBe(3)
   })
 })

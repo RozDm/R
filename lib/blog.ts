@@ -92,6 +92,15 @@ export function getPostsByTag(tag: string, lang: Lang = 'nb'): PostMeta[] {
   return getAllPosts(lang).filter((p) => p.tags.some((t) => t.toLowerCase() === key))
 }
 
+// A topic page with fewer posts than this is a thin near-copy of the blog
+// index: it stays out of the index and the sitemap until the topic grows
+// (components/blog/TagPage.tsx, app/sitemap.ts). Its links still work.
+export const MIN_TAG_POSTS = 3
+
+export function isThinTag(tag: string, lang: Lang = 'nb'): boolean {
+  return getPostsByTag(tag, lang).length < MIN_TAG_POSTS
+}
+
 // The published twin of a post in the other language, if there is one.
 export function getTranslation(post: Pick<PostMeta, 'slug' | 'lang' | 'translationOf'>): PostMeta | null {
   if (post.lang === 'en') {

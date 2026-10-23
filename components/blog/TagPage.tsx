@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import PostCard from './PostCard'
 import { DICT } from '@/data/i18n'
-import { getAllTags, getPostsByTag } from '@/lib/blog'
+import { getAllTags, getPostsByTag, isThinTag } from '@/lib/blog'
 import { blogPath, tagPath } from '@/lib/blog-paths'
 import type { Lang } from '@/lib/i18n'
 import { pageMetadata } from '@/lib/metadata'
@@ -44,6 +44,7 @@ export function tagMetadata(lang: Lang, slug: string): Metadata {
     description: t.topicDescription(label),
     path: tagPath(lang, tag),
     languages: nbPath && enPath ? { nb: nbPath, en: enPath, 'x-default': nbPath } : undefined,
+    noindex: isThinTag(tag, lang),
   })
 }
 

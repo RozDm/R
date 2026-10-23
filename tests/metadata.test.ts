@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { RSS_ALTERNATE, pageMetadata, serializeJsonLd } from '@/lib/metadata'
+import { RSS_ALTERNATE, pageMetadata, personJsonLd, serializeJsonLd } from '@/lib/metadata'
+import { certifications } from '@/data/certifications'
 import { SITE_URL } from '@/lib/site'
 
 // Next merges route metadata shallowly, so every page must carry the whole
@@ -58,5 +59,24 @@ describe('serializeJsonLd', () => {
     const out = serializeJsonLd(data)
     expect(out).not.toContain('<')
     expect(JSON.parse(out)).toEqual(data)
+  })
+})
+
+describe('personJsonLd', () => {
+  it('lists the claimed skills, not the ones still being learned', () => {
+    const p = personJsonLd()
+    expect(p.knowsAbout).toEqual(expect.arrayContaining(['Proxmox', 'Wazuh', 'Cloudflare Workers']))
+    expect(p.knowsAbout).not.toContain('Terraform')
+  })
+
+  it('carries every certificate as a credential with its issuer', () => {
+    const p = personJsonLd()
+    expect(p.hasCredential).toHaveLength(certifications.length)
+    expect(p.hasCredential[0]).toEqual({
+      '@type': 'EducationalOccupationalCredential',
+      name: 'CCNA Routing and Switching',
+      credentialCategory: 'certificate',
+      recognizedBy: { '@type': 'Organization', name: 'Cisco Networking Academy' },
+    })
   })
 })

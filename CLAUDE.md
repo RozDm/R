@@ -267,13 +267,19 @@ answered, keep output and replies short.
   in production builds (`NODE_ENV` filter in `getPostSlugs`/`getAllPosts`);
   `npm run dev` shows drafts with a red «Utkast» badge.
 - SEO: canonicals + trailing slash everywhere, OG images via `next/og`,
-  JSON-LD (Person + WebSite sitewide, BlogPosting + image + BreadcrumbList per
-  post), RSS at `/feed.xml` + `/en/feed.xml`, hreflang between language
-  twins (pages + sitemap), prev/next + tag pages. `robots.index: false` in
-  `app/layout.tsx` until launch — flip it only when asked, then submit the
-  sitemap in Search Console. `/kontakt`, `/personvern` and status-style
-  utility pages stay noindex permanently; the sitemap never lists noindex
-  URLs.
+  JSON-LD (Person + WebSite sitewide — the Person from `personJsonLd()` in
+  `lib/metadata.ts`, with `knowsAbout` from `data/skills.ts` minus the
+  learning group and `hasCredential` from `data/certifications.ts` —
+  BlogPosting + image + BreadcrumbList per post), RSS at `/feed.xml` +
+  `/en/feed.xml`, hreflang between language twins (pages + sitemap),
+  prev/next + tag pages. A tag page with fewer than `MIN_TAG_POSTS` (3,
+  `lib/blog.ts`) posts is a thin copy of the blog index: noindex and out of
+  the sitemap until the topic grows. `robots.index: false` in
+  `app/layout.tsx` until launch — flip it only when asked (the e2e test
+  "pre-launch: every page tells search engines noindex" flips with it), then
+  submit the sitemap in Search Console. `/kontakt`, `/personvern` and
+  status-style utility pages stay noindex permanently; the sitemap never
+  lists noindex URLs (pre-launch excepted: it lists what will be indexable).
 
 ## Gotchas
 
