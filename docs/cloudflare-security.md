@@ -37,12 +37,21 @@ that would block search engines or CI.
 
 CI reaches Cloudflare with two user-owned tokens, held only by the GitHub
 environment `production` (`.github/CLAUDE.md`): `CLOUDFLARE_API_TOKEN`
-deploys (Workers Scripts, KV, D1, Workers Routes — no zone settings), and
+deploys. It is the Cloudflare token named `CW_API_TOKEN`, made from the
+"Edit Cloudflare Workers" template: Workers Scripts, KV, D1, Workers Routes
+and Zone Read, which deploy needs, plus Pages, Containers, Workers Builds,
+Observability, Agents Configuration, Tail and Account Settings Read, which
+it doesn't. No zone settings. The owner chose to keep the extras
+(2026-10-23). And
 `CLOUDFLARE_ZONE_TOKEN`, used only by `zone-rules.yml`, has Zone Read +
 Transform Rules Edit + Bot Management Edit + Zone Settings Edit + Zone WAF
 Edit + Single Redirect Edit (reserved for a www→apex rule). Neither has SSL
 and Certificates or account-level Notifications, so CT Monitoring and
 Notifications stay dashboard work.
+
+Done 2026-10-23: the unused account API token "Cloude" (Zone Custom Asset
+Read/Write, never used) deleted; outside Cloudflare, MFA on NetBox and
+Grafana.
 
 Goal of the set: keep scanner traffic off the Worker's 100,000 requests/day
 (per account, resets 00:00 UTC; past it every `/api/*` request gets a 429).
