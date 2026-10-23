@@ -38,7 +38,7 @@ jobs:
       - run: npm run check:csp
       # Browser tests on the built export (playwright.config.ts, e2e/): the
       # user flows, axe in both themes, no console error or CSP violation.
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

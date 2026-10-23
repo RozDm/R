@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test'
 // (e2e/fixtures.ts), so they never touch the Worker or production data.
 // `npm run test:e2e`; CI runs them after the build (ci.yml).
 const PORT = 4173
+// WebKit runs against the same export over HTTPS (scripts/serve-out.mjs TLS=1).
+const TLS_PORT = 4174
 
 export default defineConfig({
   testDir: 'e2e',
@@ -29,11 +31,32 @@ export default defineConfig({
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 900 } } },
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    // Safari's engine: most phones that visit a Norwegian site are iPhones.
+    // Over HTTPS, like production (serve-out.mjs explains why it must be);
+    // its own launchOptions — the Chromium flag and path above don't apply.
+    {
+      name: 'iphone',
+      use: {
+        ...devices['iPhone 14'],
+        baseURL: `https://localhost:${TLS_PORT}`,
+        ignoreHTTPSErrors: true,
+        launchOptions: {},
+      },
+    },
   ],
-  webServer: {
-    command: 'node scripts/serve-out.mjs',
-    url: `http://localhost:${PORT}/`,
-    env: { PORT: String(PORT) },
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'node scripts/serve-out.mjs',
+      url: `http://localhost:${PORT}/`,
+      env: { PORT: String(PORT) },
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'node scripts/serve-out.mjs',
+      url: `https://localhost:${TLS_PORT}/`,
+      env: { PORT: String(TLS_PORT), TLS: '1' },
+      ignoreHTTPSErrors: true,
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 })

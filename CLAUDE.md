@@ -209,10 +209,13 @@ answered, keep output and replies short.
   `npm run check:csp` (`scripts/check-csp.mjs`). CI then runs the browser
   tests, `npm run test:e2e` (Playwright, `playwright.config.ts`, `e2e/`): the
   user flows — intro, theme, NO/EN, nav and the mobile menu, blog, contact
-  form, the 404 — on desktop and mobile Chromium, axe in both themes, and no
-  console error or CSP violation on any page. They run on `out/` served by
-  `scripts/serve-out.mjs` with `/api/*` stubbed (`e2e/fixtures.ts`), so they
-  need a build first and never touch the Worker. A UI change that breaks a
+  form, the 404 — on desktop and mobile Chromium and an iPhone (WebKit),
+  axe in both themes, and no console error or CSP violation on any page.
+  They run on `out/` served by `scripts/serve-out.mjs` with `/api/*` stubbed
+  (`e2e/fixtures.ts`), so they need a build first and never touch the
+  Worker. WebKit gets it over HTTPS (`TLS=1`, a throwaway self-signed cert):
+  it applies the pages' `upgrade-insecure-requests` to `http://localhost`,
+  which Chromium exempts. A UI change that breaks a
   selector there updates the test in the same PR. `@playwright/test` and
   `playwright-core` stay pinned to one version (axe's peer dependency would
   otherwise pull a second, mismatched copy).
