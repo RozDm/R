@@ -3,17 +3,25 @@
 Loaded when working under `.github/`. Site-wide rules: root `CLAUDE.md`;
 incident background: `docs/history.md`.
 
-- `ci.yml` — job `check` on PRs: lint, typecheck (starting with
-  `wrangler types --check`), test, build, then `check:dict` (the UI
-  dictionary sits in exactly one chunk — `turbopackChunking`, CLAUDE.md
-  Gotchas), `check:waf` (`scripts/check-waf.mjs`: the WAF expression
-  must block no URL in `out/` and still block its scanner list) and
-  `check:csp` (`scripts/check-csp.mjs`: every page's baked-in `<meta>` CSP
-  hashes each of its inline scripts), then the browser tests (`npx playwright
-  install --with-deps chromium`, `npm run test:e2e`; on a failure their
-  traces are a 3-day `e2e-traces` artifact). `deploy.yml` doesn't repeat
-  them: nothing reaches `main` without this job. It is the one
-  required status check on `main`, so its result decides the auto-merge.
+- `ci.yml` — on PRs, three jobs. `build` (bare runner): lint, typecheck
+  (starting with `wrangler types --check`), test, build, then `check:dict`
+  (the UI dictionary sits in exactly one chunk — `turbopackChunking`,
+  CLAUDE.md Gotchas), `check:waf` (`scripts/check-waf.mjs`: the WAF
+  expression must block no URL in `out/` and still block its scanner list)
+  and `check:csp` (`scripts/check-csp.mjs`: every page's baked-in `<meta>`
+  CSP hashes each of its inline scripts); `out/` goes on as a 1-day
+  artifact. `e2e`: the browser tests (`npm run test:e2e`; on a failure their
+  traces are a 3-day `e2e-traces` artifact) in the official Playwright image
+  (`mcr.microsoft.com/playwright:v<version>-noble@sha256:…`, `--user 1001`),
+  which brings Chromium, WebKit and their system packages — installing them
+  on the bare runner took 3–37 min. Only the tests run there: the Next build
+  in that container failed to load `next/font/google`. The image tag must
+  equal `@playwright/test`'s version (`tests/workflows.test.ts`); bump tag
+  and digest together with the package. `check` is green only when both
+  are (`if: always()`, so a failed `build` can't leave it skipped — a
+  skipped required check passes); it is the one required status check on
+  `main`, so its result decides the auto-merge. `deploy.yml` doesn't repeat
+  the browser tests: nothing reaches `main` without this workflow.
 - `deploy.yml` — on push to `main`, two jobs, both `npm ci --ignore-scripts`.
   `build` has no secrets, so package code (lint, tests, the Next build) never
   sees a token: the same checks → build → check:waf → check:dict → check:csp
@@ -110,13 +118,17 @@ incident background: `docs/history.md`.
   `tests/workflows.test.ts` fails on a bare tag. Dependabot reads the
   comment and bumps SHA and comment together.
 - `dependabot.yml` — weekly (Monday, Europe/Oslo, 7-day cooldown) grouped
-  PRs: npm minor+patch in one, wrangler alone, GitHub Actions in one; every
+  PRs: npm minor+patch in one, wrangler alone, Playwright alone, GitHub
+  Actions in one; every
   semver-major is ignored (migrations are done by hand — ESLint stays 9).
   Dependabot PRs get no secrets, which `check` doesn't need. Merge one
   by enabling squash auto-merge as the owner, so the merge push is the
   owner's and `deploy.yml` runs with its secrets (never a GITHUB_TOKEN merge
   workflow). The wrangler PR stays red until `npm run cf-typegen` is
-  committed on it (`wrangler types --check` compares the workerd version);
+  committed on it (`wrangler types --check` compares the workerd version),
+  the Playwright PR until `ci.yml`'s image tag and digest follow it (the
+  digest: the `Docker-Content-Digest` header of
+  `https://mcr.microsoft.com/v2/playwright/manifests/v<version>-noble`);
   pushing to a Dependabot branch stops Dependabot rebasing it.
 - Every workflow runs with a read-only `GITHUB_TOKEN`. All secrets live in
   the GitHub environment `production`, whose deployment branch policy allows

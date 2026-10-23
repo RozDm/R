@@ -29,9 +29,14 @@ updates:
       # on the PR. Kept apart so the main batch can merge on green.
       wrangler:
         patterns: [wrangler]
+      # ci.yml runs in the Playwright image of the same version: the PR stays
+      # red (tests/workflows.test.ts) until that image tag and digest are
+      # bumped on it too. Kept apart for the same reason as wrangler.
+      playwright:
+        patterns: ["@playwright/test", playwright-core]
       npm-minor-patch:
         patterns: ["*"]
-        exclude-patterns: [wrangler]
+        exclude-patterns: [wrangler, "@playwright/test", playwright-core]
         update-types: [minor, patch]
       security:
         applies-to: security-updates

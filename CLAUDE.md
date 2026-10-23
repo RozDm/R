@@ -216,7 +216,8 @@ answered, keep output and replies short.
   axe in both themes, and no console error or CSP violation on any page.
   They run on `out/` served by `scripts/serve-out.mjs` with `/api/*` stubbed
   (`e2e/fixtures.ts`), so they need a build first and never touch the
-  Worker. WebKit gets them over HTTPS (`TLS=1`; why: `serve-out.mjs`). A UI change that breaks a
+  Worker. WebKit gets them over HTTPS (`TLS=1`; why: `serve-out.mjs`). CI
+  runs them in the Playwright image (`.github/CLAUDE.md`). A UI change that breaks a
   selector there updates the test in the same PR. `@playwright/test` and
   `playwright-core` stay pinned to one version (axe's peer dependency would
   otherwise pull a second, mismatched copy).
