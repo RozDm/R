@@ -230,12 +230,16 @@ answered, keep output and replies short.
   it has no Cloudflare credentials and would skip the gate; `npm run deploy`
   is for a local machine with `wrangler login`.
 - The merge gate is hands-off: branch protection on `main` requires `check`
-  with 0 approvals (a solo repo — you can't approve your own PR). Open PRs
+  with 0 approvals (a solo repo — you can't approve your own PR). It binds
+  non-admins only and sessions act as the owner, so never merge by hand
+  past a red or pending `check`. Open PRs
   *ready* with squash auto-merge: green merges and deploys, red stays open.
   To hold one for a manual look, open a draft without auto-merge.
 - Remote sessions reach the internet through an agent proxy, so
   `curl https://rozsoshnykh.no/...` works for live diagnosis; the deploy gate
-  is still the smoke step, not ad-hoc curl.
+  is still the smoke step, not ad-hoc curl. Raw TLS (`openssl s_client`)
+  bypasses the proxy and meets the sandbox's own egress gateway, not
+  Cloudflare — probe TLS versions with curl (`--tls-max`) instead.
 - Session branches: one `claude/*` branch per session, reset onto
   `origin/main` before new work (else the next PR conflicts with its own
   squashed history). Merged head branches are deleted by GitHub; only a PR
@@ -244,8 +248,10 @@ answered, keep output and replies short.
 ## Conventions
 
 - Front-page section pattern: mono uppercase red eyebrow
-  (`text-red-500 … tracking-widest uppercase`) + bold h2 + cards
-  (`bg-white dark:bg-gray-900/50 rounded-xl border … hover:border-red-500/30`),
+  (`text-red-600 dark:text-red-400 font-mono … tracking-widest uppercase`) +
+  bold h2 + cards (`bg-white dark:bg-gray-900/50 rounded-xl border …
+  hover:border-red-500/30 dark:hover:border-red-500/20 transition-all
+  duration-500`) — every card, the status, map and Trends cards included,
   staggered `animate-fade-in` delays (150/300/450/600/750ms). The hero
   (`#about`, the first screen) has none: an opacity-0 start delays LCP
   (`docs/history.md`).

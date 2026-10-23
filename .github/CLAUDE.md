@@ -21,7 +21,10 @@ incident background: `docs/history.md`.
   are (`if: always()`, so a failed `build` can't leave it skipped — a
   skipped required check passes); it is the one required status check on
   `main`, so its result decides the auto-merge. `deploy.yml` doesn't repeat
-  the browser tests: nothing reaches `main` without this workflow.
+  the browser tests: nothing reaches `main` without this workflow. The
+  protection binds non-admins only (`enforce_admins` off), and a session
+  acts as the owner, an admin: never merge a PR by hand while `check` is
+  red or pending — auto-merge is the gate.
 - `deploy.yml` — on push to `main`, two jobs, both `npm ci --ignore-scripts`.
   `build` has no secrets, so package code (lint, tests, the Next build) never
   sees a token: the same checks → build → check:waf → check:dict → check:csp
@@ -38,12 +41,15 @@ incident background: `docs/history.md`.
   wrangler (not `cloudflare/wrangler-action`, which runs on deprecated
   Node 20) → `scripts/smoke.sh` against the live site (it also runs
   `check-csp.mjs --live` on five pages).
-- `status-watchdog.yml` — hourly, outside Cloudflare: fails (GitHub e-mails
-  the owner) when the site is down, `/api/status` is older than 20 min —
-  the one failure the Worker can't report about itself — or `/api/geo`
-  isn't a 200 (a 503 there is a failed D1 read; the snapshot lives in KV, so
-  this is the only hourly look at D1), or `/api/timeseries` answers
-  `degraded` three times in a row (the AE read failed — typically the
+- `status-watchdog.yml` — outside Cloudflare, scheduled hourly
+  (`17 * * * *`); GitHub runs a public repo's schedule late or skips it —
+  measured 2026-10-16…23: 40 runs 2–8 h apart (median ~4.5 h), all green —
+  so each check below lands within a few hours, not one. Fails (GitHub
+  e-mails the owner) when the site is down, `/api/status` is older than
+  20 min — the one failure the Worker can't report about itself — or
+  `/api/geo` isn't a 200 (a 503 there is a failed D1 read; the snapshot
+  lives in KV, so this is the only regular look at D1), or `/api/timeseries`
+  answers `degraded` three runs in a row (the AE read failed — typically the
   `AE_API_TOKEN` secret expired or lost its permission; the chart alone
   would just look quiet). A `403` here (or in
   `smoke.sh`) whose page says `X-Frame-Options: SAMEORIGIN` is Cloudflare,
@@ -100,7 +106,9 @@ incident background: `docs/history.md`.
   rule in place (found by ref, else by name, else — first run only — by the
   old rule's signature; PATCH can't set a ref, so the name finds it; the
   old expression is printed for a rollback; other custom rules are never
-  touched). Applied 2026-10-17 (run 38992597687). The prod check then wants `/` free of the
+  touched). Applied 2026-10-17 (run 38992597687); last run 2026-10-22
+  (run 39845233430, the mta-sts redirect), every prod check green, and the
+  same checks re-probed from outside on 2026-10-23. The prod check then wants `/` free of the
   `/cdn-cgi/challenge-platform/` loader, TLS 1.1 refused, a GPTBot UA
   blocked, scanner paths
   answered by Cloudflare's 403 and scanner-word slugs by the site (a CSP
@@ -117,9 +125,9 @@ incident background: `docs/history.md`.
   (`actions/checkout@<sha> # v7.0.1`) — a tag can be moved, a SHA can't;
   `tests/workflows.test.ts` fails on a bare tag. Dependabot reads the
   comment and bumps SHA and comment together.
-- `dependabot.yml` — weekly (Monday, Europe/Oslo, 7-day cooldown) grouped
-  PRs: npm minor+patch in one, wrangler alone, Playwright alone, GitHub
-  Actions in one; every
+- `dependabot.yml` — weekly (Monday 06:00, Europe/Oslo) grouped PRs: npm
+  minor+patch in one, wrangler alone, Playwright alone, security updates in
+  one (npm has a 7-day cooldown), GitHub Actions in one; every
   semver-major is ignored (migrations are done by hand — ESLint stays 9).
   Dependabot PRs get no secrets, which `check` doesn't need. Merge one
   by enabling squash auto-merge as the owner, so the merge push is the

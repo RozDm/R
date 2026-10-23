@@ -4,7 +4,8 @@ Personal site and blog for **Dmytro Rozsoshnykh** — sysadmin / DevOps in Vestl
 A static Next.js export served by Cloudflare Workers static assets, with a
 Worker for `/api/*` that runs uptime monitoring, visitor geo aggregation,
 per-post view counters and a contact form.
-Site copy is Norwegian (`nb-NO`); code and docs are English.
+Site copy is Norwegian (`nb-NO`) at the root with an English twin under
+`/en/` (front page, contact, privacy, blog); code and docs are English.
 
 Live: https://rozsoshnykh.no
 
@@ -14,7 +15,8 @@ Live: https://rozsoshnykh.no
 - Content: markdown posts in `content/blog/` (gray-matter + react-markdown +
   remark-gfm + rehype-highlight for code blocks)
 - Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (`STATUS`),
-  D1 (`METRICS`), Analytics Engine (`METRICS_AE`), Email Routing
+  D1 (`METRICS`), Analytics Engine (`METRICS_AE`), a rate-limiting binding
+  (`WRITE_LIMITER`, 20 writes/min per address), Email Routing
   (`CONTACT_EMAIL`), Turnstile on the contact form, crons `*/5 * * * *`
   (uptime) and `0 3 * * *` (daily prune of the contact table, 30-day window)
 - Pages never touch the Worker: each carries its strict hash CSP as a
@@ -47,9 +49,10 @@ environment's secrets: sync runtime secrets (one `wrangler secret bulk`) →
 `npx wrangler deploy` (the repo's pinned wrangler) → **`scripts/smoke.sh`**
 against production (pages, APIs, redirects, security headers and the live
 page CSPs, caching, noindex).
-Push to live takes ~2.5 minutes. If the
-smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs as
-the `check` status check.
+Push to live takes about 2 minutes. If the
+smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs,
+plus the Playwright browser tests (desktop and mobile Chromium, an iPhone in
+WebKit), as the `check` status check (~4 minutes).
 
 Merging is **hands-off**: `main` is branch-protected to require `check` with 0
 approvals (solo repo — you can't approve your own PR). PRs go up ready (not
@@ -58,9 +61,11 @@ automatically — which triggers the deploy above — and GitHub then deletes th
 merged head branch. A failing `check` just leaves the PR open with auto-merge
 pending; open a draft (and skip auto-merge) to hold a change for manual review.
 
-Monitoring workflows: `status-watchdog` (hourly; fails — and GitHub e-mails
-— when the site is down, the status snapshot is older than 20 minutes or the
-D1 database fails a read) and
+Monitoring workflows: `status-watchdog` (scheduled hourly, but GitHub runs
+it only every 2–8 hours — measured in October 2026; fails, and GitHub
+e-mails, when the site is down, the status snapshot is older than 20 minutes,
+the D1 database fails a read or the Analytics Engine read is degraded three
+runs in a row) and
 `analytics-report` (manual; Analytics Engine breakdown of visits by network
 and country, plus browser-reported CSP violations, in the run summary).
 
@@ -106,13 +111,16 @@ data/               Skills, certifications, tag canon + aliases (tags.ts), UI
                     copy in both languages (i18n.ts; the error boundary's in
                     i18n-error.ts)
 docs/               history.md — incident history, the "why" behind CLAUDE.md's
-                    hard rules (agent docs: CLAUDE.md sitewide, src/CLAUDE.md worker,
-                    .github/CLAUDE.md workflows)
+                    hard rules; cloudflare-security.md — the zone's edge
+                    security on the Free plan (agent docs: CLAUDE.md sitewide,
+                    src/CLAUDE.md worker, .github/CLAUDE.md workflows)
 lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
                     stars.ts, site.ts (name/roles/titles/colours per language),
                     metadata.ts (pageMetadata), i18n.ts + use-lang.ts (NO/EN
                     paths and language), blog-paths.ts, feed.ts (RSS per
                     language), og-site-card.tsx, og-post-card.tsx, geo.ts,
+                    post-images.ts (post images: size, lazy, build checks),
+                    status-fetch.ts (one shared /api/status fetch),
                     timeseries-fill.ts, trends-axis.ts, visit.ts
 schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
@@ -123,7 +131,9 @@ src/                Cloudflare Worker for /api/* + MTA-STS (index.ts, csp.ts, ht
                     routes/*)
 tests/              Vitest
 e2e/                Playwright browser tests (site.e2e.ts, fixtures.ts)
-wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, CONTACT_EMAIL, cron, routes)
+wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, METRICS_AE,
+                    WRITE_LIMITER, CONTACT_EMAIL, crons, custom domains: apex,
+                    www, mta-sts)
 ```
 
 ### Uptime monitoring
@@ -155,10 +165,12 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
 100k writes/day free budget. KV holds only the uptime snapshot.
 
 - **Per-post views**: `GET/POST /api/views/<slug>`. Counted once per browser
-  session from the post page; bot UAs and cross-origin POSTs are ignored, and
-  a POST only counts if the slug resolves to a published post page (checked
-  against the static export via the ASSETS binding), so spoofed headers can't
-  mint junk rows in D1.
+  session from the post page, on the first human input (never on load alone,
+  never from an automated browser — like the visit beacon); bot UAs,
+  datacenter networks and cross-origin POSTs are ignored, and a POST only
+  counts if the slug resolves to a published post page (checked against the
+  static export via the ASSETS binding), so spoofed headers can't mint junk
+  rows in D1. Both language versions of a post share one counter.
 - **Visitors by country**: every page mounts a tiny `VisitBeacon` that fires
   a single `POST /api/visit` per browser per day (a localStorage date, so
   several pages, tabs or a return that day count as one besøk), and only on
@@ -196,8 +208,9 @@ Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
 
 `POST /api/contact` → validate → Cloudflare Turnstile → store in D1 (`contact`,
 also a backup copy) → send via Email Routing (`contact@rozsoshnykh.no`, Reply-To
-the sender). Defence in depth: Turnstile + same-origin check + bot-UA filter +
-off-screen honeypot + per-IP rate limit (3 / 10 min) + per-email rate limit
+the sender). Defence in depth: a 32 KB body cap + same-origin check + bot-UA
+filter + off-screen honeypot + a per-address burst cap (`WRITE_LIMITER`) +
+Turnstile + per-IP rate limit (3 / 10 min; IPv6 by /64) + per-email rate limit
 (2 / hour, catches IP-rotating spammers reusing a throwaway address) + short-
 window dedup (identical address + message within 2 min is ack'd without a
 second mail). All windows are exact: ISO cutoffs against the ISO `at`
@@ -220,6 +233,8 @@ own ids). Then `npm run deploy` — `predeploy` runs lint/typecheck/test first.
 ### Status (soft launch)
 
 The site is live at `rozsoshnykh.no` (`www` and plain HTTP 301 at the edge;
-the `workers.dev` subdomain and preview URLs are off). DNSSEC is active. `robots: { index: false }` stays
+the `workers.dev` subdomain and preview URLs are off). DNSSEC is active, HSTS
+is on the browsers' preload list, TLS 1.3 only; mail to the domain has
+MTA-STS (`enforce`), TLS-RPT and DMARC `p=reject` (checked 2026-10-23). `robots: { index: false }` stays
 until the first posts are published — flip `robots.index` to `true` in
 `app/layout.tsx` and submit the sitemap in Google Search Console then.

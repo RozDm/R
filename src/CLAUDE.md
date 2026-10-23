@@ -221,8 +221,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   mis-compares with ISO as TEXT and makes every same-day row look recent.
 - `/en/` HTML: the export has one root layout, so every page says
   `<html lang="nb">`; `scripts/finalize-export.mjs` rewrites it to
-  `lang="en"` under `out/en/` (smoke-checked). The 404 page served for a
-  missing `/en/…` path still says `nb` (`HtmlLang` fixes it on the client).
+  `lang="en"` under `out/en/` (smoke-checked). The one 404 page also answers
+  a missing `/en/…` path: the theme head script in `app/layout.tsx` sets
+  `lang="en"` there before paint, and the page shows its English copy.
 - Slash-less paths: `out/_redirects` 301s every page (`/blogg` → `/blogg/`,
   generated at build); anything else gets `html_handling`'s 307
   (`…/index.html` → `…/`). `/favicon.ico` is a build-time copy of
