@@ -313,8 +313,26 @@ test('404 page: HAL, a 404 status and the body font', async ({ page }) => {
   await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(1)
   await page.evaluate(() => document.fonts.ready)
   expect(await page.evaluate(() => [...document.fonts].some((f) => f.family.includes('Intel') && f.status === 'loaded'))).toBe(true)
+  await expect(page).toHaveTitle(/^404 – /)
   await page.getByRole('link', { name: 'Tilbake til forsiden' }).click()
   await expect(page).toHaveURL(/\/$/)
+})
+
+test('404 under /en/ speaks English', async ({ page }) => {
+  const res = await page.goto('/en/finnes-ikke/')
+  expect(res?.status()).toBe(404)
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^I’m sorry %username%/)
+  await page.getByRole('link', { name: 'Back to the home page' }).click()
+  await expect(page).toHaveURL(/\/en\/$/)
+})
+
+test('the contact page’s footer doesn’t invite to the contact page', async ({ page }) => {
+  await page.goto('/kontakt/')
+  const footer = page.locator('footer')
+  await expect(footer.getByText('GitHub')).toBeVisible()
+  await expect(footer.getByRole('heading')).toHaveCount(0)
+  await expect(footer.getByRole('link', { name: 'Kontaktskjema' })).toHaveCount(0)
 })
 
 for (const scheme of ['light', 'dark'] as const) {

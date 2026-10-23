@@ -6,7 +6,9 @@ import { DICT } from '@/data/i18n'
 import { localePath, type Lang } from '@/lib/i18n'
 import { CONTACT_ADDRESS } from '@/src/contact'
 
-export default function Footer({ lang = 'nb' }: { lang?: Lang }) {
+// `invite={false}` on the contact page: «La oss snakkes» and the link to
+// the form would invite the visitor to the page they are already on.
+export default function Footer({ lang = 'nb', invite = true }: { lang?: Lang; invite?: boolean }) {
   const t = DICT[lang].footer
   const currentYear = new Date().getFullYear()
 
@@ -16,24 +18,30 @@ export default function Footer({ lang = 'nb' }: { lang?: Lang }) {
       className="w-full mt-20 border-t border-gray-200 dark:border-gray-800"
     >
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-16 flex flex-col items-center gap-6 text-center">
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase">
-          {t.eyebrow}
-        </p>
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-          {t.title}
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md">
-          {t.lead}
-        </p>
+        {invite && (
+          <>
+            <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase">
+              {t.eyebrow}
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+              {t.title}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-md">
+              {t.lead}
+            </p>
+          </>
+        )}
 
         <div className="flex gap-8 text-sm font-medium pt-2">
-          <Link
-            href={localePath(lang, '/kontakt/')}
-            prefetch={false}
-            className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
-          >
-            {t.form}
-          </Link>
+          {invite && (
+            <Link
+              href={localePath(lang, '/kontakt/')}
+              prefetch={false}
+              className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
+            >
+              {t.form}
+            </Link>
+          )}
           <a
             href="https://github.com/RozDm"
             target="_blank"

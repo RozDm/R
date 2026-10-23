@@ -5,8 +5,10 @@ import type { Lang } from '@/lib/i18n'
 // Plain share links — no third-party SDKs, no extra scripts, CSP untouched.
 export default function ShareRow({ url, lang }: { url: string; lang: Lang }) {
   const u = encodeURIComponent(url)
+  // py/-my: a 28px-tall tap target (WCAG 2.5.8 wants 24) on a 16px line,
+  // without moving the row. CopyLink matches it.
   const linkClass =
-    'inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out'
+    'inline-flex items-center gap-1.5 py-1.5 -my-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out'
 
   return (
     <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-mono">

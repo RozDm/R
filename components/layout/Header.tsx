@@ -50,7 +50,7 @@ export default function Header({ lang = 'nb', alternate }: { lang?: Lang; altern
                 href={href}
                 title={title}
                 hrefLang={hrefLang}
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white [&[aria-current]]:text-gray-900 dark:[&[aria-current]]:text-white transition-colors duration-200 ease-out text-sm tracking-wide"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white [&[aria-current]]:text-red-600 dark:[&[aria-current]]:text-red-400 transition-colors duration-200 ease-out text-sm tracking-wide"
               >
                 {label}
               </HashLink>
