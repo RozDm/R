@@ -10,6 +10,9 @@ export interface SkillGroup {
 export interface Certification {
   title: string | Localized
   issuer: string | Localized
+  // Where the credential can be verified (Credly, Cisco NetAcad…). With it
+  // the card is a link (and JSON-LD carries it); without, a plain card.
+  url?: string
 }
 
 export interface PostMeta {

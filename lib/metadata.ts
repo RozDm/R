@@ -111,6 +111,7 @@ export function personJsonLd() {
       name: pick('nb', c.title),
       credentialCategory: 'certificate',
       recognizedBy: { '@type': 'Organization', name: pick('nb', c.issuer) },
+      ...(c.url ? { url: c.url } : {}),
     })),
   }
 }

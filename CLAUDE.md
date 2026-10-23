@@ -283,13 +283,19 @@ answered, keep output and replies short.
   `data/tags.ts`); `TAG_LABELS_EN` gives the Norwegian-word tags their
   English label, which also forms the English tag URL. Reading time is
   computed; code blocks are highlighted at build by `rehype-highlight` (theme
-  in `app/globals.css`). `draft: true` keeps a post off every public surface
+  in `app/globals.css`). Images: `![alt](/images/<slug>/file.webp)`, the file
+  in `public/images/<slug>/`; `rehypePostImages` (`lib/post-images.ts`, page
+  and RSS) stamps width/height + lazy loading and fails the build on an
+  external image (the CSP's `img-src 'self' data:` would block it), a
+  missing file, no alt text or an unreadable format. `draft: true` keeps a post off every public surface
   in production builds (`NODE_ENV` filter in `getPostSlugs`/`getAllPosts`);
   `npm run dev` shows drafts with a red «Utkast» badge.
 - SEO: canonicals + trailing slash everywhere, OG images via `next/og`,
   JSON-LD (Person + WebSite sitewide — the Person from `personJsonLd()` in
   `lib/metadata.ts`, with `knowsAbout` from `data/skills.ts` minus the
-  learning group and `hasCredential` from `data/certifications.ts` —
+  learning group and `hasCredential` from `data/certifications.ts`, with
+  the `url` a certificate may carry — which also makes its card a link; a
+  card without one shows no `›` and no hover border —
   BlogPosting + image + BreadcrumbList per post), RSS at `/feed.xml` +
   `/en/feed.xml`, hreflang between language twins (pages + sitemap),
   prev/next + tag pages. Tag pages are noindex and out of the sitemap unless
