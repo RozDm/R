@@ -7,6 +7,19 @@
 //   2 pts -> first + last (a "middle" tick would land on the same x as the
 //            last point and the two labels would visually collide)
 //   3+    -> first + middle + last
+// Date ticks (7d/30d/Alt) that name the same day: Alt in its first days spans
+// hours, and its first/middle/last ticks all read «23. okt.». Keep the first
+// tick, the last only if it names another day, and the middle only if it
+// names a day of its own. Not for the hour ticks of 24t: there the first and
+// last both read the same clock time a day apart, and both belong.
+export function dropRepeatedDays<T extends { label: string }>(ticks: T[]): T[] {
+  if (ticks.length < 2) return ticks
+  const first = ticks[0]
+  const last = ticks[ticks.length - 1]
+  const middle = ticks.slice(1, -1).filter((t) => t.label !== first.label && t.label !== last.label)
+  return last.label === first.label ? [first, ...middle] : [first, ...middle, last]
+}
+
 // Y-axis ticks for the chart's niceCeil'd max (1, 2, 5, 10, 20, 50…): 0, the
 // half and the max when the half is a whole number, else 0 and the max — a max
 // of 5 used to give 0/3/5 (Math.round(2.5)), uneven steps on even gridlines.

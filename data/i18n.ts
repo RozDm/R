@@ -13,7 +13,7 @@ const nb = {
     label: 'Hovednavigasjon',
     mobileLabel: 'Mobilnavigasjon',
     about: 'Om meg',
-    skills: 'Ferdigheter',
+    skills: 'Kompetanse',
     status: 'Status',
     blog: 'Blogg',
     contact: 'Kontakt',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { xTicksFor, yTicksFor } from '@/lib/trends-axis'
+import { dropRepeatedDays, xTicksFor, yTicksFor } from '@/lib/trends-axis'
 
 // Tiny shape that mirrors what Trends.tsx feeds in (a coord + a timestamp).
 interface P { x: number; label: string }
@@ -67,5 +67,26 @@ describe('yTicksFor', () => {
     expect(yTicksFor(5)).toEqual([0, 5]) // not 0/3/5
     expect(yTicksFor(10)).toEqual([0, 5, 10])
     expect(yTicksFor(50)).toEqual([0, 25, 50])
+  })
+})
+
+describe('dropRepeatedDays', () => {
+  const t = (x: number, label: string) => ({ x, label })
+
+  it('keeps one label when the whole window is one day (Alt on its first day)', () => {
+    expect(dropRepeatedDays([t(0, '23. okt.'), t(400, '23. okt.'), t(800, '23. okt.')])).toEqual([t(0, '23. okt.')])
+  })
+
+  it('drops a middle tick that repeats an end', () => {
+    expect(dropRepeatedDays([t(0, '23. okt.'), t(400, '24. okt.'), t(800, '24. okt.')])).toEqual([
+      t(0, '23. okt.'),
+      t(800, '24. okt.'),
+    ])
+  })
+
+  it('leaves distinct days alone', () => {
+    const ticks = [t(0, '16. okt.'), t(400, '20. okt.'), t(800, '23. okt.')]
+    expect(dropRepeatedDays(ticks)).toEqual(ticks)
+    expect(dropRepeatedDays([t(0, 'a')])).toEqual([t(0, 'a')])
   })
 })

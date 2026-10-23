@@ -31,11 +31,22 @@ export default function MobileMenu({ links }: MobileMenuProps) {
         buttonRef.current?.focus()
       }
     }
+    // Focus landing outside (Tab past the last link) closes it too, or the
+    // open dropdown would sit over the content focus moved into. focusin, not
+    // blur: Safari doesn't focus a tapped link, and a blur there would close
+    // the menu before the link's click.
+    function handleFocus(e: FocusEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
     document.addEventListener('click', handleClick)
     document.addEventListener('keydown', handleKey)
+    document.addEventListener('focusin', handleFocus)
     return () => {
       document.removeEventListener('click', handleClick)
       document.removeEventListener('keydown', handleKey)
+      document.removeEventListener('focusin', handleFocus)
     }
   }, [open])
 

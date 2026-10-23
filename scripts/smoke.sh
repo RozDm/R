@@ -139,7 +139,7 @@ check "blogg"       "$BASE/blogg/"           200 "Artikler"
 check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
 check "tag"         "$BASE/blogg/tag/velkommen/" 200 "Velkommen"
 check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"
-check "personvern"  "$BASE/personvern/"      200 "Personvernerklæring"
+check "personvern"  "$BASE/personvern/"      200 "Dine rettigheter"
 check "404"         "$BASE/finnes-ikke/"     404
 # English twins (/en/): the build must set <html lang="en"> on them.
 check "en home"     "$BASE/en/"              200 '<html lang="en"' "Service status" "Where readers come from" 'hrefLang="nb"'
