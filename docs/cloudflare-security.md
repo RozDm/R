@@ -7,7 +7,13 @@ watchdog gets a 403 or 429 the Worker didn't send (Cloudflare's own block
 pages carry `X-Frame-Options: SAMEORIGIN`; the Worker's say `DENY`).
 
 Facts verified against developers.cloudflare.com on 2026-10-16 (sources
-inline); "measured" means probed live on the same day. Everything here is
+inline); "measured" means probed live on the same day. Re-probed from
+outside on 2026-10-23, all as below: TLS 1.2 refused (curl through the
+proxy — a raw `openssl s_client` from a sandbox meets its egress gateway,
+not Cloudflare), www / plain HTTP / mta-sts pages 301 at the edge, the
+MTA-STS policy served, scanner paths and a GPTBot UA get Cloudflare's 403,
+no injected script on `/`, a static miss 404 + `no-store`, `workers.dev`
+1042, HSTS `preloaded`, the DNS below signed and validated. Everything here is
 **dashboard-managed** except what `.github/workflows/zone-rules.yml` applies:
 the "Block scanners" WAF rule, the response-header rule, the JavaScript
 Detections switch and the zone settings marked "code" below. The same run fails on dashboard bot settings
@@ -27,6 +33,8 @@ that would block search engines or CI.
 | Always Use HTTPS | `zone-rules.yml` (code) | On — plain HTTP gets the edge's 301 before the Worker or the asset server |
 | Single Redirect `www_to_apex` | `zone-rules.yml` (code) | `www.rozsoshnykh.no` → apex, 301, path + query kept; also `mta-sts.rozsoshnykh.no` for every path but `/.well-known/mta-sts.txt` — 1 of 10 Free redirect rules |
 | MTA-STS + TLS-RPT | Worker custom domain `mta-sts.rozsoshnykh.no` (code); DNS records (dashboard, owner to-do below) | Policy = Cloudflare Email Routing's (`mode: enforce`, `mx: *.mx.cloudflare.net`), proxied by `src/routes/mta-sts.ts`; `_mta-sts` CNAME → `_mta-sts.mx.cloudflare.net` (their policy id); TLS-RPT reports to `contact@rozsoshnykh.no` |
+| DNS | dashboard (Cloudflare nameservers `dale`/`piper`) | **DNSSEC on** (DS algorithm 13 at the registry; answers validate, AD set); apex, `www`, `mta-sts` proxied; an `HTTPS` record (h3 + h2, ECH) is Cloudflare's automatic one. Never turn DNSSEC off without first removing the DS at the registrar — global SERVFAIL |
+| Mail authentication | Email Routing (dashboard) | MX `route1–3.mx.cloudflare.net`, SPF `include:_spf.mx.cloudflare.net ~all`, DKIM `cf2024-1`, DMARC `p=reject` (aggregate reports to Cloudflare's DMARC Management), CAA limited to the Universal SSL CAs (Let's Encrypt, Google, DigiCert, Sectigo, SSL.com) with `iodef` to `contact@` |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
 | Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the zone token lacks) | **On** since 2026-10-23, alerts to the owner's e-mail |
@@ -69,7 +77,7 @@ watchdog from GitHub runners is green again (run 38910824580).
 
 ## Owner to-do (dashboard only — the CI tokens can't do these)
 
-Open as of 2026-10-17; tick them off here when done.
+Open as of 2026-10-23; tick them off here when done.
 
 - [ ] **Rotate the Turnstile secret** — due by 2027-04-22, then every 6–12
   months. Turnstile → the site's widget → Settings → Rotate Secret Key (the
@@ -401,9 +409,10 @@ Source: [rate limiting availability](https://developers.cloudflare.com/waf/rate-
   `true` as the rule filter expression … apply the rule to every incoming
   request", [rules](https://developers.cloudflare.com/ruleset-engine/about/rules/)).
   If the Free rate-limiting editor refuses it, the documented limit there is
-  the field allowlist, not the literal. The deployed `http.host ne ""` uses
-  Host, which the docs list from Pro: it is accepted today but outside the
-  documented Free surface. Prefer a Path-only expression.
+  the field allowlist, not the literal. The first versions' `http.host ne
+  ""` used Host, which the docs list from Pro — accepted, but outside the
+  documented Free surface; the deployed prefix expression below is
+  Path-only.
 - **It cannot protect the 100k/day budget**: 5 req/s from one IP never
   exceeds 60 per 10 s and is 432,000 requests a day; ~1.2 req/s from one IP
   spends the whole quota. Only per-IP bursts are stopped.

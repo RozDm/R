@@ -9,16 +9,21 @@ For a regression that should stay caught, add a test to the suite instead
 (`e2e/site.e2e.ts`, `npm run test:e2e` after a build — CI runs it); this
 recipe is for a one-off look.
 
-The suite's `iphone` project is WebKit, which sandboxes don't preinstall.
-Either run `npx playwright test --project=desktop --project=mobile`, or put
+The sandbox's Chromium (`/opt/pw-browsers/chromium`) is not the build the
+pinned Playwright expects, so point the suite at it:
+`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test
+--project=desktop --project=mobile`. The `iphone` project is WebKit, which
+sandboxes don't preinstall (CI runs it). To run it here too, put
 WebKit in the scratchpad: `PLAYWRIGHT_BROWSERS_PATH=<dir> npx playwright
 install webkit`, `npx playwright install-deps webkit`, symlink
 `/opt/pw-browsers/chromium*-<rev>` into `<dir>`, and run with that
 `PLAYWRIGHT_BROWSERS_PATH` and `NO_PROXY=localhost`.
 
 1. `npm run build`, then serve the export in the background:
-   `python3 -m http.server 8765 --directory out` (serves by path, so a
-   rebuild needs no restart). Note the PID.
+   `PORT=8765 node scripts/serve-out.mjs` (the suite's server: the 404
+   page with a 404, slash-less 301s) or `python3 -m http.server 8765
+   --directory out`. Both serve by path, so a rebuild needs no restart.
+   Note the PID.
 2. Drive it with Playwright from a `.mjs` script in the scratchpad:
    `chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-proxy-server'] })`.
    Localhost must bypass the agent proxy — it answers plain-HTTP localhost

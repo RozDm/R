@@ -13,8 +13,8 @@ Audit everything that ships:
 - App: `app/`, `components/`, `lib/`, `data/`, `content/`, `public/`, `app/globals.css`.
 - Worker: `src/` (`index.ts`, `csp.ts`, `http.ts`, `ip.ts`, `status.ts`, `metrics.ts`, `contact.ts`, `timeseries.ts`, `routes/*`) — it serves only `/api/*`; pages are asset-served with a build-time CSP (`scripts/finalize-export.mjs`).
 - Build/deploy: `package.json`, `next.config.mjs`, `wrangler.jsonc`, `.github/workflows/*`, `scripts/*`, `tsconfig*.json`.
-- Docs: `CLAUDE.md`, `src/CLAUDE.md`, `.github/CLAUDE.md`, `README.md`, `docs/history.md` (drift against code is a finding; narrative belongs in history.md, rules in the CLAUDE.md files).
-- Tests: `tests/*.ts`.
+- Docs: `CLAUDE.md`, `src/CLAUDE.md`, `.github/CLAUDE.md`, `README.md`, `docs/history.md`, `docs/cloudflare-security.md` (drift against code or the live zone is a finding; narrative belongs in history.md, rules in the CLAUDE.md files).
+- Tests: `tests/` (Vitest, the Worker's in `tests/worker/`) and `e2e/` (Playwright).
 
 Look for:
 - **Security**: CSP, headers, secrets handling, rate limits, validation, Turnstile gating, DMARC/DNSSEC posture.
@@ -35,7 +35,9 @@ Look for:
 - **`HISTORY_LIMIT = 149` is intentional** (monolith 1:4:9 — the 2001 theme is load-bearing). Don't propose "fixing" it.
 - **`%USERNAME%` in the intro is a literal joke**, not a template variable.
 - **`/kontakt`, `/personvern` and `/status` stay `noindex`** permanently; never propose adding them to the sitemap.
-- **`StatusDashboard` is code-split** (`LazyStatusDashboard.tsx`), so the smoke-checked `Driftsstatus` heading must stay in the server component `Status.tsx`.
+- **`StatusDashboard`, `GeoMap` and `TrendsChart` are code-split** (`Lazy*.tsx`), so the smoke-checked headings must stay in the server components `Status.tsx`, `Visitors.tsx` and `Trends.tsx`.
+- **No external uptime monitor** (owner's call, 2026-10-23): the watchdog's few-hours lag is accepted. Don't re-propose it.
+- **No "Required reviewers" on the `production` environment** (owner's call, 2026-10-22: sessions merge and deploy unattended). Don't re-propose it.
 
 ## Workflow
 
