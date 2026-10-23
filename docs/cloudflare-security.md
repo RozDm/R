@@ -115,10 +115,14 @@ Open as of 2026-10-17; tick them off here when done.
   `CLOUDFLARE_API_TOKEN` and the old `AE_API_TOKEN` revoked. A secret saved
   under another name silently fell back to the repo-level one until then —
   check the names before deleting.
-- [ ] **AI bot policies** — Security → Settings → Configure AI bot policies:
-  confirm Training = "Disallow AI training" (never "Block": it stops
-  Googlebot), Search and Agent Allow; then Security → Events, filtered to
-  verified search crawlers, should show no blocks of Googlebot/Bingbot.
+- [x] **AI bot policies** — confirmed 2026-10-23 (the owner's screenshot:
+  Search and Agent "Allow (do not block)", Training "Disallow", Bot
+  Preference Sync on; the live robots.txt reads `Content-Signal:
+  search=yes,ai-train=no,use=reference` and `Allow: /` for `*`, `Disallow: /`
+  only for training crawlers). Security → Settings → Configure AI bot
+  policies: Training = "Disallow" (never "Block": it stops Googlebot),
+  Search and Agent Allow. At launch, Security → Events filtered to verified
+  search crawlers should show no blocks of Googlebot/Bingbot.
 - [x] **Web Analytics off** — done 2026-10-17 (verified from the US: no
   injected tag on `/`, `/en/`, `/blogg/`, `/kontakt/`, HTML ETag back).
   account → Web Analytics → the `rozsoshnykh.no` site → Manage site →
