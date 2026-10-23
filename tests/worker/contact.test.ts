@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { handleContact } from '../../src/routes/contact'
+import { OWNER_INBOX } from '../../src/contact'
 import { BROWSER_HEADERS, makeEnv } from './fakes'
+import wranglerConfig from '../../wrangler.jsonc?raw'
 
 const URL_ = new URL('https://rozsoshnykh.no/api/contact')
 const FORM = { name: 'Kari', email: 'kari@example.no', message: 'Hei! Dette er en test.' }
@@ -31,6 +33,12 @@ function seed(fake: ReturnType<typeof makeEnv>, minutesAgo: number, over: Partia
 }
 
 afterEach(() => vi.unstubAllGlobals())
+
+// Email Routing sends only to the binding's verified destination, so the
+// inbox the mail is addressed to must be that one.
+it('mails the inbox wrangler.jsonc binds as the send_email destination', () => {
+  expect(wranglerConfig).toContain(`"destination_address": "${OWNER_INBOX}"`)
+})
 
 describe('POST /api/contact', () => {
   it('stores the message and mails it', async () => {

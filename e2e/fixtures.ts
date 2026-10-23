@@ -46,7 +46,7 @@ type Fixtures = { introSeen: boolean; pageProblems: string[] }
 export const test = base.extend<Fixtures>({
   introSeen: [true, { option: true }],
   pageProblems: [
-    async ({ page, introSeen }, use) => {
+    async ({ page, introSeen, browserName }, use) => {
       const problems: string[] = []
       await page.addInitScript((seen) => {
         if (seen) {
@@ -68,7 +68,14 @@ export const test = base.extend<Fixtures>({
         // The 404 page's own document is a 404 — expected, not a problem.
         if (m.type() === 'error' && !/status of 404/.test(m.text())) problems.push(m.text())
       })
-      page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`))
+      page.on('pageerror', (e) => {
+        // WebKit reports a fetch that a navigation cancelled (Next's
+        // prefetches, an /api call still in flight) as an uncaught "… due to
+        // access control checks." — not a page error. Every request here is
+        // same-origin, and a real CORS refusal still fails the Chromium runs.
+        if (browserName === 'webkit' && /due to access control checks\.$/.test(e.message)) return
+        problems.push(`pageerror: ${e.message}`)
+      })
       await use(problems)
       expect(problems, 'console errors / CSP violations').toEqual([])
     },

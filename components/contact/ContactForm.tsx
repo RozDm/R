@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import Turnstile, { type TurnstileHandle } from './Turnstile'
 import { DICT } from '@/data/i18n'
 import { useLang } from '@/lib/use-lang'
+import { CONTACT_ADDRESS, CONTACT_LIMITS, EMAIL_PATTERN } from '@/src/contact'
 
 type FormState =
   | 'idle'
@@ -16,7 +17,6 @@ type FormState =
   | 'blocked'
   | 'widget'
 
-const CONTACT_EMAIL = 'contact@rozsoshnykh.no'
 
 // Set at build time from CF Turnstile (Site Key). Empty -> widget is not
 // rendered and the worker also leaves the check off when its secret is
@@ -147,7 +147,7 @@ export default function ContactForm() {
         <input
           name="name"
           required
-          maxLength={100}
+          maxLength={CONTACT_LIMITS.name}
           autoComplete="name"
           className={inputClass}
           onInvalid={validity(t.nameInvalid)}
@@ -161,11 +161,11 @@ export default function ContactForm() {
           name="email"
           type="email"
           required
-          maxLength={200}
-          // Same shape the worker enforces (src/contact.ts EMAIL_RE): the
-          // browser's own type=email accepts "a@b" with no TLD, which the
-          // server then rejects.
-          pattern="[^\s@]+@[^\s@]+\.[^\s@]{2,}"
+          maxLength={CONTACT_LIMITS.email}
+          // The rule the Worker enforces (src/contact.ts): the browser's own
+          // type=email accepts "a@b" or a quoted local part, which the Worker
+          // would then refuse with a 422.
+          pattern={EMAIL_PATTERN}
           autoComplete="email"
           className={inputClass}
           onInvalid={validity(t.emailInvalid)}
@@ -178,8 +178,8 @@ export default function ContactForm() {
         <textarea
           name="message"
           required
-          minLength={10}
-          maxLength={5000}
+          minLength={CONTACT_LIMITS.messageMin}
+          maxLength={CONTACT_LIMITS.message}
           rows={6}
           className={inputClass}
           onInvalid={validity(t.messageInvalid)}
@@ -203,8 +203,8 @@ export default function ContactForm() {
             {message.mail && (
               <>
                 {' '}
-                <a href={`mailto:${CONTACT_EMAIL}`} className="underline hover:no-underline">
-                  {CONTACT_EMAIL}
+                <a href={`mailto:${CONTACT_ADDRESS}`} className="underline hover:no-underline">
+                  {CONTACT_ADDRESS}
                 </a>
                 .
               </>

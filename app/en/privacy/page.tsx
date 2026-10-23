@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { pageMetadata } from '@/lib/metadata'
+import { CONTACT_ADDRESS } from '@/src/contact'
 
 // English translation of /personvern/. The Norwegian notice stays the
 // authoritative one — keep the two in step when either changes.
@@ -52,7 +53,7 @@ export default function PrivacyPage() {
           <p>
             Dmytro Rozsoshnykh is responsible for the processing of personal data on this website.
             Questions about privacy can be sent to{' '}
-            <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a>.
+            <a href={`mailto:${CONTACT_ADDRESS}`}>{CONTACT_ADDRESS}</a>.
           </p>
 
           <h2>The contact form</h2>
@@ -160,7 +161,7 @@ export default function PrivacyPage() {
           <p>
             You have the right to access, correct and delete information about you, and to have
             its processing restricted. You can also object to processing based on legitimate
-            interest. Send an email to <a href="mailto:contact@rozsoshnykh.no">contact@rozsoshnykh.no</a> and I will take
+            interest. Send an email to <a href={`mailto:${CONTACT_ADDRESS}`}>{CONTACT_ADDRESS}</a> and I will take
             care of it. You can also complain to the Norwegian Data Protection Authority,{' '}
             <a href="https://www.datatilsynet.no/en/" target="_blank" rel="noopener noreferrer">
               Datatilsynet

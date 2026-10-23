@@ -78,7 +78,7 @@ answered, keep output and replies short.
   for the manifest + apple-touch-icon, `app/icons/[name]/route.tsx`, which
   also builds `favicon.ico` — the build copies it to `/favicon.ico`) and
   `/.well-known/security.txt` (static in `public/`, RFC 9116 — bump its
-  `Expires` yearly). `https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt`
+  `Expires` yearly; `tests/static-assets.test.ts` fails 30 days ahead). `https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt`
   is the MTA-STS policy for mail to the domain: a custom domain of the Worker,
   which proxies Cloudflare Email Routing's policy (`src/routes/mta-sts.ts`). `error.tsx` / `global-error.tsx` are the HAL-voiced
   «Systemfeil» boundaries.
@@ -106,7 +106,8 @@ answered, keep output and replies short.
   alternate. The root layout has no canonical/og:url on purpose (the 404
   inherits it). Name, roles, site title/description and the light/dark
   background colours (`THEME_BG`, mirrored by themeColor, the manifest and
-  `ThemeContext`) live in `lib/site.ts` — never hard-code them.
+  `ThemeContext`) live in `lib/site.ts`; the contact address in
+  `src/contact.ts` (shared with the Worker) — never hard-code them.
 - Serving: the asset server answers every page and file straight from
   `out/` — no Worker request (`run_worker_first`: `/api/*` and the MTA-STS
   policy only; a miss gets the 404 page, never the Worker). Every Worker invocation counts against the
@@ -128,18 +129,19 @@ answered, keep output and replies short.
   at the edge (`zone-rules.yml`). The zone's rate limiting rule
   (`docs/cloudflare-security.md`) excludes the static prefixes by hand.
 - `src/` — the Cloudflare Worker for `/api/*`, the MTA-STS policy and the
-  crons (canonical-host 301 for the API; an `/api/` path no route claims gets the 404 page with
-  the `_headers` set). `_headers` can't match on status, so a
-  zone Response Header Transform Rule (`.github/workflows/zone-rules.yml`)
-  makes every 4xx/5xx `no-store`. Stores: KV `STATUS` (uptime snapshot only), D1
+  crons (canonical-host 301 for the API; an `/api/` path no route claims
+  gets the 404 page with the `_headers` set; every 4xx/5xx is made
+  `no-store` by a zone rule, `zone-rules.yml`). Stores: KV `STATUS` (uptime snapshot only), D1
   `rozsoshnykh-metrics-v2` (`METRICS`: view/geo counters, contact log),
   Analytics Engine `rozsoshnykh_metrics` (`METRICS_AE`: time series).
   Endpoints: `/api/status`, `/api/views/<slug>`, `/api/geo`, `/api/visit`,
   `/api/timeseries`, `/api/contact`, `/api/csp-report`. Details:
   `src/CLAUDE.md`. Every client fetch of `/api/*` uses `cache: 'no-store'` —
-  keep it (the zone's Browser Cache TTL rewrote `max-age`; `zone-rules.yml`
-  now sets it to Respect Existing Headers, but a drifted setting would
-  bring the rewrite back).
+  keep it (a drifted zone Browser Cache TTL would rewrite `max-age`, see
+  `src/CLAUDE.md` Rules). Each one is a Worker request: share a fetch two
+  components need (`fetchGeoCountries`, `lib/geo.ts`; `fetchStatus`,
+  `lib/status-fetch.ts` for the footer dot + dashboard) and don't poll what
+  isn't on screen (`StatusDashboard` polls only while `#status` is).
 - Visit counting: `components/effects/VisitBeacon.tsx` (mounted by
   `app/layout.tsx`) aims at people, not page loads (`lib/visit.ts`): one
   `POST /api/visit` per browser per local day (localStorage `visit-day`),
@@ -168,8 +170,8 @@ answered, keep output and replies short.
   capped at ~90 days (`isAllRangeCapped` → a note under the chart). No AE
   secrets → «Ingen data ennå» (`/api/timeseries` flags it `degraded`, which
   the hourly watchdog fails on). The SVG's `viewBox` is its own rendered
-  width (ResizeObserver), so one unit is one CSS px: a fixed 800-wide
-  viewBox shrank the 11px axis labels to ~4px on a phone.
+  width (ResizeObserver), so one unit is one CSS px at every width — never a
+  fixed viewBox (`docs/history.md`).
 - Visitor map (`GeoMap`): `public/world.svg` is built by
   `scripts/build-world-svg.mjs` (`prebuild`, from the
   `world-map-country-shapes` devDependency) and injected via
@@ -188,11 +190,12 @@ answered, keep output and replies short.
   Tokens are
   single-use and spent before the rate-limit/mail steps, so `ContactForm`
   resets the widget (`TurnstileHandle.reset`) after every non-OK response and
-  keeps the typed text. It reads the Worker's `{"error"}` to tell a
-  Turnstile refusal (asks for the challenge) from the Sec-Fetch/UA filter or
-  an edge 429 (both point to e-mail), and a widget that fails to load
-  (`onError`, e.g. a blocker on challenges.cloudflare.com) shows the
-  address instead of asking for a challenge that isn't there.
+  keeps the typed text. It reads the Worker's `{"error"}`: only a Turnstile
+  refusal asks for the challenge; the filter, an edge 429 or a widget that
+  failed to load (`onError`) point to e-mail. Its limits, e-mail `pattern`
+  and the address come from `src/contact.ts` (`CONTACT_LIMITS`,
+  `EMAIL_PATTERN`, `CONTACT_ADDRESS` — also the footer's and the privacy
+  notice's), so the browser refuses what the Worker would.
 - TypeScript is split: app `tsconfig.json` (lib.dom), Worker
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
   `wrangler.jsonc` change or wrangler bump run `npm run cf-typegen` and commit
@@ -213,9 +216,7 @@ answered, keep output and replies short.
   axe in both themes, and no console error or CSP violation on any page.
   They run on `out/` served by `scripts/serve-out.mjs` with `/api/*` stubbed
   (`e2e/fixtures.ts`), so they need a build first and never touch the
-  Worker. WebKit gets it over HTTPS (`TLS=1`, a throwaway self-signed cert):
-  it applies the pages' `upgrade-insecure-requests` to `http://localhost`,
-  which Chromium exempts. A UI change that breaks a
+  Worker. WebKit gets them over HTTPS (`TLS=1`; why: `serve-out.mjs`). A UI change that breaks a
   selector there updates the test in the same PR. `@playwright/test` and
   `playwright-core` stay pinned to one version (axe's peer dependency would
   otherwise pull a second, mismatched copy).
@@ -243,13 +244,16 @@ answered, keep output and replies short.
   (`text-red-500 … tracking-widest uppercase`) + bold h2 + cards
   (`bg-white dark:bg-gray-900/50 rounded-xl border … hover:border-red-500/30`),
   staggered `animate-fade-in` delays (150/300/450/600/750ms). The hero
-  (`#about`, the first screen) has none: an opacity-0 start keeps its text
-  out of LCP — measured 2026-10-22 on throttled mobile, the hero `<p>`
-  counted at 3.7 s instead of with the first paint (~1.1 s).
+  (`#about`, the first screen) has none: an opacity-0 start delays LCP
+  (`docs/history.md`).
 - Secondary links (footer, tag chips, the NO/EN switch) set
   `prefetch={false}`: each viewport prefetch is several requests (RSC
   payloads — asset-served, so no Worker quota, but still mobile data);
   primary nav, post cards and prev/next keep Next's default.
+- Theme (`context/ThemeContext.tsx`): localStorage `theme` holds a
+  hand-picked theme, none means "follow the OS" — live, via a `matchMedia`
+  listener. The toggle flips it on every click, and a pick equal to the OS's
+  own theme is not stored, so flipping back is the way back to the OS.
 - Accent TEXT is red-600 in light mode / red-400 in dark; red-500 is for
   decoration only (dots, borders, selection, chart dots) — red-500 text on
   the light background fails WCAG AA. In-text links are underlined. Font is
@@ -299,21 +303,16 @@ answered, keep output and replies short.
 ## Gotchas
 
 - `wrangler.jsonc`: `workers_dev: false` and `preview_urls: false` (owner's
-  call, 2026-10-22): the site lives on `rozsoshnykh.no` only. workers.dev
-  wasn't our zone, so nothing could redirect it — it served a second copy of
-  the site whose map/status/chart broke (its `/api/*` 301s were cross-origin);
-  a preview URL runs any old version against the production D1/KV/mail. Keep
-  both keys explicit — left out, wrangler turns workers.dev back on whenever
-  no routes exist, and preview URLs follow it. The D1 database is `rozsoshnykh-metrics-v2`; never try to
+  call, 2026-10-22; why: `docs/history.md`): the site lives on
+  `rozsoshnykh.no` only. Keep both keys explicit — left out, wrangler turns
+  workers.dev back on whenever no routes exist, and preview URLs follow it. The D1 database is `rozsoshnykh-metrics-v2`; never try to
   reclaim the old `rozsoshnykh-metrics` name — the dead original's deleted
   entry still locks it.
 - `next.config.mjs` sets the experimental
-  `turbopackChunking: { minChunkSize: 15000 }`: Turbopack's default (50 kB)
-  copied shared client modules — Header/Footer client parts, `next/link`,
-  the dictionary — into several page chunks, and viewport prefetch downloads
-  the prefetched routes' chunks, so a first view fetched them 3–5 times.
-  20 kB cost the no-prefetch path ~2 KB, 10 kB added 8 scripts. CI fails if
-  the dictionary leaves its single chunk (a Next upgrade can drop or rename
+  `turbopackChunking: { minChunkSize: 15000 }`, so shared client modules
+  (Header/Footer parts, `next/link`, the dictionary) sit in shared chunks
+  instead of a copy per page chunk (measurements: `docs/history.md`). CI
+  fails if the dictionary leaves its single chunk (a Next upgrade can drop or rename
   the experimental key with only a warning); after a Next upgrade also
   re-measure with prefetch on (Chromium, desktop + mobile) and drop the
   setting if the default stops duplicating.
@@ -329,35 +328,33 @@ answered, keep output and replies short.
   U+1F1E6-1F1FF`, class `.font-flag`) — Windows has no regional-indicator
   glyphs and would show letter pairs. The `unicode-range` keeps it from
   downloading unless a flag is on the page.
-- The body font uses `display: 'optional'` (not `swap`) in `app/layout.tsx`:
-  `next/font` has no metrics for Intel One Mono, so `swap` reflows the whole
-  page on a cold first paint. Don't switch back without a hand-built
-  metric-matched fallback `@font-face`. Keep `preload: true` with it — without
-  the preload the woff2 misses `optional`'s block window and a newcomer's
-  first page renders in the system monospace. Next emits no preload on the
+- The body font uses `display: 'optional'` (not `swap`) in `app/layout.tsx`
+  (`docs/history.md`, the font reflow). Don't switch back without a
+  hand-built metric-matched fallback `@font-face`, and keep `preload: true`
+  with it — without the preload a newcomer's first page renders in the
+  system monospace. Next emits no preload on the
   404, so `finalize-export.mjs` copies the front page's there (the build
   fails if `index.html` has none).
 - `app/template.tsx` cross-fades client-side route changes (450ms
   `animate-page-in`) — never the document's first page, which must paint at
-  once (an opacity-0 start also hid it from LCP); its wrapper keyed by
-  pathname — a root template alone re-mounts only when
-  the top-level segment changes, so `/blogg/` → a post wouldn't fade.
+  once (LCP); its wrapper is keyed by pathname, since a root template alone
+  re-mounts only when the top-level segment changes.
   OPACITY-ONLY — a transform would become a containing block for the
   `position:fixed` intro overlays / sticky header — and both front pages
   (`/`, `/en/`) opt out so the intro's z-100 overlay keeps a clean stacking
   context. Respects `prefers-reduced-motion`.
 - In-page nav (`components/layout/HashLink.tsx`): on a front page (`/` or
-  `/en/`) it intercepts links into that same page (`/#x`, `/en/#x`) with native `scrollIntoView({behavior:'smooth'})` +
-  `history.pushState` (Next's `<Link href="/#x">` concatenates hashes into
-  `/#main#about`; setting `location.hash` jumps past the smooth scroll). The
-  header offset is pure CSS (`scroll-padding-top`) — no custom rAF scroll, it
-  fights the global `scroll-behavior: smooth`. The logo is a HashLink too:
+  `/en/`) it intercepts links into that same page (`/#x`, `/en/#x`) with
+  native `scrollIntoView({behavior:'smooth'})` + `history.pushState` (why
+  not `<Link>` or `location.hash`: `docs/history.md`). The header offset is
+  pure CSS (`scroll-padding-top`) — no custom rAF scroll, it fights the
+  global `scroll-behavior: smooth`. The logo is a HashLink too:
   on its front page it scrolls back to the top (Next treats `/` → `/` as a
-  no-op). Everywhere else, plain `<Link>` navigation. `<html data-scroll-behavior="smooth">`
-  must stay: it lets Next switch smooth scrolling off while it resets scroll
-  on a route change — without it the reset animates, Next's follow-up
-  `scrollIntoView` calls cancel it, and the new page opens mid-scroll. Page links set `aria-current` (`page` on an exact match, `true`
-  on a parent), styled via `[&[aria-current]]:`.
+  no-op). Everywhere else, plain `<Link>` navigation.
+  `<html data-scroll-behavior="smooth">` must stay: it lets Next switch
+  smooth scrolling off while it resets scroll on a route change (without it
+  the new page opens mid-scroll). Page links set `aria-current` (`page` on an
+  exact match, `true` on a parent), styled via `[&[aria-current]]:`.
 - `StatusDashboard`, `GeoMap` and `TrendsChart` are code-split via
   `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
   `LazyGeoMap.tsx` and `LazyTrendsChart.tsx`, so none is in the static HTML.

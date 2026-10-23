@@ -176,6 +176,39 @@ Audit follow-up, three lessons that became rules:
   page's baked hashes. `zone-rules.yml` turns all three off and its prod
   check wants `/` to answer `If-None-Match` with a 304.
 
+## Measurements behind front-end rules
+
+The numbers the rules in `CLAUDE.md` rest on; re-measure before undoing one.
+
+- **No opacity-0 start on the first screen** (the hero, `app/template.tsx`
+  on a document's first page). Measured 2026-10-22 on throttled mobile: with
+  the hero's `animate-fade-in`, its `<p>` counted as LCP at 3.7 s instead of
+  with the first paint (~1.1 s).
+- **`turbopackChunking: { minChunkSize: 15000 }`.** Turbopack's default
+  (50 kB) copied shared client modules — Header/Footer client parts,
+  `next/link`, the dictionary — into several page chunks, and viewport
+  prefetch downloads the prefetched routes' chunks, so a first view fetched
+  them 3–5 times; 15 kB cut 12–32 KB gzip per first view. 20 kB cost the
+  no-prefetch path ~2 KB, 10 kB added 8 scripts.
+- **In-page links are `HashLink`, not `<Link>`.** Next's
+  `<Link href="/#x">` concatenated hashes into `/#main#about`, and setting
+  `location.hash` jumped past the smooth scroll. Without
+  `<html data-scroll-behavior="smooth">` Next's scroll reset on a route
+  change animated, its follow-up `scrollIntoView` calls cancelled it, and
+  the new page opened mid-scroll.
+- **The Trends SVG's `viewBox` is its rendered width.** A fixed 800-unit
+  viewBox scaled everything by the card's width: at 390 px the 11px axis
+  labels rendered at ~4px and the dots at ~1.5px (2026-10-23).
+
+## 2026-10-22 — workers.dev and preview URLs off
+
+`workers_dev` had served a second copy of the site on the `workers.dev`
+host. It wasn't our zone, so nothing could redirect it to the apex, and its
+map, status and chart broke (its `/api/*` answers 301'd cross-origin to the
+apex). A preview URL runs whatever old version it was built from against the
+production D1, KV and mail, past any protection added since. Both are off
+for good (owner's call).
+
 ## Removed features that must not quietly return
 
 - **Cloudflare Web Analytics** — removed 2026-10-17 (above). Visits are

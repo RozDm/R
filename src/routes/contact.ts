@@ -6,10 +6,18 @@ import { EmailMessage } from 'cloudflare:email'
 import { allowWrite, apiJson, readCapped } from '../http'
 import { isWriteAllowed } from '../metrics'
 import { clientKey } from '../ip'
-import { CONTACT_WINDOWS_MS, buildContactMime, isoCutoff, validateContact, verifyTurnstile } from '../contact'
+import {
+  CONTACT_ADDRESS,
+  CONTACT_WINDOWS_MS,
+  OWNER_INBOX,
+  buildContactMime,
+  isoCutoff,
+  validateContact,
+  verifyTurnstile,
+} from '../contact'
 
-const CONTACT_FROM = 'contact@rozsoshnykh.no'
-const CONTACT_TO = 'd.rossoshnyh@gmail.com'
+const CONTACT_FROM = CONTACT_ADDRESS
+const CONTACT_TO = OWNER_INBOX
 // Max submissions per IP per 10 minutes (casual single-network abuse).
 const CONTACT_IP_LIMIT = 3
 // Max submissions per e-mail address per hour — spammers reuse a throwaway

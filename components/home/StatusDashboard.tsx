@@ -5,24 +5,7 @@ import { DICT } from '@/data/i18n'
 import { INTL_LOCALE, type Lang } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
 import { HISTORY_LIMIT, isStale } from '@/src/status'
-
-interface ServiceResult {
-  name: string
-  ok: boolean
-  status: number
-  ms: number
-}
-
-interface HistoryEntry {
-  at: string
-  up: Record<string, boolean>
-}
-
-interface StatusData {
-  updatedAt?: string
-  results: ServiceResult[]
-  history?: HistoryEntry[]
-}
+import { fetchStatus, type StatusSnapshot } from '@/lib/status-fetch'
 
 // The cron writes every 5 min, so polling that often is plenty when all is
 // well; during an incident, refresh sooner so the dashboard catches recovery
@@ -38,51 +21,68 @@ function formatTime(lang: Lang, iso?: string): string {
 export default function StatusDashboard() {
   const lang = useLang()
   const t = DICT[lang].status
-  const [data, setData] = useState<StatusData | null>(null)
+  const [data, setData] = useState<StatusSnapshot | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading')
   // Judged when each snapshot lands (and re-judged on every poll), not during
   // render — so a tab left open notices the checker going quiet.
   const [stale, setStale] = useState(false)
 
   useEffect(() => {
-    const controller = new AbortController()
+    let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
+    // Polls only while the section is on screen in a visible tab — each poll
+    // is a Worker request, and nobody reads a dashboard scrolled out of view.
+    // A refresh that falls due meanwhile runs as soon as it's back in view.
+    let onScreen = true // until the observer's first report
+    let due = false
+    const watched = () => onScreen && !document.hidden
+
+    const schedule = (ms: number) => {
+      clearTimeout(timer)
+      timer = setTimeout(() => (watched() ? tick() : (due = true)), ms)
+    }
 
     const tick = async () => {
-      if (document.hidden) {
-        timer = setTimeout(tick, OK_REFRESH_MS)
-        return
-      }
+      due = false
       try {
-        const res = await fetch('/api/status', { signal: controller.signal, cache: 'no-store' })
-        const d: StatusData = await res.json()
+        // The first call shares the footer dot's request (lib/status-fetch.ts).
+        const d = await fetchStatus()
+        if (cancelled) return
         setData(d)
         setStale(!!d.updatedAt && isStale(d.updatedAt, Date.now()))
         setState('ok')
-        const anyDown = (d.results || []).some((r) => !r.ok)
-        timer = setTimeout(tick, anyDown ? DOWN_REFRESH_MS : OK_REFRESH_MS)
+        const anyDown = (d.results ?? []).some((r) => !r.ok)
+        schedule(anyDown ? DOWN_REFRESH_MS : OK_REFRESH_MS)
       } catch {
         // Keep showing the last snapshot if a background refresh fails.
-        if (!controller.signal.aborted) {
-          setState((prev) => (prev === 'ok' ? 'ok' : 'error'))
-          timer = setTimeout(tick, OK_REFRESH_MS)
-        }
+        if (cancelled) return
+        setState((prev) => (prev === 'ok' ? 'ok' : 'error'))
+        schedule(OK_REFRESH_MS)
       }
+    }
+    const resume = () => {
+      if (due && watched()) tick()
     }
 
     tick()
-    const onVisibilityChange = () => {
-      if (!document.hidden) {
-        clearTimeout(timer)
-        tick()
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    const section = document.getElementById('status')
+    const observer = section
+      ? new IntersectionObserver(
+          ([entry]) => {
+            onScreen = entry.isIntersecting
+            resume()
+          },
+          { rootMargin: '200px' },
+        )
+      : null
+    if (section) observer?.observe(section)
+    document.addEventListener('visibilitychange', resume)
 
     return () => {
-      controller.abort()
+      cancelled = true
       clearTimeout(timer)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
+      observer?.disconnect()
+      document.removeEventListener('visibilitychange', resume)
     }
   }, [])
 

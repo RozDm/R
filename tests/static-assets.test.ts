@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { BASE_SECURITY_HEADERS, CSP_REPORT_GROUP, CSP_REPORT_PATH, HEADER_CSP, HSTS } from '@/src/csp'
 import { SITE_URL } from '@/lib/site'
+import { CONTACT_ADDRESS } from '@/src/contact'
 
 // Pages and files are served by the asset server, not the Worker
 // (run_worker_first: /api/* and the MTA-STS policy), and take every header
@@ -98,5 +99,29 @@ describe('asset server headers (public/_headers)', () => {
     ]) {
       expect(rules.get(path)?.get('content-type'), path).toBe('image/png')
     }
+  })
+})
+
+// RFC 9116: a security.txt past its Expires is to be treated as stale, and
+// one more than a year out is discouraged. Fails 30 days ahead, so the yearly
+// bump happens in time (CLAUDE.md, Architecture).
+describe('/.well-known/security.txt', () => {
+  const fields = new Map(
+    readFileSync('public/.well-known/security.txt', 'utf8')
+      .split('\n')
+      .map((line) => line.match(/^([\w-]+):\s*(.+)$/))
+      .filter((m): m is RegExpMatchArray => m !== null)
+      .map((m) => [m[1], m[2].trim()]),
+  )
+
+  it('names the site address and its own URL', () => {
+    expect(fields.get('Contact')).toBe(`mailto:${CONTACT_ADDRESS}`)
+    expect(fields.get('Canonical')).toBe(`${SITE_URL}/.well-known/security.txt`)
+  })
+
+  it('expires more than 30 days and at most a year from now', () => {
+    const left = Date.parse(fields.get('Expires') ?? '') - Date.now()
+    expect(left, 'Expires — bump it (≤ a year ahead)').toBeGreaterThan(30 * 86_400_000)
+    expect(left).toBeLessThanOrEqual(366 * 86_400_000)
   })
 })
