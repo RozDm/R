@@ -148,12 +148,17 @@ answered, keep output and replies short.
   under `navigator.webdriver` (automation); the Worker's filters still apply
   on top. It writes the D1 `geo` row and an AE point — the map and the
   Trends chart are two views of one dataset. `e2e/site.e2e.ts` holds the
-  beacon to that. Rule for ALL client counters (`VisitBeacon`,
-  `ViewCounter`): set the dedupe flag BEFORE the fetch, so StrictMode's
-  double-invoke, remount races and a second tab can't double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`); the map
+  beacon to that. A post view (`ViewCounter`, one per session per post)
+  counts the same way: its POST waits for `onFirstHumanInput`
+  (`lib/visit.ts`, shared with the beacon), never under webdriver, and the
+  Worker skips datacenter ASNs as it does for `geo`. Rule for ALL client
+  counters (`VisitBeacon`, `ViewCounter`): set the dedupe flag BEFORE the
+  fetch, so StrictMode's double-invoke, remount races and a second tab can't
+  double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`); the map
   and Trends hide every absolute visit number (legend, tooltips, headline,
   y-axis) until the all-time D1 total reaches `MIN_PUBLIC_VISITS`
-  (`lib/geo.ts`) — shades and the chart's shape stay.
+  (`lib/geo.ts`) — shades and the chart's shape stay, and Trends says why
+  under the chart («Samler data…»: a bare axis read as a broken chart).
 - Trends card (`components/home/Trends.tsx`): one Besøk metric, tabs
   24t/7d/30d/**Alt**, dot plot over a zero-filled bucket grid
   (`lib/timeseries-fill.ts`). D1 is the truth for totals, AE answers "when":
@@ -161,7 +166,10 @@ answered, keep output and replies short.
   the exact D1 total from `/api/geo`, the same number as the map, so it can't
   drift under AE sampling. Alt's wave is 6h-bucketed from `METRICS_EPOCH`,
   capped at ~90 days (`isAllRangeCapped` → a note under the chart). No AE
-  secrets → «Ingen data ennå».
+  secrets → «Ingen data ennå» (`/api/timeseries` flags it `degraded`, which
+  the hourly watchdog fails on). The SVG's `viewBox` is its own rendered
+  width (ResizeObserver), so one unit is one CSS px: a fixed 800-wide
+  viewBox shrank the 11px axis labels to ~4px on a phone.
 - Visitor map (`GeoMap`): `public/world.svg` is built by
   `scripts/build-world-svg.mjs` (`prebuild`, from the
   `world-map-country-shapes` devDependency) and injected via
@@ -180,7 +188,11 @@ answered, keep output and replies short.
   Tokens are
   single-use and spent before the rate-limit/mail steps, so `ContactForm`
   resets the widget (`TurnstileHandle.reset`) after every non-OK response and
-  keeps the typed text.
+  keeps the typed text. It reads the Worker's `{"error"}` to tell a
+  Turnstile refusal (asks for the challenge) from the Sec-Fetch/UA filter or
+  an edge 429 (both point to e-mail), and a widget that fails to load
+  (`onError`, e.g. a blocker on challenges.cloudflare.com) shows the
+  address instead of asking for a challenge that isn't there.
 - TypeScript is split: app `tsconfig.json` (lib.dom), Worker
   `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
   `wrangler.jsonc` change or wrangler bump run `npm run cf-typegen` and commit

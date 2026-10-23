@@ -54,6 +54,28 @@ describe('POST /api/contact', () => {
     expect(fake.sent).toHaveLength(0)
   })
 
+  it('without Sec-Fetch-Site (Safari < 16.4), takes our own Origin only', async () => {
+    const fake = makeEnv()
+    const { 'sec-fetch-site': _, ...noFetchMeta } = BROWSER_HEADERS
+    expect((await send(fake, FORM, { ...noFetchMeta, origin: 'https://evil.example' })).status).toBe(403)
+    expect((await send(fake, FORM, noFetchMeta)).status).toBe(403)
+    expect((await send(fake, FORM, { ...noFetchMeta, origin: URL_.origin })).status).toBe(200)
+    expect(fake.sent).toHaveLength(1)
+  })
+
+  it('caps a burst with WRITE_LIMITER, independent of the D1 windows', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const fake = makeEnv({ TURNSTILE_SECRET: 'secret' })
+    fake.setRateLimit(0)
+    const res = await send(fake, { ...FORM, turnstileToken: 'tok' })
+    expect(res).toEqual({ status: 429, body: { error: 'rate limited' } })
+    // Refused before siteverify and before any row or mail.
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(rows(fake)).toBe(0)
+    expect(fake.sent).toHaveLength(0)
+  })
+
   it('acks a filled honeypot without storing or mailing', async () => {
     const fake = makeEnv()
     expect(await send(fake, { ...FORM, website: 'http://spam.example' })).toEqual({ status: 200, body: { ok: true } })

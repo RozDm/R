@@ -34,7 +34,10 @@ incident background: `docs/history.md`.
   the owner) when the site is down, `/api/status` is older than 20 min —
   the one failure the Worker can't report about itself — or `/api/geo`
   isn't a 200 (a 503 there is a failed D1 read; the snapshot lives in KV, so
-  this is the only hourly look at D1). A `403` here (or in
+  this is the only hourly look at D1), or `/api/timeseries` answers
+  `degraded` three times in a row (the AE read failed — typically the
+  `AE_API_TOKEN` secret expired or lost its permission; the chart alone
+  would just look quiet). A `403` here (or in
   `smoke.sh`) whose page says `X-Frame-Options: SAMEORIGIN` is Cloudflare,
   not the site — e.g. Bot Fight Mode, which challenges GitHub's cloud
   runners and can't be excepted on Free; it is off for that reason

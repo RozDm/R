@@ -15,9 +15,13 @@ export function looksLikeBot(userAgent: string | null): boolean {
 
 // Gate for the write endpoints (/api/visit, /api/contact, /api/views POST):
 // only count requests that come from our own pages and not from a bot UA.
-// Pure (just header inspection) so it can be unit-tested.
-export function isWriteAllowed(headers: Headers): boolean {
-  if (headers.get('sec-fetch-site') !== 'same-origin') return false
+// Sec-Fetch-Site decides when the browser sends it; Safari before 16.4 never
+// does, so without it the request's Origin must be our own (every browser
+// sends Origin on a fetch POST). Pure (just header inspection) so it can be
+// unit-tested. Bot hygiene, not security: both headers are spoofable.
+export function isWriteAllowed(headers: Headers, origin: string): boolean {
+  const site = headers.get('sec-fetch-site')
+  if (site !== null ? site !== 'same-origin' : headers.get('origin') !== origin) return false
   if (looksLikeBot(headers.get('user-agent'))) return false
   return true
 }

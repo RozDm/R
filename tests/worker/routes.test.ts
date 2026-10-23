@@ -35,6 +35,19 @@ describe('/api/csp-report', () => {
     expect(fake.aePoints).toEqual([])
   })
 
+  it('drops an oversized body unread, even without a Content-Length', async () => {
+    const fake = makeEnv()
+    const valid = JSON.stringify({
+      'csp-report': { 'document-uri': `${ORIGIN}/`, 'blocked-uri': 'inline', 'violated-directive': 'script-src-elem', pad: 'x'.repeat(70_000) },
+    })
+    const bytes = new TextEncoder().encode(valid)
+    // A stream body: the request carries no Content-Length to refuse it by.
+    const body = new ReadableStream({ start: (c) => (c.enqueue(bytes), c.close()) })
+    const req = new Request(url, { method: 'POST', body, duplex: 'half' } as RequestInit)
+    expect((await handleCspReport(url, req, fake.env))!.status).toBe(204)
+    expect(fake.aePoints).toEqual([])
+  })
+
   it('drops reports past the per-IP budget', async () => {
     const fake = makeEnv()
     fake.setRateLimit(1)
@@ -144,6 +157,15 @@ describe('/api/views/<slug>', () => {
     const url = new URL(`${ORIGIN}/api/views/velkommen`)
     await handleViews(url, post('velkommen', { ...BROWSER_HEADERS, 'user-agent': 'Googlebot/2.1' }), fake.env)
     expect(await (await handleViews(url, new Request(url), fake.env))!.json()).toEqual({ views: 0 })
+  })
+
+  it('reads without counting from a datacenter network', async () => {
+    const fake = makeEnv()
+    const url = new URL(`${ORIGIN}/api/views/velkommen`)
+    const req = post('velkommen')
+    Object.defineProperty(req, 'cf', { value: { asn: 16509 } }) // AWS
+    expect(await (await handleViews(url, req, fake.env))!.json()).toEqual({ views: 0 })
+    expect(fake.aePoints).toEqual([])
   })
 
   it('past the per-IP budget a POST reads instead of counting', async () => {

@@ -101,10 +101,11 @@ export default function PersonvernPage() {
           <h2>Informasjonskapsler og lokal lagring</h2>
           <p>
             Nettstedet bruker ingen informasjonskapsler til sporing eller markedsføring.
-            Nettleserens lokale lagring brukes kun til funksjonelle valg — fargetema, om
-            introanimasjonen er vist, hvor mange ganger skjermspareren har dukket opp, datoen
-            besøket ditt sist ble telt og hvilke innlegg du allerede har lest. Disse verdiene blir værende
-            i nettleseren din og sendes ikke videre.
+            Nettleserens lokale lagring brukes til funksjonelle valg — fargetema, om
+            introanimasjonen er vist og hvor mange ganger skjermspareren har dukket opp — og til at
+            besøk og lesninger telles bare én gang: datoen besøket ditt sist ble telt og hvilke
+            innlegg du allerede har lest. Disse verdiene blir værende i nettleseren din og sendes
+            ikke videre.
           </p>
 
           <h2>Rettslig grunnlag</h2>

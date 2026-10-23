@@ -16,6 +16,8 @@ export interface FakeEnv {
   publishedEnSlugs: Set<string>
   // Calls allowed per key before WRITE_LIMITER starts refusing (default: no limit).
   setRateLimit: (n: number) => void
+  // KV `STATUS` contents (the uptime snapshot lives under 'status').
+  kv: Map<string, string>
 }
 
 export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeEnv {
@@ -51,10 +53,15 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
   const publishedSlugs = new Set<string>(['velkommen'])
   const publishedEnSlugs = new Set<string>(['english-only'])
   const limiterHits = new Map<string, number>()
+  const kv = new Map<string, string>()
   let rateLimit = Infinity
 
   const env = {
     METRICS: d1,
+    STATUS: {
+      get: async (key: string) => kv.get(key) ?? null,
+      put: async (key: string, value: string) => void kv.set(key, value),
+    },
     METRICS_AE: { writeDataPoint: (p: FakeEnv['aePoints'][number]) => void aePoints.push(p) },
     CONTACT_EMAIL: {
       send: async (m: { from: string; to: string; raw: string }) => {
@@ -90,6 +97,7 @@ export function makeEnv(overrides: Partial<Record<string, unknown>> = {}): FakeE
     publishedSlugs,
     publishedEnSlugs,
     setRateLimit: (n) => (rateLimit = n),
+    kv,
   }
 }
 

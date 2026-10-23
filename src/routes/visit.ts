@@ -34,7 +34,7 @@ export async function handleVisit(
 
   if (request.method !== 'POST') return null
 
-  if (!isWriteAllowed(request.headers)) {
+  if (!isWriteAllowed(request.headers, url.origin)) {
     return apiJson('{"error":"forbidden"}', 403)
   }
   if (!(await allowWrite(env, request, 'visit'))) {

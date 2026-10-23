@@ -23,6 +23,12 @@ export const CONTACT_WINDOWS_MS = {
   retention: 30 * 86_400_000,
 } as const
 
+// The daily prune of rows older than `retention` (the privacy notice promises
+// 30 days). scheduled() in index.ts tells it from the 5-minute health cron by
+// this pattern, so it must stay one of wrangler.jsonc's crons — a test holds
+// the two equal (else 03:00 runs a health check and nothing is ever pruned).
+export const CONTACT_PRUNE_CRON = '0 3 * * *'
+
 export function isoCutoff(nowMs: number, windowMs: number): string {
   return new Date(nowMs - windowMs).toISOString()
 }

@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { xTicksFor, yTicksFor } from '@/lib/trends-axis'
 import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
-import { fetchGeoCountries, showVisitCounts } from '@/lib/geo'
+import { MIN_PUBLIC_VISITS, fetchGeoCountries, showVisitCounts } from '@/lib/geo'
 import { DICT } from '@/data/i18n'
 import { INTL_LOCALE, type Lang } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
@@ -24,15 +24,20 @@ type Range = '24h' | '7d' | '30d' | 'all'
 // Tab order; labels come from the dictionary (24t/Alt vs 24h/All).
 const RANGES: Range[] = ['24h', '7d', '30d', 'all']
 
-const W = 800
-const H = 220
+// The viewBox is the SVG's own rendered width in CSS px (measured below), so
+// one unit is one pixel at every width: 11px labels and 4px dots stay that
+// size on a phone. A fixed 800-unit viewBox scaled them by ~0.4 at 390px
+// (4px labels). DEFAULT_W is only the first frame before the measurement.
+const DEFAULT_W = 800
 const PAD_L = 40
 const PAD_R = 12
 const PAD_T = 12
 const PAD_B = 28
-const PLOT_W = W - PAD_L - PAD_R
-const PLOT_H = H - PAD_T - PAD_B
-const BASELINE = PAD_T + PLOT_H
+
+// Narrow cards get a shorter plot, so the chart doesn't turn into a tall box.
+function chartHeight(w: number): number {
+  return w < 480 ? 180 : 220
+}
 
 // Round up to a "nice" number for the y-axis ceiling (1/2/5 * 10^n). Keeps
 // tick labels readable instead of "max=37, axis goes to 37".
@@ -109,6 +114,26 @@ export default function TrendsChart() {
   // there's no SSR-vs-hydration mismatch concern left and we can render the
   // real data immediately on mount.
 
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [W, setW] = useState(DEFAULT_W)
+  // Layout effect: measure before the first paint, then follow resizes.
+  useLayoutEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    const measure = () => {
+      const w = Math.round(el.getBoundingClientRect().width)
+      if (w > 0) setW(w)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  const H = chartHeight(W)
+  const PLOT_W = W - PAD_L - PAD_R
+  const PLOT_H = H - PAD_T - PAD_B
+  const BASELINE = PAD_T + PLOT_H
+
   const current = result?.range === range ? result : null
   const loading = current === null
   const failed = current?.failed ?? false
@@ -169,7 +194,7 @@ export default function TrendsChart() {
       tickLabels: xTicksFor(coords, (c) => c.x, (c) => formatTick(c.ts, range, lang)),
       allCapped: range === 'all' && isAllRangeCapped(),
     }
-  }, [series, range, lang])
+  }, [series, range, lang, PLOT_W, PLOT_H, BASELINE])
 
   // Don't unmount the whole section on a fetch hiccup — that nuked the header
   // and the period tabs, leaving no way to retry without a page reload.
@@ -192,13 +217,19 @@ export default function TrendsChart() {
   const showCounts = showVisitCounts(geoTotal)
   // What the headline means sits next to it, so it only shows with the
   // numbers; the static lead above the card stays true either way.
+  // Once the total is known and still below the threshold, say why the axis
+  // is bare — unexplained, the lone dots read as a broken chart.
+  const quiet = [
+    geoTotal !== null ? t.collecting(MIN_PUBLIC_VISITS) : '',
+    allCapped ? t.cappedQuiet(ALL_MAX_DAYS) : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   const note = showCounts
     ? allCapped
       ? `${t.numberNote} ${t.capped(ALL_MAX_DAYS)}`
       : t.numberNote
-    : allCapped
-      ? t.cappedQuiet(ALL_MAX_DAYS)
-      : null
+    : quiet || null
 
   return (
     <div className="bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 flex flex-col gap-5 hover:border-red-500/30 transition-colors duration-300 ease-out">
@@ -239,6 +270,7 @@ export default function TrendsChart() {
       {/* h-auto (not a fixed height with preserveAspectRatio="none") so the
           viewBox scales uniformly and the dots stay round, not stretched. */}
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className={`w-full h-auto transition-opacity duration-300 ease-out ${loading ? 'opacity-50' : ''}`}
         role="img"

@@ -3,7 +3,7 @@
 // Queries the Cloudflare Analytics Engine SQL API and returns a bucketed
 // [{ts, value}] series for the front-page Trends card. When the account id or
 // API token aren't set (deploy without the secrets), we fall back to an empty
-// series so the UI degrades gracefully instead of erroring. AE-side failures
+// series (flagged `degraded`) so the UI degrades gracefully instead of erroring. AE-side failures
 // (non-2xx, parse, fetch) log to Worker observability via console.error so an
 // unexpectedly empty chart is diagnosable from the dashboard.
 import { apiJson, cachedApiJson, putCachedApiJson } from '../http'
@@ -77,8 +77,12 @@ export async function handleTimeseries(
     }
   }
 
-  const body = JSON.stringify({ metric, range: rangeKey, points })
-  if (aeAnswered) return putCachedApiJson(ctx, cache.key, body, range.ttlSeconds)
+  if (aeAnswered) {
+    return putCachedApiJson(ctx, cache.key, JSON.stringify({ metric, range: rangeKey, points }), range.ttlSeconds)
+  }
   // Degraded answer (missing secrets or AE failure): serve it, don't pin it.
-  return apiJson(body)
+  // The chart reads it as empty; `degraded` is for the hourly watchdog
+  // (status-watchdog.yml) — an expired or revoked AE token otherwise looks
+  // exactly like a quiet week.
+  return apiJson(JSON.stringify({ metric, range: rangeKey, points, degraded: true }))
 }

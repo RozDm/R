@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { HUMAN_EVENTS, VISIT_DAY_KEY, localDay, shouldCountVisit } from '@/lib/visit'
+import { VISIT_DAY_KEY, localDay, onFirstHumanInput, shouldCountVisit } from '@/lib/visit'
 
 // One "Besøk" per browser per day, sent on the first human input — the rules
 // and why are in lib/visit.ts. The POST lets the Worker read
@@ -25,13 +25,7 @@ export default function VisitBeacon() {
     const today = () => localDay(new Date())
     if (!shouldCountVisit({ webdriver: navigator.webdriver, lastDay: readDay(), today: today() })) return
 
-    const opts = { capture: true, passive: true } as const
-    const stop = () => HUMAN_EVENTS.forEach((t) => window.removeEventListener(t, onInput, opts))
-    function onInput(e: Event) {
-      // A script's dispatchEvent is untrusted; real input and the browser's
-      // own events are trusted.
-      if (!e.isTrusted) return
-      stop()
+    return onFirstHumanInput(() => {
       // Re-check, then set the flag BEFORE the fetch: another tab may have
       // counted today meanwhile, and StrictMode/remounts must not double up.
       const day = today()
@@ -42,9 +36,7 @@ export default function VisitBeacon() {
       } catch {}
       // A failed request is a missed visit — rare, and better than a double.
       fetch('/api/visit', { method: 'POST', cache: 'no-store' }).catch(() => {})
-    }
-    HUMAN_EVENTS.forEach((t) => window.addEventListener(t, onInput, opts))
-    return stop
+    })
   }, [])
 
   return null

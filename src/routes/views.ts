@@ -2,7 +2,7 @@
 // page's own same-origin fetch() counts, so crawlers and external spam can't
 // inflate it.
 import { allowWrite, apiJson } from '../http'
-import { isValidSlug, isWriteAllowed } from '../metrics'
+import { isDatacenterAsn, isValidSlug, isWriteAllowed } from '../metrics'
 
 // The header gates are spoofable (any client can send Sec-Fetch-Site and a
 // browser UA), so a POST must also prove the slug is a real published post
@@ -30,7 +30,10 @@ export async function handleViews(url: URL, request: Request, env: Env): Promise
 
   if (
     request.method === 'POST' &&
-    isWriteAllowed(request.headers) &&
+    isWriteAllowed(request.headers, url.origin) &&
+    // Cloud/hosting networks are crawlers, not readers — the same filter
+    // that keeps them off the Besøk map (metrics.ts DATACENTER_ASNS).
+    !isDatacenterAsn(request.cf?.asn) &&
     // Over the per-IP budget → answer like a GET (the reader still sees the
     // count), just without writing.
     (await allowWrite(env, request, 'views')) &&

@@ -121,6 +121,17 @@ test.describe('contact form', () => {
     const i = pageProblems.findIndex((p) => p.includes('status of 429'))
     if (i >= 0) pageProblems.splice(i, 1)
   })
+
+  test('a filter refusal points to e-mail, not to a challenge', async ({ page, pageProblems }) => {
+    await page.route('**/api/contact', (r) => r.fulfill({ status: 403, body: '{"error":"forbidden"}' }))
+    await fill(page)
+    // Filtered by text: Next's route announcer is an alert too.
+    const alert = page.getByRole('alert').filter({ hasText: 'stanset av sikkerhetsfiltrene' })
+    await expect(alert).toBeVisible()
+    await expect(alert.getByRole('link', { name: 'contact@rozsoshnykh.no' })).toBeVisible()
+    const i = pageProblems.findIndex((p) => p.includes('status of 403'))
+    if (i >= 0) pageProblems.splice(i, 1)
+  })
 })
 
 test.describe('visit beacon (lib/visit.ts)', () => {
@@ -157,6 +168,38 @@ test.describe('visit beacon (lib/visit.ts)', () => {
     await page.mouse.move(200, 200)
     await page.waitForTimeout(1_000)
     expect(sent).toHaveLength(0)
+  })
+})
+
+// The post ViewCounter counts like the beacon: on human input, once per
+// session per post, never under automation (lib/visit.ts onFirstHumanInput).
+test.describe('post view counter', () => {
+  const calls = (page: import('@playwright/test').Page) => {
+    const methods: string[] = []
+    page.on('request', (r) => {
+      if (new URL(r.url()).pathname === '/api/views/velkommen') methods.push(r.method())
+    })
+    return methods
+  }
+
+  test('counts on the first human input, then only reads', async ({ page }) => {
+    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }))
+    const methods = calls(page)
+    await page.goto('/blogg/velkommen/')
+    await page.waitForTimeout(1_000)
+    expect(methods, 'nothing on load alone').toEqual([])
+    await page.keyboard.press('ArrowDown')
+    await expect.poll(() => methods).toEqual(['POST'])
+    await page.reload()
+    await expect.poll(() => methods).toEqual(['POST', 'GET'])
+  })
+
+  test('only reads under automation', async ({ page }) => {
+    const methods = calls(page)
+    await page.goto('/blogg/velkommen/')
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(1_000)
+    expect(methods).toEqual(['GET'])
   })
 })
 

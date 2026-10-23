@@ -1,5 +1,6 @@
 // When the Besøk beacon (components/effects/VisitBeacon.tsx) may count a
-// visit. Pure, so it is unit-tested (tests/visit-beacon.test.ts); the
+// visit — and, with onFirstHumanInput, when a post view counts
+// (components/blog/ViewCounter.tsx). Pure, so it is unit-tested (tests/visit-beacon.test.ts); the
 // browser side is covered by e2e/site.e2e.ts.
 //
 // The aim is people, not page loads: a visit counts
@@ -28,4 +29,20 @@ export function localDay(d: Date): string {
 
 export function shouldCountVisit(opts: { webdriver: boolean; lastDay: string | null; today: string }): boolean {
   return !opts.webdriver && opts.lastDay !== opts.today
+}
+
+// Runs `callback` once, on the first trusted HUMAN_EVENTS input; returns the
+// unsubscribe for an effect's cleanup. A script's dispatchEvent is untrusted,
+// real input is trusted. Shared by the Besøk beacon and the post ViewCounter,
+// so both count people the same way.
+export function onFirstHumanInput(callback: () => void): () => void {
+  const opts = { capture: true, passive: true } as const
+  const stop = () => HUMAN_EVENTS.forEach((t) => window.removeEventListener(t, onInput, opts))
+  function onInput(e: Event) {
+    if (!e.isTrusted) return
+    stop()
+    callback()
+  }
+  HUMAN_EVENTS.forEach((t) => window.addEventListener(t, onInput, opts))
+  return stop
 }

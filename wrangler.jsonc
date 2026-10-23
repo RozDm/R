@@ -47,7 +47,8 @@
   // The read route falls back to an empty time-series when either is unset,
   // so writes can start collecting before the read token exists.
   // Per-IP throttle for the public write endpoints (/api/visit, /api/views
-  // POST, /api/csp-report). Their header gates are spoofable, so a POST loop
+  // POST, /api/csp-report, and /api/contact as a burst cap on top of its D1
+  // windows). Their header gates are spoofable, so a POST loop
   // could otherwise pollute the counters and burn D1's 100k writes/day —
   // which would take the contact form down with them. Limits are per
   // Cloudflare location; a real visitor sends a handful per session.
@@ -60,7 +61,7 @@
   "triggers": {
     // */5 = health checks. 0 3 * * * = daily prune of the contact table at
     // 03:00 UTC (~04:00–05:00 Oslo, off-peak). Dispatch lives in scheduled()
-    // — must update PRUNE_CRON in src/index.ts if this changes.
+    // — must update CONTACT_PRUNE_CRON in src/contact.ts if this changes (tested).
     "crons": ["*/5 * * * *", "0 3 * * *"]
   },
   "send_email": [
