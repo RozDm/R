@@ -29,7 +29,7 @@ that would block search engines or CI.
 | MTA-STS + TLS-RPT | Worker custom domain `mta-sts.rozsoshnykh.no` (code); DNS records (dashboard, owner to-do below) | Policy = Cloudflare Email Routing's (`mode: enforce`, `mx: *.mx.cloudflare.net`), proxied by `src/routes/mta-sts.ts`; `_mta-sts` CNAME → `_mta-sts.mx.cloudflare.net` (their policy id); TLS-RPT reports to `contact@rozsoshnykh.no` |
 | 0-RTT | `zone-rules.yml` (code) | On — early data is GET/HEAD/OPTIONS only, every write here is a POST |
 | Minimum TLS | dashboard; `zone-rules.yml` only raises it to 1.2 if lower | **1.3** (measured 2026-10-16: TLS 1.2 refused) — clients without TLS 1.3 (old Android/Java/OpenSSL 1.0 bots) can't connect; 1.2 is the wider-reach choice |
-| Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the zone token lacks) | owner to switch on + add an e-mail (see "Owner to-do") |
+| Certificate Transparency Monitoring | SSL/TLS → Edge Certificates (dashboard; the API needs SSL and Certificates: Edit, which the zone token lacks) | **On** since 2026-10-23, alerts to the owner's e-mail |
 | Browser Integrity Check | Security → Settings | on by default per the docs, which say it challenges requests without a User-Agent — yet an empty-UA request got 200 (measured); its actual state is unverified, so don't rely on it |
 | Free Managed Ruleset, L3–L7 DDoS | default | On (a custom rule with Skip → All managed rules can exempt a false positive) |
 | Response Header Transform `error_no_store` | `zone-rules.yml` (code) | 4xx/5xx → `Cache-Control: no-store` |
@@ -84,20 +84,23 @@ Open as of 2026-10-17; tick them off here when done.
     "Report Domain: rozsoshnykh.no" keeps them out of the inbox.
   Check: `dig +short TXT _mta-sts.rozsoshnykh.no` shows `v=STSv1; id=…`.
 
-- [ ] **Certificate Transparency Monitoring** — SSL/TLS → Edge Certificates →
+- [x] **Certificate Transparency Monitoring** — done 2026-10-23 (the page
+  shows "Alerts active — 1 recipient", the owner). SSL/TLS → Edge Certificates →
   Certificate Transparency Monitoring → On, add an e-mail. Mails when a CA
   outside Cloudflare logs a certificate for the zone (mis-issuance, a hijack).
   Free on every plan. (API: `PATCH /zones/{id}/ct/alerting {"enabled":true}`
   needs SSL and Certificates: Edit — deliberately not on the zone token.)
-- [ ] **Notifications** (account level: Notifications → Add), e-mail to the
-  owner. All on Free:
+- [ ] **Notifications** — account level, e-mail to the owner. The dashboard
+  calls them Alerts now: account home → Observability → Alerts → Platform
+  Notifications → Create a Notification → pick the type → Select → name it,
+  add the e-mail → Create. One alert per type. All on Free:
   - HTTP DDoS Attack Alert (`dos_attack_l7`);
   - Universal SSL Alert (`universal_ssl_event_type`) and Advanced Certificate
     Alert (the www custom-domain certificate);
-  - Incident Alerts, filtered to Workers, Workers Assets, Workers KV, D1,
+  - Incident Alerts (category Cloudflare Status), filtered to Workers, Workers Assets, Workers KV, D1,
     Email Routing, Turnstile, SSL Certificate Provisioning, Authoritative DNS;
-  - Abuse Report (`abuse_report_alert`) and Trust & Safety new-block
-    notification (a false phishing block of a URL);
+  - Abuse Report (`abuse_report_alert`) and, under Trust and Safety Blocks,
+    New Blocks (a false phishing block of a URL);
   - Security Insights.
   Free has no alert for the Workers 100k/day limit.
 - [x] **Old CI credentials gone** — done 2026-10-22, after deploy,
@@ -496,16 +499,24 @@ Enterprise; Allow matches don't show in Events); 1 custom IP list. Leaked
 credentials detection is on by default — its suggested rate-limit template
 would take the only rate limiting rule.
 
-HSTS comes from the Worker, not the dashboard: `max-age=63072000;
-includeSubDomains; preload` (`HSTS`, `src/csp.ts`) on every response it
-serves, and the apex is on the browsers' preload list (hstspreload.org:
+HSTS comes from the site, not the dashboard: `max-age=63072000;
+includeSubDomains; preload` (`HSTS`, `src/csp.ts`) on every response — the
+asset server's via `public/_headers` (`/*`), the Worker's from `src/http.ts` —
+and the apex is on the browsers' preload list (hstspreload.org:
 `preloaded`), so every subdomain is HTTPS-only in browsers whatever the
 headers say. Leave SSL/TLS → Edge Certificates → HSTS off: a dashboard
 policy with a shorter max-age or without `includeSubDomains`/`preload`
 would duplicate or override the Worker's header with a weaker one, and a
 preloaded domain that stops sending
-`preload` can be dropped from the list. Asset-first static files carry no
-HSTS header (the Worker never sees them) — harmless, the document sets it.
+`preload` can be dropped from the list.
+
+workers.dev and preview URLs: the Worker's Settings → Domains & Routes still
+lists `d.rozsoshnykh.workers.dev` and `*-d.rozsoshnykh.workers.dev`. There's
+no delete, only disable, and `workers_dev: false` + `preview_urls: false`
+(`wrangler.jsonc`) set both off on every deploy, so a dashboard toggle
+would be undone by the next one. Off, the address answers 404 `error code:
+1042`, and `smoke.sh` checks it. The account's `rozsoshnykh.workers.dev`
+subdomain itself stays; nothing serves on it.
 
 ## API reference
 
