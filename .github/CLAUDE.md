@@ -48,7 +48,7 @@ incident background: `docs/history.md`.
   accepted: an external uptime monitor was declined (owner's call,
   2026-10-23) — don't re-propose it. Fails (GitHub
   e-mails the owner) when the site is down, `/api/status` is older than
-  20 min — the one failure the Worker can't report about itself — or
+  25 min — the one failure the Worker can't report about itself — or
   `/api/geo` isn't a 200 (a 503 there is a failed D1 read; the snapshot
   lives in KV, so this is the only regular look at D1), or `/api/timeseries`
   answers `degraded` three runs in a row (the AE read failed — typically the

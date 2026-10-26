@@ -210,8 +210,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `X-Frame-Options` (proof it skipped the Worker).
 - Status alerts are flap-damped (`CONSECUTIVE_FAILS_TO_ALERT = 2`): «nede»
   mails only on the second consecutive failed probe, «oppe igjen» on the
-  first success after an alerted outage. `isStale`/`STALE_AFTER_MS` (15 min)
-  grey out the dashboard banner and footer dot when the cron stops writing.
+  first success after an alerted outage. `isStale`/`STALE_AFTER_MS` (20 min;
+  the cron fires minutes late at times, so 15 cried wolf) grey out the
+  dashboard banner and footer dot when the cron stops writing.
   `HISTORY_LIMIT = 149` is the monolith's 1:4:9 — intentional, don't "fix"
   it.
 - Contact: a failed mail send deletes its D1 row (else the 2-minute dedup

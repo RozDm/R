@@ -93,11 +93,15 @@ export function buildStatusData(raw: string | null, results: MonitorResult[], up
   }
 }
 
-// A snapshot older than this means the checker itself has stopped (three
-// missed 5-minute cron ticks, or KV writes failing). The dashboard must then
-// say so instead of repeating a frozen "Alle systemer operative" — nothing
-// else watches the watcher. An unparseable timestamp counts as stale.
-export const STALE_AFTER_MS = 15 * 60_000
+// A snapshot older than this means the checker itself has stopped (cron
+// ticks missed in a row, or KV writes failing). The dashboard must then say
+// so instead of repeating a frozen "Alle systemer operative" — nothing else
+// watches the watcher. An unparseable timestamp counts as stale.
+// Not 15 min: Cloudflare runs the cron best-effort — measured 2026-10-26,
+// 29 of 149 ticks fired 1–4 min late and 10 slid into the next 5-minute
+// slot — so two late ticks plus the 60 s edge cache crossed 15 min and the
+// banner cried «utdatert» while the cron was alive (and the watchdog green).
+export const STALE_AFTER_MS = 20 * 60_000
 
 export function isStale(updatedAt: string, now: number): boolean {
   const t = Date.parse(updatedAt)

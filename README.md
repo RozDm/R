@@ -63,7 +63,7 @@ pending; open a draft (and skip auto-merge) to hold a change for manual review.
 
 Monitoring workflows: `status-watchdog` (scheduled hourly, but GitHub runs
 it only every 2–8 hours — measured in October 2026; fails, and GitHub
-e-mails, when the site is down, the status snapshot is older than 20 minutes,
+e-mails, when the site is down, the status snapshot is older than 25 minutes,
 the D1 database fails a read or the Analytics Engine read is degraded three
 runs in a row) and
 `analytics-report` (manual; Analytics Engine breakdown of visits by network
@@ -145,7 +145,7 @@ promptly while KV reads stay near zero); the front page (`/#status`) renders
 it with per-service history, capped at `HISTORY_LIMIT` (149 ≈ 12.5h — the
 monolith's 1:4:9 proportions). The dashboard polls adaptively: 90s when all
 is up, 30s during an incident. The public snapshot carries monitor names
-only, no URLs. A snapshot older than 15 minutes (the cron itself stopped)
+only, no URLs. A snapshot older than 20 minutes (the cron itself stopped)
 turns the banner and the footer dot grey ("Statusdata er utdatert") instead
 of repeating the last known state.
 
