@@ -20,6 +20,8 @@ test('front page renders every section and the live widgets', async ({ page }) =
   // The code-split widgets load and draw the stubbed /api data.
   await page.locator('#status').scrollIntoViewIfNeeded()
   await expect(page.getByText('Alle systemer operative').first()).toBeVisible()
+  // Its live region announces the state only, not the «Oppdatert» time.
+  await expect(page.locator('#status').getByRole('status')).toHaveText('Alle systemer operative')
   await page.locator('#besok').scrollIntoViewIfNeeded()
   await expect(page.locator('#besok').getByText('Norge').filter({ visible: true }).first()).toBeVisible()
   // Nothing wider than the screen.
@@ -380,7 +382,8 @@ test('404 page: HAL, a 404 status and the body font', async ({ page }) => {
   expect(await page.evaluate(() => [...document.fonts].some((f) => f.family.includes('Intel') && f.status === 'loaded'))).toBe(true)
   await expect(page).toHaveTitle(/^404 – /)
   await page.getByRole('link', { name: 'Tilbake til forsiden' }).click()
-  await expect(page).toHaveURL(/\/$/)
+  // The home URL itself: /\/$/ also matched the 404's own /finnes-ikke/.
+  await expect(page).toHaveURL(/\/\/[^/]+\/$/)
 })
 
 test('404 under /en/ speaks English', async ({ page }) => {
