@@ -1,9 +1,11 @@
 // POST /api/csp-report — browsers report Content-Security-Policy violations
 // here (metaCsp() in ../csp.ts points report-to at it, through the
-// Reporting-Endpoints header in public/_headers). Each
-// violation becomes one Analytics Engine point (blob1 = 'csp'); D1 and KV are
-// untouched, so a flood costs only AE writes (100k points/day on Free, shared
-// with the geo/view channels; WRITE_LIMITER caps one client at 20/min).
+// Reporting-Endpoints header in public/_headers). A POST becomes at most ONE
+// Analytics Engine point (blob1 = 'csp'): the first own-origin violation of
+// its batch. Anyone can POST here, and AE's 100k points/day on Free are
+// shared with the geo/view channels — a batch of ten used to cost ten. D1 and
+// KV are untouched; WRITE_LIMITER caps one client at 20 POSTs/min. A real
+// breakage still shows: every page view that hits it reports it.
 // Read them back with the "Analytics report" workflow.
 //
 // Always answers 204 to a POST, even for junk: a browser's report delivery
@@ -41,7 +43,8 @@ export async function handleCspReport(url: URL, request: Request, env: Env): Pro
     return noContent()
   }
 
-  for (const v of parseCspReports(payload, url.origin)) {
+  const [v] = parseCspReports(payload, url.origin, 1)
+  if (v) {
     try {
       env.METRICS_AE.writeDataPoint({
         indexes: ['csp'],

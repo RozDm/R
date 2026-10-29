@@ -27,7 +27,18 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
+      - name: Build
+        env:
+          # Cloudflare's public always-pass TEST site key, so the export renders
+          # the Turnstile widget as production does; e2e/fixtures.ts serves a
+          # stand-in api.js — no test reaches Cloudflare. deploy.yml builds
+          # with the real key.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+        run: npm run build
+      # The Worker bundle and wrangler.jsonc as `wrangler deploy` would upload
+      # them — no credentials needed. Without it a bundling error surfaced only
+      # in deploy.yml, after the merge.
+      - run: npx wrangler deploy --dry-run
       # After the build: the UI dictionary must stay in one shared chunk
       # (next.config.mjs turbopackChunking — an experimental key a Next
       # upgrade can drop with only a warning).

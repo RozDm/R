@@ -2,6 +2,7 @@ import Link from 'next/link'
 import HashLink from './HashLink'
 import StatusDot from './StatusDot'
 import CopyEmail from './CopyEmail'
+import CopyrightYear from './CopyrightYear'
 import { DICT } from '@/data/i18n'
 import { localePath, type Lang } from '@/lib/i18n'
 import { CONTACT_ADDRESS } from '@/src/contact'
@@ -10,8 +11,6 @@ import { CONTACT_ADDRESS } from '@/src/contact'
 // the form would invite the visitor to the page they are already on.
 export default function Footer({ lang = 'nb', invite = true }: { lang?: Lang; invite?: boolean }) {
   const t = DICT[lang].footer
-  const currentYear = new Date().getFullYear()
-
   return (
     <footer
       id="footer"
@@ -71,7 +70,7 @@ export default function Footer({ lang = 'nb', invite = true }: { lang?: Lang; in
         </HashLink>
 
         <p className="text-xs text-gray-500 dark:text-gray-400 pt-8 font-mono">
-          &copy; {currentYear} Dmytro Rozsoshnykh
+          &copy; <CopyrightYear built={new Date().getFullYear()} /> Dmytro Rozsoshnykh
           {' · '}
           <Link
             href={localePath(lang, '/personvern/')}

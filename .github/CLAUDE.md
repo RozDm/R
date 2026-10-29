@@ -4,7 +4,13 @@ Loaded when working under `.github/`. Site-wide rules: root `CLAUDE.md`;
 incident background: `docs/history.md`.
 
 - `ci.yml` — on PRs, three jobs. `build` (bare runner): lint, typecheck
-  (starting with `wrangler types --check`), test, build, then `check:dict`
+  (starting with `wrangler types --check`), test, build (with Cloudflare's
+  public always-pass TEST Turnstile site key `1x00000000000000000000AA`, so
+  the export renders the widget as production does; `e2e/fixtures.ts`
+  serves a stand-in for its script), `npx wrangler deploy --dry-run` (the
+  Worker bundle and `wrangler.jsonc` as a deploy would upload them, no
+  credentials — a bundling error used to surface only after the merge),
+  then `check:dict`
   (the UI dictionary sits in exactly one chunk — `turbopackChunking`,
   CLAUDE.md Gotchas), `check:waf` (`scripts/check-waf.mjs`: the WAF
   expression must block no URL in `out/` and still block its scanner list)
@@ -27,8 +33,8 @@ incident background: `docs/history.md`.
   red or pending — auto-merge is the gate.
 - `deploy.yml` — on push to `main`, two jobs, both `npm ci --ignore-scripts`.
   `build` has no secrets, so package code (lint, tests, the Next build) never
-  sees a token: the same checks → build → check:waf → check:dict → check:csp
-  → `out/` as
+  sees a token: the same checks → build → `wrangler deploy --dry-run` →
+  check:waf → check:dict → check:csp → `out/` as
   a 1-day artifact (`include-hidden-files`, or `.well-known/security.txt`
   is dropped). It inlines the repository variable `TURNSTILE_SITE_KEY`
   (public, not a secret) as `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and fails when
@@ -40,7 +46,12 @@ incident background: `docs/history.md`.
   skipped, never blanked) → `npx wrangler deploy` with the repo's pinned
   wrangler (not `cloudflare/wrangler-action`, which runs on deprecated
   Node 20) → `scripts/smoke.sh` against the live site (it also runs
-  `check-csp.mjs --live` on five pages).
+  `check-csp.mjs --live` on five pages). A failed smoke test runs
+  `wrangler rollback` — back to the version deployed before this one, code
+  and pages alike (the assets ride in the version; D1 and KV are untouched)
+  — and the run stays red. A failure the zone causes rather than the code
+  fails the old version too: fix it, then re-run Deploy (workflow_dispatch)
+  to put `main` back.
 - `status-watchdog.yml` — outside Cloudflare, scheduled hourly
   (`17 * * * *`); GitHub runs a public repo's schedule late or skips it —
   measured 2026-10-16…23: 40 runs 2–8 h apart (median ~4.5 h), all green —

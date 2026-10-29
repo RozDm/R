@@ -234,15 +234,16 @@ html.intro-active::before {
 }
 
 /* Syntax highlighting (rehype-highlight / highlight.js token classes).
-   Light by default, dark under .dark. Palette tuned to the site's reds
-   and grays rather than a stock theme. */
+   Light by default (on the white block PostPage gives `pre`), dark under
+   .dark. Palette tuned to the site's reds and grays rather than a stock
+   theme; every token keeps 4.5:1 on its block. */
 .hljs {
   color: #1e293b;
   background: transparent;
 }
 .hljs-comment,
 .hljs-quote {
-  color: #94a3b8;
+  color: #64748b;
   font-style: italic;
 }
 .hljs-keyword,
@@ -280,7 +281,7 @@ html.intro-active::before {
 
 .dark .hljs { color: #e2e8f0; }
 .dark .hljs-comment,
-.dark .hljs-quote { color: #64748b; }
+.dark .hljs-quote { color: #94a3b8; }
 .dark .hljs-keyword,
 .dark .hljs-selector-tag,
 .dark .hljs-literal,

@@ -51,7 +51,9 @@ export default function HalIdle() {
     const arm = () => {
       clearTimeout(timer)
       timer = setTimeout(() => {
-        if (document.hidden || statusInView()) {
+        // Not while the window lacks focus either: a reader working in
+        // another window beside the page isn't idle, just elsewhere.
+        if (document.hidden || !document.hasFocus() || statusInView()) {
           arm()
           return
         }

@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og'
 import { DICT } from '@/data/i18n'
 import { getPostBySlug } from './blog'
 import type { Lang } from './i18n'
+import { OG_FONT_FAMILY, ogFonts } from './og-fonts'
 import { AUTHOR } from './site'
 
 // Social card for one blog post (HAL eye, BLOGG/BLOG label, title), rendered
@@ -12,7 +13,7 @@ export function postCardAlt(lang: Lang): string {
   return `${DICT[lang].blog.ogAlt} — ${AUTHOR.name}`
 }
 
-export function postCardImage(lang: Lang, slug: string): ImageResponse {
+export async function postCardImage(lang: Lang, slug: string): Promise<ImageResponse> {
   let title = DICT[lang].blog.eyebrow
   try {
     title = getPostBySlug(slug, lang).title
@@ -29,6 +30,7 @@ export function postCardImage(lang: Lang, slug: string): ImageResponse {
           justifyContent: 'space-between',
           background: '#030712',
           padding: 80,
+          fontFamily: OG_FONT_FAMILY,
         }}
       >
         <div
@@ -51,7 +53,9 @@ export function postCardImage(lang: Lang, slug: string): ImageResponse {
           <div
             style={{
               color: '#ffffff',
-              fontSize: title.length > 40 ? 60 : 76,
+              // Monospace runs wide: a long title steps down so it stays
+              // within three lines of the card.
+              fontSize: title.length > 70 ? 46 : title.length > 40 ? 54 : 68,
               fontWeight: 700,
               marginTop: 16,
               lineHeight: 1.1,
@@ -66,6 +70,6 @@ export function postCardImage(lang: Lang, slug: string): ImageResponse {
         </div>
       </div>
     ),
-    { ...POST_CARD_SIZE },
+    { ...POST_CARD_SIZE, fonts: await ogFonts() },
   )
 }

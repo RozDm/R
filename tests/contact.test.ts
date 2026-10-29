@@ -83,6 +83,14 @@ describe('buildContactMime', () => {
     expect(mime).toContain('Content-Type: text/plain; charset=utf-8')
   })
 
+  it('carries the Date RFC 5322 requires and a unique Message-ID', () => {
+    expect(mime).toMatch(/^Date: Fri, 12 Jun 2026 18:00:00 \+0000\r$/m)
+    const id = /^Message-ID: <([0-9a-f-]{36})@rozsoshnykh\.no>\r$/m.exec(mime)?.[1]
+    expect(id).toBeDefined()
+    const again = buildContactMime('contact@rozsoshnykh.no', 'me@example.com', valid, '2026-06-12T18:00:00Z')
+    expect(again).not.toContain(id)
+  })
+
   it('base64 body decodes back to the message', () => {
     const body = mime.split('\r\n\r\n')[1].replace(/\r\n/g, '')
     const text = Buffer.from(body, 'base64').toString('utf8')
@@ -105,6 +113,8 @@ describe('buildStatusAlertMime', () => {
   it('carries the right envelope headers and no Reply-To', () => {
     expect(mime).toContain('From: Status <status@rozsoshnykh.no>')
     expect(mime).toContain('To: <me@example.com>')
+    expect(mime).toMatch(/^Date: Fri, 12 Jun 2026 18:00:00 \+0000\r$/m)
+    expect(mime).toMatch(/^Message-ID: <[0-9a-f-]{36}@rozsoshnykh\.no>\r$/m)
     expect(mime).not.toContain('Reply-To:')
   })
 
