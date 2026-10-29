@@ -356,6 +356,12 @@ answered, keep output and replies short.
   setting if the default stops duplicating.
 - ESLint stays on 9 (with `eslint-config-next` 16's flat config); the React
   plugin it pulls in is not ESLint-10-compatible yet.
+- TypeScript stays on 6. 7.0.2 (tried 2026-10-29) type-checks both projects
+  and builds, but ships no JS API, so typescript-eslint refuses to load
+  (support is tracked for 7.1+, typescript-eslint#10940) — and it saved ~3 s
+  of a ~4 s typecheck, too little for the side-by-side npm aliases
+  (`typescript` → `@typescript/typescript6`, `@typescript/native` → 7).
+  Revisit once typescript-eslint takes 7.
 - `package.json` is NOT `"type": "module"` — that breaks the Next 16 /
   turbopack config load. Standalone Node scripts use `.mjs`.
 - No R2 (it needs a card even on the free tier) and no off-platform metrics

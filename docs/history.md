@@ -49,6 +49,16 @@ is now guarded by a unit test in `tests/timeseries.test.ts`; when bumping
 after a `reset-metrics` run, round UP to the next boundary so no pre-reset
 noise slips in.
 
+## 2026-10-26 — the stale banner cried wolf (`STALE_AFTER_MS` 15 → 20 min)
+
+Cloudflare runs cron triggers best-effort. Measured 2026-10-26: of 149
+ticks, 29 fired 1–4 minutes late and 10 slid into the next 5-minute slot.
+Two late ticks plus the 60 s edge cache on `/api/status` crossed the old
+15-minute threshold, so the dashboard banner and the footer dot greyed out
+(«Statusdata er utdatert») while the cron was alive and the watchdog green.
+`STALE_AFTER_MS` (`src/status.ts`) is 20 minutes since; the watchdog's own
+limit is 25 (`status-watchdog.yml`).
+
 ## The font reflow (why Intel One Mono is `display: 'optional'`)
 
 `next/font` ships no metrics for Intel One Mono, so `adjustFontFallback`

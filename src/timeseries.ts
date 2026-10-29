@@ -45,20 +45,12 @@ export function parseRange(value: string | null): { key: string; range: SeriesRa
 // floor. Filtering here, not in the AE SQL itself, sidesteps any
 // SQL-dialect surprise (AE rejected toDateTime/CAST patterns we tried).
 //
-// MUST sit on a 6-hour UTC boundary (00/06/12/18). parseSeriesResponse
-// compares against the bucket-START key, and the 30d view buckets by 6h
-// (toStartOfInterval(timestamp, INTERVAL '6' HOUR)). An epoch mid-bucket
-// (the old 17:00) makes a straddling bucket's start key (12:00) sort before
-// the epoch, so the WHOLE 12:00–18:00 bucket is dropped on 30d — including
-// real post-epoch visits inside it — and the chart undercounts the map by
-// that bucket. On a 6h boundary the epoch aligns with every range's buckets
-// (hourly ranges divide 6h evenly), so nothing straddles.
-// REMINDER: bump this after every `reset-metrics` run — keep it on a 6h
-// boundary, rounding UP to the next one so no pre-reset noise slips in.
-// 2026-10-23 00:00: the owner reset the counters (reset-metrics, run at
-// 21:30 UTC on 2026-10-22) to start the public stats clean; the next 6h
-// boundary rounding up. (Before it: 2026-07-03 18:00, the relaunch after the
-// D1 storage outage — docs/history.md.)
+// MUST sit on a 6-hour UTC boundary (00/06/12/18; tests/timeseries.test.ts):
+// the filter compares bucket-START keys, so a mid-bucket epoch drops a
+// straddling 6h bucket's real visits and the chart undercounts the map (why:
+// docs/history.md). Bump it after every `reset-metrics` run, rounding UP to
+// the next boundary so no pre-reset noise slips in. Now: the reset of
+// 2026-10-22 21:30 UTC, rounded up.
 export const METRICS_EPOCH = '2026-10-23 00:00:00'
 
 // Build the AE SQL query. Identifiers are fixed strings (dataset, blob index,

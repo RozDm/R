@@ -3,7 +3,8 @@ import { ERROR_COPY } from '@/data/i18n-error'
 
 // UI copy for both languages. `nb` defines the shape; `en` is typed against
 // it, so a key added in one language and forgotten in the other fails the
-// typecheck. Blog posts are Norwegian-only and live in content/blog/.
+// typecheck. Blog posts are content, not copy: content/blog/ (Norwegian) and
+// content/blog/en/ (English).
 
 const nb = {
   skipToContent: 'Hopp til hovedinnhold',

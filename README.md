@@ -141,94 +141,30 @@ wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, METRICS_AE,
                     www, mta-sts)
 ```
 
-### Uptime monitoring
+### How it works
 
-The cron pings every entry of `monitors()` (`src/status.ts`) every 5 minutes and
-writes a JSON snapshot to KV (`status` key). `/api/status` serves the snapshot
-(edge-cached 60 s — well under the cron interval, so refreshes still land
-promptly while KV reads stay near zero); the front page (`/#status`) renders
-it with per-service history, capped at `HISTORY_LIMIT` (149 ≈ 12.5h — the
-monolith's 1:4:9 proportions). The dashboard polls adaptively: 90s when all
-is up, 30s during an incident. The public snapshot carries monitor names
-only, no URLs. A snapshot older than 20 minutes (the cron itself stopped)
-turns the banner and the footer dot grey ("Statusdata er utdatert") instead
-of repeating the last known state.
+The details, and the rules behind them, live in the agent docs: `CLAUDE.md`
+(site-wide), `src/CLAUDE.md` (the Worker and its API), `.github/CLAUDE.md`
+(CI/CD and the ops workflows) and `docs/cloudflare-security.md` (the zone) —
+kept in one place so they can't drift apart here.
 
-Add a service by extending `monitors()`. Use `internal: true` for routes that
-point at this site itself (the ASSETS binding is required — Workers block
-self-fetches over the public URL). A check counts as up only on a final HTTP
-200 (redirects followed).
-
-State-change alerts go out by e-mail and are flap-damped: «nede» is sent only
-after two consecutive failed probes (a single 5-minute blip stays silent),
-«oppe igjen» on the first success after an alerted outage.
-
-### Metrics
-
-Counters live in a D1 database (`rozsoshnykh-metrics-v2`, schema in
-`schema/metrics.sql`) with atomic upserts — no read-modify-write races and a
-100k writes/day free budget. KV holds only the uptime snapshot.
-
-- **Per-post views**: `GET/POST /api/views/<slug>`. Counted once per browser
-  session from the post page, on the first human input (never on load alone,
-  never from an automated browser — like the visit beacon); bot UAs,
-  datacenter networks and cross-origin POSTs are ignored, and a POST only
-  counts if the slug resolves to a published post page (checked against the
-  static export via the ASSETS binding), so spoofed headers can't mint junk
-  rows in D1. Both language versions of a post share one counter.
-- **Visitors by country**: every page mounts a tiny `VisitBeacon` that fires
-  a single `POST /api/visit` per browser per day (a localStorage date, so
-  several pages, tabs or a return that day count as one besøk), and only on
-  the first human input — never on load alone, never from an automated
-  browser (`lib/visit.ts`). The Worker reads
-  `request.cf.country` on that one POST and upserts `geo` in D1.
-  `GET /api/geo` feeds the world map on the front page (a build-time
-  `public/world.svg`, not a JS bundle) and is edge-cached for 60s. No
-  cookies, no per-visitor tracking. The country legend renders flag emoji
-  through a self-hosted Twemoji subset (`public/fonts/`, `@font-face` with a
-  regional-indicator `unicode-range` so it only downloads when a flag is on
-  the page) — Windows/Linux without flag glyphs would otherwise show letter
-  pairs.
-- **Reading time** is computed from markdown (~200 wpm, fenced code excluded).
-- **Time-series** of visits lives in a Workers Analytics Engine dataset
-  (`rozsoshnykh_metrics`, binding `METRICS_AE`). The `/api/visit` beacon
-  appends one AE point per counted visit (country plus the network's ASN and
-  operator name — a bot diagnostic, never stored in D1, no IP); `GET /api/timeseries?metric=geo&range=24h|7d|30d|all`
-  reads them back via the AE SQL API and feeds the front-page **Trends**
-  card (dot plot over a zero-filled bucket grid). The windowed tabs
-  (24t/7d/30d) show the AE count for their window; the **Alt** (all-time)
-  tab shows the exact D1 total — the same number as the map — so the grand
-  total never drifts from the map under AE sampling. Only Besøk is graphed
-  even though the API still accepts the `view` channel. Free tier: 100,000
-  data points written and 10,000 read queries per day, 3 months' retention;
-  reads are sampled. Reading needs two runtime secrets
-  (`CF_ACCOUNT_ID` + `AE_API_TOKEN`, the latter with `Account
-  Analytics:Read`); without them the route degrades to an empty series
-  and the Trends card shows "Ingen data ennå". AE is append-only —
-  counters reset via `reset-metrics` (D1), and `METRICS_EPOCH` in
-  `src/timeseries.ts` filters out pre-relaunch AE points client-side
-  (bump it after every reset run).
-
-### Contact form (`/kontakt`)
-
-`POST /api/contact` → validate → Cloudflare Turnstile → store in D1 (`contact`,
-also a backup copy) → send via Email Routing (`contact@rozsoshnykh.no`, Reply-To
-the sender). Defence in depth: a 32 KB body cap + same-origin check + bot-UA
-filter + off-screen honeypot + a per-address burst cap (`WRITE_LIMITER`) +
-Turnstile + per-IP rate limit (3 / 10 min; IPv6 by /64) + per-email rate limit
-(2 / hour, catches IP-rotating spammers reusing a throwaway address) + short-
-window dedup (identical address + message within 2 min is ack'd without a
-second mail). All windows are exact: ISO cutoffs against the ISO `at`
-column. Both rate-limit windows query D1; a daily cron prunes the table
-to a 30-day window. If the mail leg fails, the row is deleted again and the
-form reports the error with its text intact, so a retry is a fresh
-submission (not a silently ack'd duplicate). Turnstile tokens are
-single-use: the form resets the widget after every non-OK response.
-
-Turnstile is feature-gated: the widget renders only when `TURNSTILE_SITE_KEY`
-is set, and the worker enforces it only when `TURNSTILE_SECRET` is set. With
-neither, the form works on its other defences; a secret without a site key
-refuses every submission, so `deploy.yml` fails on an empty site key.
+- **Uptime**: a 5-minute cron probes the services in `monitors()`
+  (`src/status.ts`), keeps a rolling snapshot in KV and mails flap-damped
+  «nede» / «oppe igjen» alerts. The front page's status section shows it and
+  greys out when the cron itself goes quiet; an hourly GitHub workflow
+  watches the watcher.
+- **Visits**: one beacon per browser per day, sent on the first human input
+  and never from an automated browser (`lib/visit.ts`), counts the country
+  in D1 (the world map) and a timestamped point in Analytics Engine (the
+  Trends chart). Post views count the same way. No cookies, no IP addresses
+  in the statistics.
+- **Contact form** (`/kontakt`): Cloudflare Turnstile, a honeypot, header
+  gates, a per-client burst cap and D1 rate limits ahead of Email Routing;
+  the stored copy is pruned after 30 days.
+- **Security**: a hash-based CSP baked into every page at build, HSTS
+  preload, a scanner-blocking WAF rule and rate limiting at the edge,
+  DNSSEC, DMARC `p=reject` and MTA-STS. Pages never depend on the Worker, so
+  a spent request quota can't take them down.
 
 ### Manual deploy
 
