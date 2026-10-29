@@ -14,10 +14,11 @@
   font-display: swap;
 }
 
+/* Intel One Mono's four subsets (lib/fonts.ts), then the system monospace. */
 @theme {
   --animate-fade-in: fade-in 0.8s ease-out both;
-  --font-sans: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-mono: var(--font-intel-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-intel-mono), var(--font-intel-mono-ext), var(--font-intel-mono-vi), var(--font-intel-mono-sym), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: var(--font-intel-mono), var(--font-intel-mono-ext), var(--font-intel-mono-vi), var(--font-intel-mono-sym), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .font-flag {

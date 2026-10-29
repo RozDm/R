@@ -62,7 +62,8 @@ jobs:
   # flows, axe in both themes, no console error or CSP violation. In the
   # official Playwright image, which brings Chromium, WebKit and their system
   # packages — installing them on the bare runner took 3–37 min. Only the
-  # tests run in it: the Next build there failed to load next/font/google.
+  # tests run in it, on the out/ the build job made and checked (one build
+  # per run).
   # The tag must equal @playwright/test's version (tests/workflows.test.ts),
   # the digest pins it like the actions' SHAs; uid 1001 is the runner's, so
   # the checkout stays writable.
