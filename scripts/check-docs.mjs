@@ -59,7 +59,7 @@ export function checkDocs(root = ROOT) {
 
   const read = (f) => (fileSet.has(f) ? fs.readFileSync(path.join(root, f), 'utf8') : '')
   const skills = files.filter((f) => /^\.claude\/skills\/[^/]+\/SKILL\.md$/.test(f))
-  const docs = ['CLAUDE.md', 'src/CLAUDE.md', '.github/CLAUDE.md', 'README.md', ...skills]
+  const docs = ['CLAUDE.md', 'components/CLAUDE.md', 'src/CLAUDE.md', '.github/CLAUDE.md', 'README.md', ...skills]
   const text = Object.fromEntries(docs.map((d) => [d, read(d)]))
   const anyDoc = (needle, among = ['CLAUDE.md', 'README.md', '.github/CLAUDE.md']) =>
     among.some((d) => text[d].includes(needle))

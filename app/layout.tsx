@@ -1,35 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Intel_One_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/context/ThemeContext'
 import VisitBeacon from '@/components/effects/VisitBeacon'
 import HtmlLang from '@/components/effects/HtmlLang'
 import { SITE_URL, AUTHOR, SITE_TITLE, SITE_DESCRIPTION, SITE_TAGLINE, THEME_BG } from '@/lib/site'
 import { RSS_ALTERNATE, personJsonLd as buildPersonJsonLd, serializeJsonLd } from '@/lib/metadata'
-
-const intelOneMono = Intel_One_Mono({
-  subsets: ['latin'],
-  // 400 body · 500 (font-medium) · 600 (prose <strong>/<h3>) · 700 (font-bold).
-  // 300 dropped — unreferenced in markup and not a typography-plugin default.
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-intel-mono',
-  // display:optional, not swap. next/font ships no bundled metrics for Intel
-  // One Mono, so adjustFontFallback can't synthesise a size-adjusted fallback
-  // (verified: the build emits no "Intel One Mono Fallback" @font-face). With
-  // display:swap that meant the whole page laid out in the system monospace
-  // and then REFLOWED when the web font arrived — the visible text "jerk" on
-  // first paint. `optional` gives the font a short block window and, if it
-  // isn't ready, keeps the fallback for that paint and never swaps late — so
-  // the layout can't shift. The font is immutably cached (see cacheControlFor),
-  // so repeat visits and client-side navigations render Intel One Mono.
-  display: 'optional',
-  // Preload is what makes `optional` work on a FIRST visit: without it the
-  // woff2 is discovered only after the CSS is parsed, misses the ~100ms block
-  // window, and a newcomer's whole first page renders in the system monospace
-  // (measured live: DejaVu/Consolas on a cold load). It's a variable font, so
-  // this is one ~21 KB latin file covering every weight.
-  preload: true,
-})
+import { fontClasses } from '@/lib/fonts'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -98,7 +74,7 @@ export default function RootLayout({
   return (
     <html
       lang="nb"
-      className={intelOneMono.variable}
+      className={fontClasses}
       // globals.css sets `scroll-behavior: smooth` for in-page anchors. This
       // attribute lets Next switch it off while it resets scroll on a route
       // change; without it that reset animates, Next's follow-up

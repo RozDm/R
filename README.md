@@ -14,6 +14,8 @@ Live: https://rozsoshnykh.no
 - Next.js 16 (App Router, `output: 'export'`) + React 19, TypeScript 6, Tailwind v4
 - Content: markdown posts in `content/blog/` (gray-matter + react-markdown +
   remark-gfm + rehype-highlight for code blocks)
+- Font: Intel One Mono, self-hosted from Fontsource through `next/font/local`
+  (`lib/fonts.ts`), so the build needs no network
 - Hosting: Cloudflare Workers + Static Assets (binding `ASSETS`), KV (`STATUS`),
   D1 (`METRICS`), Analytics Engine (`METRICS_AE`), a rate-limiting binding
   (`WRITE_LIMITER`, 20 writes/min per address), Email Routing
@@ -114,9 +116,11 @@ data/               Skills, certifications, tag canon + aliases (tags.ts), UI
 docs/               history.md — incident history, the "why" behind CLAUDE.md's
                     hard rules; cloudflare-security.md — the zone's edge
                     security on the Free plan (agent docs: CLAUDE.md sitewide,
-                    src/CLAUDE.md worker, .github/CLAUDE.md workflows)
+                    components/CLAUDE.md front end, src/CLAUDE.md worker,
+                    .github/CLAUDE.md workflows)
 lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
-                    stars.ts, site.ts (name/roles/titles/colours per language),
+                    stars.ts, fonts.ts (the self-hosted body font), site.ts
+                    (name/roles/titles/colours per language),
                     metadata.ts (pageMetadata), i18n.ts + use-lang.ts (NO/EN
                     paths and language), blog-paths.ts, feed.ts (RSS per
                     language), og-site-card.tsx, og-post-card.tsx, og-fonts.ts
@@ -144,9 +148,10 @@ wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, METRICS_AE,
 ### How it works
 
 The details, and the rules behind them, live in the agent docs: `CLAUDE.md`
-(site-wide), `src/CLAUDE.md` (the Worker and its API), `.github/CLAUDE.md`
-(CI/CD and the ops workflows) and `docs/cloudflare-security.md` (the zone) —
-kept in one place so they can't drift apart here.
+(site-wide), `components/CLAUDE.md` (front-end internals), `src/CLAUDE.md`
+(the Worker and its API), `.github/CLAUDE.md` (CI/CD and the ops workflows)
+and `docs/cloudflare-security.md` (the zone) — kept in one place so they
+can't drift apart here.
 
 - **Uptime**: a 5-minute cron probes the services in `monitors()`
   (`src/status.ts`), keeps a rolling snapshot in KV and mails flap-damped

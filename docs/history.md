@@ -1,8 +1,8 @@
 # Incident history — the "why" behind the hard rules
 
-Background for the rules in `CLAUDE.md` and `src/CLAUDE.md`. Nothing here is
-needed for day-to-day changes; read this when a rule looks wrong or you are
-tempted to undo one.
+Background for the rules in the `CLAUDE.md` files (root, `components/`,
+`src/`, `.github/`). Nothing here is needed for day-to-day changes; read this
+when a rule looks wrong or you are tempted to undo one.
 
 ## 2026-07-03 — the D1 database died (and ghost-locked its name)
 
@@ -59,19 +59,30 @@ Two late ticks plus the 60 s edge cache on `/api/status` crossed the old
 `STALE_AFTER_MS` (`src/status.ts`) is 20 minutes since; the watchdog's own
 limit is 25 (`status-watchdog.yml`).
 
-## The font reflow (why Intel One Mono is `display: 'optional'`)
+## The body font: self-hosted, `display: 'optional'`
 
-`next/font` ships no metrics for Intel One Mono, so `adjustFontFallback`
-can't synthesise a size-adjusted fallback — the build emits no
-"Intel One Mono Fallback" @font-face. With `display: 'swap'` the page laid
-out in the system monospace and then **reflowed** when the web font arrived:
-a visible text-jerk on every cold first paint. `optional` blocks briefly and,
-if the font isn't ready, keeps the fallback for that paint and never swaps
-late — no layout shift ever. The font is immutably cached
-(`public/_headers`), so repeat visits and client-side navigations render the
-real font with no shift; only a cold first paint may briefly use system mono.
-Don't switch back to `swap` without first adding a hand-built metric-matched
-fallback @font-face.
+Until 2026-10-29 `next/font/google` downloaded Intel One Mono on every
+build: Google unreachable meant no build and no deploy, and the Next build
+in the e2e container never worked. `lib/fonts.ts` now serves the Fontsource
+variable woff2 files through `next/font/local` (checked: with `.next`
+cleared and no network the Google variant failed, the local one builds).
+Turbopack names a local family after its JS const and the CSS variable
+carries that name, so a `font-family` set through `declarations` no longer
+matched the @font-face; hence one family per unicode-range subset, all four
+in the stack in `app/globals.css` (a page fetches latin up front, the
+others only for a character in their range).
+
+There is no size-adjusted fallback: `next/font/google` had no metrics for
+Intel One Mono, and `next/font/local`'s would be built on Arial
+(proportional), so `adjustFontFallback: false`. With `display: 'swap'` the
+page laid out in the system monospace and then **reflowed** when the web
+font arrived: a visible text-jerk on every cold first paint. `optional`
+blocks briefly and, if the font isn't ready, keeps the fallback for that
+paint and never swaps late — no layout shift ever. The font is immutably
+cached (`public/_headers`), so repeat visits and client-side navigations
+render the real font with no shift; only a cold first paint may briefly use
+system mono. Don't switch back to `swap` without first adding a hand-built
+metric-matched fallback @font-face.
 
 ## The all-black world map
 
@@ -189,7 +200,8 @@ Audit follow-up, three lessons that became rules:
 
 ## Measurements behind front-end rules
 
-The numbers the rules in `CLAUDE.md` rest on; re-measure before undoing one.
+The numbers the rules in `CLAUDE.md` and `components/CLAUDE.md` rest on;
+re-measure before undoing one.
 
 - **No opacity-0 start on the first screen** (the hero, `app/template.tsx`
   on a document's first page). Measured 2026-10-22 on throttled mobile: with

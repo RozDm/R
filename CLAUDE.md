@@ -1,410 +1,238 @@
 # CLAUDE.md
 
-Personal portfolio + blog for Dmytro Rozsoshnykh, live at https://rozsoshnykh.no.
-Next.js 16 static export (App Router, `output: 'export'`) served by Cloudflare
-Workers static assets, with a Worker for `/api/*`. React 19, TypeScript 6, Tailwind v4. The site is Norwegian (nb-NO) at
-the root with an English twin under `/en/` (front page, contact, privacy,
-blog). Code and comments are English.
+Personal portfolio + blog for Dmytro Rozsoshnykh, live at https://rozsoshnykh.no:
+a Next.js 16 static export (App Router, `output: 'export'`) served by
+Cloudflare Workers static assets, plus a Worker for `/api/*`. React 19,
+TypeScript 6, Tailwind v4. Norwegian (nb-NO) at the root, an English twin
+under `/en/` (front page, contact, privacy, blog). Code and comments: English.
 
 ## Where the rules live
 
-Context is split so a session loads only what its task touches:
-- this file — site-wide map, commands, conventions;
-- `src/CLAUDE.md` — Worker internals: modules, bindings, the `/api/*` surface,
-  worker tests (loads when you open anything under `src/`);
-- `.github/CLAUDE.md` — deploy pipeline and the ops workflows (watchdog,
-  analytics report, metrics reset, D1 repair);
-- `.claude/skills/browser-check` — the Playwright recipe for looking at a
-  built page;
-- `docs/cloudflare-security.md` — the zone's edge security on the Free plan
-  (WAF custom rule, rate limiting, Bot Fight Mode, AI bots): the deployed
-  config, verified Free limits, execution order, known pitfalls and the
-  owner's open dashboard to-do; read it before touching zone security or
-  when a 403/429 isn't the Worker's;
-- `docs/history.md` — the incidents behind the hard rules; read it only when
-  a rule seems wrong or you are tempted to undo one.
+Each file loads only when a task touches its area:
+- this file — site-wide map, commands, conventions, gotchas;
+- `components/CLAUDE.md` — front-end internals: widgets, counters, contact
+  form, theme, navigation, UI conventions;
+- `src/CLAUDE.md` — the Worker: modules, bindings, the `/api/*` surface,
+  serving and CSP rules, worker tests;
+- `.github/CLAUDE.md` — CI/deploy and the ops workflows;
+- `.claude/skills/browser-check` — Playwright recipe for a built page;
+- `docs/cloudflare-security.md` — the zone's edge security (WAF, rate
+  limiting, bots, owner's dashboard to-do): read before touching zone
+  security or when a 403/429 isn't the Worker's;
+- `docs/history.md` — incidents behind the hard rules: read only when a rule
+  seems wrong or you want to undo one.
 
 A PR that adds, moves or removes files in `src/`, `app/`, `components/` or
-`lib/`, or changes the `/api/*` surface, updates the matching file above in
-the same PR — structure drift is worse than missing docs. Enforced:
-`scripts/check-docs.mjs` (run by `tests/docs.test.ts`, so CI blocks the
-merge) fails when a doc names a path that doesn't exist, or when a Worker
-module, `/api/*` route, `app/` route dir, `lib/` file, workflow, script,
-skill or hook is in no doc. The Stop hook `.claude/hooks/stop-docs.mjs` runs
-it before a session ends, and also blocks once when the branch adds, removes
-or renames such files without touching any doc — fix the doc, or say why
-none applies.
+`lib/`, or changes the `/api/*` surface, updates the matching doc in the same
+PR. `scripts/check-docs.mjs` (run by `tests/docs.test.ts`, so CI blocks)
+fails when a doc names a missing path or when a Worker module, `/api/*`
+route, `app/` route dir, `lib/` file, workflow, script, skill or hook is in
+no doc. The Stop hook `.claude/hooks/stop-docs.mjs` runs it before a session
+ends and blocks once when the branch changes that structure without
+touching a doc.
 
 ## Working efficiently
 
-Token economy is a standing requirement of every task here, not a mode to
-switch on: read only the part of a file the task needs (Grep first, then
-`offset`/`limit`), batch independent calls, don't re-run what already
-answered, keep output and replies short.
+Token economy is standing policy: Grep first, then read only the part you
+need (`offset`/`limit`); batch independent calls; don't re-run what already
+answered; keep output and replies short.
 
-- `worker-configuration.d.ts` (generated: `npm run cf-typegen`),
-  `package-lock.json` (npm owns it) and `public/world.svg` (built by
-  `prebuild`) are denied to Read in `.claude/settings.json`, skipped by
-  Grep/Glob via `.ignore`, and shown as binary by `git diff` via
-  `.gitattributes`; the PreToolUse hook `.claude/hooks/guard-bash.mjs`
-  denies shell reads of them (`cat`, `grep`, `git show rev:file`, …).
-  `git diff --stat` tells you whether they changed.
-- `npm run check` runs lint + typecheck + tests in one call. Run
-  `npm run build` only when the change touches pages, metadata, the export
-  or `scripts/`.
-- GitHub MCP: fetch one thing. PR CI → `pull_request_read` `get_check_runs`;
-  the deploy → `actions_list` `list_workflow_runs` with
-  `resource_id: deploy.yml`, `perPage: 1`. Unpaged run listings repeat every
-  squashed commit message.
-- After opening a PR, don't arm `send_later` check-ins: a green `check`
-  auto-merges within minutes and the PR subscription wakes the session on
-  anything red. Once it merges, look at the deploy run once — its smoke step
-  is the real gate.
-- Commit messages: a subject plus a few lines at most. PR bodies: what
-  changed and why in short bullets — no file-by-file tour, the diff has it.
-- Replies to the owner (who writes in Russian): outcome first, then only
-  what needs their decision or action; no recap of the diff.
+- Generated files — `worker-configuration.d.ts` (`npm run cf-typegen`),
+  `package-lock.json`, `public/world.svg` (`prebuild`) — are denied to Read
+  (`.claude/settings.json`), skipped by Grep/Glob (`.ignore`), binary to
+  `git diff` (`.gitattributes`); `.claude/hooks/guard-bash.mjs` denies shell
+  reads of them. `git diff --stat` says whether they changed.
+- `npm run check` = lint + typecheck + tests. `npm run build` only when the
+  change touches pages, metadata, the export or `scripts/`.
+- GitHub MCP: one thing per call. PR CI → `pull_request_read`
+  `get_check_runs`; the deploy → `actions_list` `list_workflow_runs`,
+  `resource_id: deploy.yml`, `perPage: 1` (unpaged listings repeat every
+  squashed commit message).
+- After opening a PR, don't arm `send_later`: green `check` auto-merges in
+  minutes and the subscription wakes the session on anything red. After the
+  merge look at the deploy run once — its smoke step is the real gate.
+- Commit messages: subject + a few lines. PR bodies: short bullets, what and
+  why. Replies to the owner (writes Russian): outcome first, then only what
+  needs their decision; no recap of the diff.
 
 ## Architecture
 
-- `app/`, `components/` — App Router, `trailingSlash: true`, Tailwind v4 (no
-  config file, `@theme` in `app/globals.css`).
-- Routes (Norwegian at the root, English twins under `/en/`): `/` + `/en/`
-  (Hero/Skills/Certifications/Status/Visitors/Trends), `/blogg/…` +
-  `/en/blog/…` (index, `[slug]`, `tag/[slug]`), `/kontakt` + `/en/contact`,
-  `/personvern` + `/en/privacy` (privacy notice, linked from the footer and
-  the contact page), plus `feed.xml` + `en/feed.xml`, `sitemap`, `robots`,
-  `manifest`, OG images, `/icons/*.png` (build-time PNGs of `app/icon.svg`
-  for the manifest + apple-touch-icon, `app/icons/[name]/route.tsx`, which
-  also builds `favicon.ico` — the build copies it to `/favicon.ico`) and
-  `/.well-known/security.txt` (static in `public/`, RFC 9116 — bump its
-  `Expires` yearly; `tests/static-assets.test.ts` fails 30 days ahead). `https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt`
-  is the MTA-STS policy for mail to the domain: a custom domain of the Worker,
-  which proxies Cloudflare Email Routing's policy (`src/routes/mta-sts.ts`). `error.tsx` / `global-error.tsx` are the HAL-voiced
+- `app/` + `components/` — App Router, `trailingSlash: true`, Tailwind v4
+  (no config file; `@theme` in `app/globals.css`).
+- Routes: `/` + `/en/` (Hero/Skills/Certifications/Status/Visitors/Trends),
+  `/blogg/…` + `/en/blog/…` (index, `[slug]`, `tag/[slug]`), `/kontakt` +
+  `/en/contact`, `/personvern` + `/en/privacy` (the Norwegian notice is
+  authoritative — change both), `feed.xml` + `en/feed.xml`, sitemap, robots,
+  manifest, OG images, `/icons/*.png` + `favicon.ico` (build-time, from
+  `app/icon.svg` via `app/icons/[name]/route.tsx`; the build copies the ico
+  to `/favicon.ico`), `/.well-known/security.txt` (static, RFC 9116: bump
+  `Expires` yearly — `tests/static-assets.test.ts` fails 30 days ahead),
+  `/status` → `/#status` (`public/_redirects`; www → apex and HTTP → HTTPS
+  are the edge's, `zone-rules.yml`).
+  `https://mta-sts.rozsoshnykh.no/.well-known/mta-sts.txt` is the mail
+  MTA-STS policy, a Worker custom domain proxying Cloudflare Email Routing's
+  (`src/routes/mta-sts.ts`). `error.tsx` / `global-error.tsx`: HAL-voiced
   «Systemfeil» boundaries.
-- Languages: ALL UI copy lives in `data/i18n.ts` — `nb` defines the shape,
-  `en` is typed against it, `tests/i18n.test.ts` checks parity; never
-  hard-code copy in a component. One exception: `app/error.tsx` reads
-  `ERROR_COPY` from `data/i18n-error.ts` (spread into `nb`/`en`, so one
-  source) — it loads on every page in its own chunk, and importing `DICT`
-  there put a second copy of the dictionary on every page. Server
-  components take `lang` from their page (both languages share `HomePage`,
-  `ContactPage` and the blog page components); client components call
-  `useLang()`. Links between pages go through `localePath()`
-  (`lib/i18n.ts`, the static pairs); blog posts and tags pair dynamically
-  and pass their twin as `Header alternate` (the NO/EN switch) +
-  `pageMetadata({ languages })` (hreflang). Bilingual data uses
-  `Localized` + `pick()`. The export always says `<html lang="nb">`: the
-  build (`scripts/finalize-export.mjs`) rewrites `/en/` documents to `en`,
-  `HtmlLang` keeps it right on client navigation, and the theme head script
-  sets it on any `/en/` path before paint: the one `404.html` answers `/en/`
-  misses too and shows its English copy on `html[lang=en]`. `/en/privacy/` translates `/personvern/` (the Norwegian
-  one is authoritative) — change both.
-- Metadata: every page builds it with `pageMetadata()` (`lib/metadata.ts`;
-  `lang: 'en'` on English pages sets og:locale, hreflang, the English OG card
-  and the `/en/feed.xml` alternate).
-  Next merges route metadata SHALLOWLY, so a page setting only part of
-  `openGraph`/`alternates` drops og:url, og:image, og:site_name and the RSS
-  alternate. The root layout has no canonical/og:url on purpose (the 404
-  inherits it). Name, roles, site title/description and the light/dark
-  background colours (`THEME_BG`, mirrored by themeColor, the manifest and
-  `ThemeContext`) live in `lib/site.ts`; the contact address in
-  `src/contact.ts` (shared with the Worker) — never hard-code them.
-- Serving: the asset server answers every page and file straight from
-  `out/` — no Worker request (`run_worker_first`: `/api/*` and the MTA-STS
-  policy only; a miss gets the 404 page, never the Worker). Every Worker invocation counts against the
-  free plan's 100k requests/day and past it gets a 429; asset requests are
-  free, unlimited and keep working past it, so the quota can only take out
-  `/api/*`, never the pages. What the Worker used to do per request is done
-  once at build by `scripts/finalize-export.mjs` (postbuild): each page's
-  hash-based CSP as a `<meta>` atop `<head>`, ahead of any script (`withMetaCsp`,
-  `src/csp.ts`), `lang="en"` for `/en/`, the body font's preload on pages
-  Next leaves without it (the 404), `/favicon.ico`, and a 301 from every
-  slash-less page path into `out/_redirects` (the asset server's own is a
-  307); `npm run check:csp` re-checks the hashes in CI, deploy and smoke.
-  Headers come from `public/_headers` (`/*`: HSTS, the header CSP
-  `HEADER_CSP` — `frame-ancestors`, which `<meta>` can't carry, and NO fetch
-  directive, or it would veto the hashes — `Reporting-Endpoints` and the
-  rest; `X-Frame-Options` on the page paths; caches; OG `Content-Type`),
-  kept equal to the Worker's own set by `tests/static-assets.test.ts`;
-  `/status` → `/#status` in `public/_redirects`; www → apex and HTTP → HTTPS
-  at the edge (`zone-rules.yml`). The zone's rate limiting rule
-  (`docs/cloudflare-security.md`) excludes the static prefixes by hand.
-- `src/` — the Cloudflare Worker for `/api/*`, the MTA-STS policy and the
-  crons (canonical-host 301 for the API; an `/api/` path no route claims
-  gets the 404 page with the `_headers` set; every 4xx/5xx is made
-  `no-store` by a zone rule, `zone-rules.yml`). Stores: KV `STATUS` (uptime snapshot only), D1
-  `rozsoshnykh-metrics-v2` (`METRICS`: view/geo counters, contact log),
-  Analytics Engine `rozsoshnykh_metrics` (`METRICS_AE`: time series).
-  Endpoints: `/api/status`, `/api/views/<slug>`, `/api/geo`, `/api/visit`,
-  `/api/timeseries`, `/api/contact`, `/api/csp-report`. Details:
-  `src/CLAUDE.md`. Every client fetch of `/api/*` uses `cache: 'no-store'` —
-  keep it (a drifted zone Browser Cache TTL would rewrite `max-age`, see
-  `src/CLAUDE.md` Rules). Each one is a Worker request: share a fetch two
-  components need (`fetchGeoCountries`, `lib/geo.ts`; `fetchStatus`,
-  `lib/status-fetch.ts` for the footer dot + dashboard), load nothing below
-  the fold before a reader nears it (the status, map and Trends widgets and
-  the footer's status dot wait for `useNearViewport`,
-  `lib/use-near-viewport.ts`) and don't poll what isn't on screen
-  (`StatusDashboard` polls only while `#status` is).
-- Visit counting: `components/effects/VisitBeacon.tsx` (mounted by
-  `app/layout.tsx`) aims at people, not page loads (`lib/visit.ts`): one
-  `POST /api/visit` per browser per local day (localStorage `visit-day`),
-  sent only on the first trusted human input (pointer move/press, touch, key,
-  wheel — never on load, never `scroll`, which a script can cause) and never
-  under `navigator.webdriver` (automation); the Worker's filters still apply
-  on top. It writes the D1 `geo` row and an AE point — the map and the
-  Trends chart are two views of one dataset. `e2e/site.e2e.ts` holds the
-  beacon to that. A post view (`ViewCounter`, one per session per post)
-  counts the same way: its POST waits for `onFirstHumanInput`
-  (`lib/visit.ts`, shared with the beacon), never under webdriver, and the
-  Worker skips datacenter ASNs as it does for `geo`. Rule for ALL client
-  counters (`VisitBeacon`, `ViewCounter`): set the dedupe flag BEFORE the
-  fetch, so StrictMode's double-invoke, remount races and a second tab can't
-  double-count. `ViewCounter` hides counts under 50 (`MIN_SHOWN`); the map
-  and Trends hide every absolute visit number (legend, tooltips, headline,
-  y-axis) until the all-time D1 total reaches `MIN_PUBLIC_VISITS`
-  (`lib/geo.ts`) — shades and the chart's shape stay, and Trends says why
-  under the chart («Samler data…»: a bare axis read as a broken chart).
-- Trends card (`components/home/Trends.tsx`): one Besøk metric, tabs
-  24t/7d/30d/**Alt**, dot plot over a zero-filled bucket grid
-  (`lib/timeseries-fill.ts`). D1 is the truth for totals, AE answers "when":
-  the windowed tabs show the sampled AE count for their window; **Alt** shows
-  the exact D1 total from `/api/geo`, the same number as the map, so it can't
-  drift under AE sampling. Alt's wave is 6h-bucketed from `METRICS_EPOCH`,
-  capped at ~90 days (`isAllRangeCapped` → a note under the chart). No AE
-  secrets → «Ingen data ennå» (`/api/timeseries` flags it `degraded`, which
-  the hourly watchdog fails on). The SVG's `viewBox` is its own rendered
-  width (ResizeObserver), so one unit is one CSS px at every width — never a
-  fixed viewBox (`docs/history.md`).
-- Visitor map (`GeoMap`): `public/world.svg` is built by
-  `scripts/build-world-svg.mjs` (`prebuild`, from the
-  `world-map-country-shapes` devDependency) and injected via
-  `dangerouslySetInnerHTML` — never set a React-managed node's innerHTML by
-  ref. Colours come from CSS (`.geo-map path`, `--map-empty`/`--map-stroke`
-  switch on `.dark`); JS only stamps `data-v` 1/2/3 from `geoBucket` (log
-  scale relative to the busiest country), so a theme toggle recolours with no
-  re-run. Keep BOTH the baked grey `fill`/`stroke` and the CSS `var()`
-  fallbacks — an unstyled SVG path renders black. `/api/geo` is fetched once
-  (`fetchGeoCountries`, `lib/geo.ts`) for the map and the Alt total.
-- Contact form: Turnstile is gated per side — the widget renders only when
-  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set at build time, the Worker verifies
-  only when the `TURNSTILE_SECRET` secret is set (both are live in prod; a
-  secret without a site key 403s every submission, so `deploy.yml` fails on
-  an empty site key; with neither, the form runs on its other defences).
-  Tokens are
-  single-use and spent before the rate-limit/mail steps, so `ContactForm`
-  resets the widget (`TurnstileHandle.reset`) after every non-OK response and
-  keeps the typed text. It reads the Worker's `{"error"}`: only a Turnstile
-  refusal asks for the challenge; the filter, an edge 429 or a widget that
-  failed to load (`onError`: the script errored, or didn't load within 10 s)
-  point to e-mail. The script loads once per document; a failed load is
-  forgotten, so a return to the form tries (and reports) again. The widget
-  takes the site's theme, not the OS's, and is drawn again when the toggle
-  flips it. Its limits, e-mail `pattern`
-  and the address come from `src/contact.ts` (`CONTACT_LIMITS`,
-  `EMAIL_PATTERN`, `CONTACT_ADDRESS` — also the footer's and the privacy
-  notice's), so the browser refuses what the Worker would.
-- TypeScript is split: app `tsconfig.json` (lib.dom), Worker
-  `tsconfig.worker.json` + generated `worker-configuration.d.ts`. After any
-  `wrangler.jsonc` change or wrangler bump run `npm run cf-typegen` and commit
-  the result — `npm run typecheck` starts with `wrangler types --check`
-  (`cf-typecheck`), which fails while the file is stale (it compares the env
-  hash and the installed workerd version, so every wrangler bump trips it).
+- Languages: ALL UI copy lives in `data/i18n.ts` (`nb` defines the shape,
+  `en` is typed against it, `tests/i18n.test.ts` checks parity) — never in a
+  component. Exception: `app/error.tsx` reads `ERROR_COPY`
+  (`data/i18n-error.ts`, spread into both): importing `DICT` there put a
+  second dictionary copy on every page. Both languages share the page
+  components (`HomePage`, `ContactPage`, the blog pages); server components
+  take `lang` from their page, client components call `useLang()`. Page links go through
+  `localePath()` (`lib/i18n.ts`); blog posts/tags pair dynamically and pass
+  their twin as `Header alternate` + `pageMetadata({ languages })`.
+  Bilingual data: `Localized` + `pick()`. The export always says
+  `<html lang="nb">`: `scripts/finalize-export.mjs` rewrites `/en/` pages,
+  `HtmlLang` follows client navigation, and the theme head script sets it on
+  any `/en/` path (the one `404.html` answers `/en/` misses too and shows
+  its English copy on `html[lang=en]`).
+- Metadata: every page uses `pageMetadata()` (`lib/metadata.ts`; `lang: 'en'`
+  sets og:locale, hreflang, the English OG card, `/en/feed.xml`). Next merges
+  metadata SHALLOWLY — a page setting part of `openGraph`/`alternates` drops
+  the rest. The root layout has no canonical/og:url (the 404 inherits it).
+  Name, roles, titles and `THEME_BG` live in `lib/site.ts`; the contact
+  address in `src/contact.ts` — never hard-code them.
+- Serving: pages and files come from `out/` via the asset server — free,
+  unlimited, no Worker request (`run_worker_first`: `/api/*` and the MTA-STS
+  policy only). The Worker's 100k requests/day (then 429) can only take out
+  `/api/*`. `scripts/finalize-export.mjs` (postbuild) bakes each page's hash
+  CSP `<meta>` (`src/csp.ts`; re-checked by `npm run check:csp`), `lang="en"`,
+  the body font's preload on the 404, `/favicon.ico` and the slash-less 301s
+  (`out/_redirects`). Headers: `public/_headers`, equal to the Worker's set
+  (`tests/static-assets.test.ts`). Details: `src/CLAUDE.md`.
+- Worker (`src/`): `/api/status`, `/api/views/<slug>`, `/api/geo`,
+  `/api/visit`, `/api/timeseries`, `/api/contact`, `/api/csp-report`, the
+  MTA-STS policy, the crons. Stores: KV `STATUS` (uptime snapshot), D1
+  `rozsoshnykh-metrics-v2` (counters, contact log), Analytics Engine
+  `rozsoshnykh_metrics` (time series). Every `/api/*` call is a Worker
+  request: client fetches use `cache: 'no-store'`, share a fetch two
+  components need, load nothing below the fold before a reader nears it
+  (`lib/use-near-viewport.ts`) and poll only what's on screen.
+- Client counters (`VisitBeacon`, `ViewCounter`) count people, not page
+  loads: first trusted human input, never under `navigator.webdriver`, the
+  dedupe flag set BEFORE the fetch. Map and Trends hide absolute numbers
+  below `MIN_PUBLIC_VISITS`. Details: `components/CLAUDE.md`.
+- Contact form: Turnstile is gated per side — widget only with
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` at build, verification only with the
+  `TURNSTILE_SECRET` secret; a secret without a site key 403s every POST, so
+  `deploy.yml` fails on an empty key. Details: `components/CLAUDE.md`.
+- TypeScript: app `tsconfig.json` (lib.dom); Worker `tsconfig.worker.json` +
+  generated `worker-configuration.d.ts`. After any `wrangler.jsonc` change or
+  wrangler bump run `npm run cf-typegen` and commit it — `npm run typecheck`
+  starts with `wrangler types --check`, which fails on a stale file.
 
 ## Commands
 
-- `npm run check` (lint + typecheck + tests) must pass before a PR;
-  `npm run build` exports to `out/` (and finalizes it, above). CI and deploy
-  then run `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
-  `.github/waf/scanner-block.expr` must block no URL the build serves — and
-  `npm run check:csp` (`scripts/check-csp.mjs`) — and
-  `npx wrangler deploy --dry-run` (the Worker bundle and `wrangler.jsonc`, no
-  credentials needed). CI then runs the browser
-  tests, `npm run test:e2e` (Playwright, `playwright.config.ts`, `e2e/`): the
-  user flows — intro, theme, NO/EN, nav and the mobile menu, blog, contact
-  form, the 404 — on desktop and mobile Chromium and an iPhone (WebKit),
-  axe in both themes, and no console error or CSP violation on any page.
-  They run on `out/` served by `scripts/serve-out.mjs` with `/api/*` stubbed
-  (`e2e/fixtures.ts` → `e2e/api-stub.ts`, whose answers
-  `tests/worker/api-stub.test.ts` holds to the real route handlers: a route
-  change that alters an answer updates the stub), so they need a build first
-  and never touch the Worker. CI builds with Cloudflare's public test
-  Turnstile key and the fixtures serve a stand-in for its script; build with
-  `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA` to run the widget
-  tests locally (without it they skip — never in CI). WebKit gets them over
-  HTTPS (`TLS=1`; why: `serve-out.mjs`). CI
-  runs them in the Playwright image (`.github/CLAUDE.md`). A UI change that breaks a
-  selector there updates the test in the same PR. `@playwright/test` and
-  `playwright-core` stay pinned to one version (axe's peer dependency would
-  otherwise pull a second, mismatched copy).
-- Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (a
-  secret-free job runs checks + build, then a job with the `production`
-  secrets syncs them, runs `npx wrangler deploy` and `scripts/smoke.sh`
-  against the live site, and `wrangler rollback` to the previous version —
-  code and pages — when the smoke test fails; details in
-  `.github/CLAUDE.md`). Never deploy from a sandbox —
-  it has no Cloudflare credentials and would skip the gate; `npm run deploy`
-  is for a local machine with `wrangler login`.
-- The merge gate is hands-off: branch protection on `main` requires `check`
-  with 0 approvals (a solo repo — you can't approve your own PR). It binds
-  non-admins only and sessions act as the owner, so never merge by hand
-  past a red or pending `check`. Open PRs
-  *ready* with squash auto-merge: green merges and deploys, red stays open.
-  To hold one for a manual look, open a draft without auto-merge.
-- Remote sessions reach the internet through an agent proxy, so
-  `curl https://rozsoshnykh.no/...` works for live diagnosis; the deploy gate
-  is still the smoke step, not ad-hoc curl. Raw TLS (`openssl s_client`)
-  bypasses the proxy and meets the sandbox's own egress gateway, not
-  Cloudflare — probe TLS versions with curl (`--tls-max`) instead.
+- `npm run check` must pass before a PR. `npm run build` exports to `out/`
+  and finalizes it. CI and deploy then run `npm run check:waf` (the WAF rule
+  `.github/waf/scanner-block.expr` blocks no URL the build serves —
+  `scripts/check-waf.mjs`), `npm run check:csp` (`scripts/check-csp.mjs`),
+  `npm run check:dict` and `npx wrangler deploy --dry-run` (bundle + config,
+  no credentials).
+- `npm run test:e2e` (Playwright, `playwright.config.ts`, `e2e/`): user
+  flows, axe in both themes, no console error or CSP violation, on desktop
+  and mobile Chromium and an iPhone (WebKit, over HTTPS — see
+  `scripts/serve-out.mjs`). Needs a build; serves `out/` with `/api/*`
+  stubbed from `e2e/api-stub.ts`, which `tests/worker/api-stub.test.ts`
+  holds to the real handlers (a route change updates the stub). CI builds
+  with Cloudflare's public test Turnstile key and the fixtures fake its
+  script; locally build with
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA` or the widget
+  tests skip (never in CI). A UI change that breaks a selector updates the
+  test in the same PR. `@playwright/test` and `playwright-core` stay pinned
+  to one version.
+- Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml`:
+  secret-free checks + build, then the `production` job syncs secrets, runs
+  `npx wrangler deploy` and `scripts/smoke.sh`, and `wrangler rollback`s
+  (code and pages) when smoke fails. Never deploy from a sandbox (no
+  credentials, skips the gate); `npm run deploy` is for a machine with
+  `wrangler login`.
+- Merge gate: `main` requires `check`, 0 approvals; it binds non-admins only
+  and sessions act as the owner — never merge by hand past a red or pending
+  `check`. Open PRs ready with squash auto-merge; to hold one, a draft
+  without auto-merge.
+- Remote sessions reach the internet through a proxy: curl to
+  `https://rozsoshnykh.no/...` works for diagnosis (the gate is still smoke).
+  Probe TLS with `curl --tls-max`, not `openssl s_client` (that bypasses the
+  proxy).
 - Session branches: one `claude/*` branch per session, reset onto
   `origin/main` before new work (else the next PR conflicts with its own
-  squashed history). Merged head branches are deleted by GitHub; only a PR
-  closed unmerged leaves one to delete by hand.
+  squashed history).
 
 ## Conventions
 
-- Front-page section pattern: mono uppercase red eyebrow
-  (`text-red-600 dark:text-red-400 font-mono … tracking-widest uppercase`) +
-  bold h2 + cards (`bg-white dark:bg-gray-900/50 rounded-xl border …
-  hover:border-red-500/30 dark:hover:border-red-500/20 transition-all
-  duration-500`) — every card, the status, map and Trends cards included,
-  staggered `animate-fade-in` delays (150/300/450/600/750ms). The hero
-  (`#about`, the first screen) has none: an opacity-0 start delays LCP
-  (`docs/history.md`).
-- Secondary links (footer, tag chips, the NO/EN switch) set
-  `prefetch={false}`: each viewport prefetch is several requests (RSC
-  payloads — asset-served, so no Worker quota, but still mobile data);
-  primary nav, post cards and prev/next keep Next's default.
-- Theme (`context/ThemeContext.tsx`): localStorage `theme` holds a
-  hand-picked theme, none means "follow the OS" — live, via a `matchMedia`
-  listener. The toggle flips it on every click, and a pick equal to the OS's
-  own theme is not stored, so flipping back is the way back to the OS.
-- Accent TEXT is red-600 in light mode / red-400 in dark; red-500 is for
-  decoration only (dots, borders, selection, chart dots) — red-500 text on
-  the light background fails WCAG AA. In-text links are underlined. Font is
-  Intel One Mono via CSS variable.
-- The 2001: A Space Odyssey theme is deliberate and load-bearing: intro
-  (`HEI %USERNAME%` → stars → monolith → HAL eye), 404, `error.tsx`, the
-  `HalIdle` screensaver (idle 75s on the front page, never while `#status` is
-  on screen or the window lacks focus; recurring, the script shortens each
-  appearance, CRT line reveal
-  via `.hal-text-reveal`), loader copy («Åpner podbay-dørene…», «Kalibrerer
-  AE-35-enheten…»), console greeting, `HISTORY_LIMIT = 149`. `%USERNAME%` is
-  a literal joke, not a template var (English: `HELLO %USERNAME%`). The
-  intro plays once per visitor (localStorage `intro-seen`), only on a plain
-  first load of a front page, `/` or `/en/` (never under
-  prefers-reduced-motion): the head script in `app/layout.tsx` marks it seen
-  when a visitor lands anywhere else or on a `/#hash` deep link. Any key or
-  click skips it.
-- Blog posts: Norwegian in `content/blog/<slug>.md`, English in
-  `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>`; a post
-  may exist in one language only. Frontmatter `title`, `description`, `date`
-  (ISO), `tags`, optional `updated` and `draft: true`. Twins share date,
-  `updated`, tags and draft — `tests/blog-pairs.test.ts` fails otherwise, so
-  an edit to one updates both; `/new-post` writes both drafts. `lib/blog.ts`
-  takes `lang` everywhere, URLs come from `lib/blog-paths.ts`, and one view
-  counter covers both versions (`viewKey`: the Norwegian slug). Tags are
-  canonical across languages (`lib/tags.ts` normalizes; canon + aliases in
-  `data/tags.ts`); `TAG_LABELS_EN` gives the Norwegian-word tags their
-  English label, which also forms the English tag URL. Reading time is
-  computed; code blocks are highlighted at build by `rehype-highlight` (theme
-  in `app/globals.css`, drawn for the white block `PostPage` gives `pre` in
-  light mode — Typography's own is dark; e2e checks the contrast in both
-  themes), and each `pre` is focusable, since a long line scrolls it.
-  Images: `![alt](/images/<slug>/file.webp)`, the file
-  in `public/images/<slug>/`; `rehypePostImages` (`lib/post-images.ts`, page
-  and RSS) stamps width/height + lazy loading and fails the build on an
-  external image (the CSP's `img-src 'self' data:` would block it), a
-  missing file, no alt text or an unreadable format. `draft: true` keeps a post off every public surface
-  in production builds (`NODE_ENV` filter in `getPostSlugs`/`getAllPosts`);
-  `npm run dev` shows drafts with a red «Utkast» badge.
-- SEO: canonicals + trailing slash everywhere, OG images via `next/og` (in
-  Intel One Mono — `lib/og-fonts.ts` reads Fontsource's WOFF files; next/og
-  can't read the WOFF2 next/font serves),
-  JSON-LD (Person + WebSite sitewide — the Person from `personJsonLd()` in
-  `lib/metadata.ts`, with `knowsAbout` from `data/skills.ts` minus the
-  learning group and `hasCredential` from `data/certifications.ts`, with
-  the `url` a certificate may carry — which also makes its card a link; a
-  card without one shows no `›` —
-  BlogPosting + image + BreadcrumbList per post), RSS at `/feed.xml` +
-  `/en/feed.xml`, hreflang between language twins (pages + sitemap),
-  prev/next + tag pages. Tag pages are noindex and out of the sitemap unless
-  listed in `INDEXED_TAGS` (`data/tags.ts`) — add a tag ONLY on the owner's
-  explicit command, never by post count. `robots.index: false` in
+- UI conventions (section pattern, accent colours, prefetch, theme): see
+  `components/CLAUDE.md`. Font: Intel One Mono via CSS variables.
+- The 2001: A Space Odyssey theme is deliberate and load-bearing — intro,
+  404, `error.tsx`, the `HalIdle` screensaver, loader copy, console greeting,
+  `HISTORY_LIMIT = 149` (1:4:9). `%USERNAME%` is a literal joke, not a
+  template var. Details: `components/CLAUDE.md`.
+- Blog posts: Norwegian `content/blog/<slug>.md`, English
+  `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>`; one
+  language only is fine. Frontmatter `title`, `description`, `date` (ISO),
+  `tags`, optional `updated`, `draft: true`. Twins share date, `updated`,
+  tags and draft (`tests/blog-pairs.test.ts`); `/new-post` writes both
+  drafts. `lib/blog.ts` takes `lang` everywhere, URLs come from
+  `lib/blog-paths.ts`, one view counter per post (`viewKey`: the Norwegian
+  slug). Tags are canonical across languages (`lib/tags.ts`; canon + aliases
+  in `data/tags.ts`; `TAG_LABELS_EN` gives English labels and URLs). Code
+  blocks: highlighted at build by `rehype-highlight`, palette in
+  `app/globals.css` (e2e checks both themes). Images:
+  `![alt](/images/<slug>/file.webp)`, file in `public/images/<slug>/`;
+  `rehypePostImages` (`lib/post-images.ts`) stamps size + lazy loading and
+  fails the build on an external image (the CSP's `img-src 'self' data:`
+  would block it), a missing file, no alt text or an unreadable format. `draft: true` keeps a post off every public surface in
+  production builds; `npm run dev` shows drafts with an «Utkast» badge.
+- SEO: canonicals with trailing slashes, OG images via `next/og` (Intel One
+  Mono from Fontsource WOFF, `lib/og-fonts.ts` — next/og can't read WOFF2),
+  JSON-LD (Person + WebSite sitewide from `personJsonLd()` in
+  `lib/metadata.ts`: `knowsAbout` from `data/skills.ts` minus the learning
+  group, `hasCredential` from `data/certifications.ts` — a certificate `url`
+  also makes its card a link; BlogPosting + BreadcrumbList per post), RSS per
+  language, hreflang (pages + sitemap), prev/next, tag pages. Tag pages are
+  noindex and out of the sitemap unless in `INDEXED_TAGS` (`data/tags.ts`) —
+  add one ONLY on the owner's command. `robots.index: false` in
   `app/layout.tsx` until launch — flip it only when asked (the e2e test
   "pre-launch: every page tells search engines noindex" flips with it), then
-  submit the sitemap in Search Console. `/kontakt`, `/personvern` and
-  status-style utility pages stay noindex permanently; the sitemap never
-  lists noindex URLs (pre-launch excepted: it lists what will be indexable).
+  submit the sitemap. `/kontakt`, `/personvern` and utility pages stay
+  noindex for good; the sitemap never lists noindex URLs (pre-launch
+  excepted).
 
 ## Gotchas
 
-- `wrangler.jsonc`: `workers_dev: false` and `preview_urls: false` (owner's
-  call, 2026-10-22; why: `docs/history.md`): the site lives on
-  `rozsoshnykh.no` only. Keep both keys explicit — left out, wrangler turns
-  workers.dev back on whenever no routes exist, and preview URLs follow it. The D1 database is `rozsoshnykh-metrics-v2`; never try to
-  reclaim the old `rozsoshnykh-metrics` name — the dead original's deleted
-  entry still locks it.
-- `next.config.mjs` sets the experimental
-  `turbopackChunking: { minChunkSize: 15000 }`, so shared client modules
-  (Header/Footer parts, `next/link`, the dictionary) sit in shared chunks
-  instead of a copy per page chunk (measurements: `docs/history.md`). CI
-  fails if the dictionary leaves its single chunk (a Next upgrade can drop or rename
-  the experimental key with only a warning); after a Next upgrade also
-  re-measure with prefetch on (Chromium, desktop + mobile) and drop the
-  setting if the default stops duplicating.
-- ESLint stays on 9 (with `eslint-config-next` 16's flat config); the React
-  plugin it pulls in is not ESLint-10-compatible yet.
-- TypeScript stays on 6. 7.0.2 (tried 2026-10-29) type-checks both projects
-  and builds, but ships no JS API, so typescript-eslint refuses to load
-  (support is tracked for 7.1+, typescript-eslint#10940) — and it saved ~3 s
-  of a ~4 s typecheck, too little for the side-by-side npm aliases
-  (`typescript` → `@typescript/typescript6`, `@typescript/native` → 7).
-  Revisit once typescript-eslint takes 7.
-- `package.json` is NOT `"type": "module"` — that breaks the Next 16 /
-  turbopack config load. Standalone Node scripts use `.mjs`.
-- No R2 (it needs a card even on the free tier) and no off-platform metrics
-  backup: D1 Time Travel (7 days on Workers Free; 30 is the Paid figure) is
-  the only restore path, an accepted risk. Don't add a backup unless asked.
-- Country flags in the GeoMap legend use a self-hosted Twemoji subset
-  (`public/fonts/TwemojiCountryFlags.woff2`, `unicode-range:
-  U+1F1E6-1F1FF`, class `.font-flag`) — Windows has no regional-indicator
-  glyphs and would show letter pairs. The `unicode-range` keeps it from
-  downloading unless a flag is on the page.
-- The body font uses `display: 'optional'` (not `swap`) in `app/layout.tsx`
-  (`docs/history.md`, the font reflow). Don't switch back without a
-  hand-built metric-matched fallback `@font-face`, and keep `preload: true`
-  with it — without the preload a newcomer's first page renders in the
-  system monospace. Next emits no preload on the
-  404, so `finalize-export.mjs` copies the front page's there (the build
-  fails if `index.html` has none).
-- `app/template.tsx` cross-fades client-side route changes (450ms
-  `animate-page-in`) — never the document's first page, which must paint at
-  once (LCP); its wrapper is keyed by pathname, since a root template alone
-  re-mounts only when the top-level segment changes.
-  OPACITY-ONLY — a transform would become a containing block for the
-  `position:fixed` intro overlays / sticky header — and both front pages
-  (`/`, `/en/`) opt out so the intro's z-100 overlay keeps a clean stacking
-  context. Respects `prefers-reduced-motion`.
-- In-page nav (`components/layout/HashLink.tsx`): on a front page (`/` or
-  `/en/`) it intercepts links into that same page (`/#x`, `/en/#x`) with
-  native `scrollIntoView({behavior:'smooth'})` + `history.pushState` (why
-  not `<Link>` or `location.hash`: `docs/history.md`). The header offset is
-  pure CSS (`scroll-padding-top`) — no custom rAF scroll, it fights the
-  global `scroll-behavior: smooth`. The logo is a HashLink too:
-  on its front page it scrolls back to the top (Next treats `/` → `/` as a
-  no-op). Everywhere else, plain `<Link>` navigation.
-  `<html data-scroll-behavior="smooth">` must stay: it lets Next switch
-  smooth scrolling off while it resets scroll on a route change (without it
-  the new page opens mid-scroll). Page links set `aria-current` (`page` on an
-  exact match, `true` on a parent), styled via `[&[aria-current]]:`.
-- `StatusDashboard`, `GeoMap` and `TrendsChart` are code-split via
-  `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
-  `LazyGeoMap.tsx` and `LazyTrendsChart.tsx`, so none is in the static HTML,
-  and each mounts only as its section nears the viewport (`useNearViewport`;
-  the placeholder keeps the final height).
-  Their headings (`Driftsstatus`, `Hvor leserne kommer fra`, `Trafikk over
-  tid`) live in the server components `Status.tsx`, `Visitors.tsx` and
-  `Trends.tsx` — keep them there: `smoke.sh` greps them and SEO sees the
-  structure before hydration.
+- `wrangler.jsonc`: `workers_dev: false` and `preview_urls: false` stay
+  explicit (owner's call; left out, wrangler turns workers.dev back on). The
+  D1 database is `rozsoshnykh-metrics-v2`; never reclaim the old name.
+- `next.config.mjs` sets the experimental `turbopackChunking: { minChunkSize:
+  15000 }` so shared client modules aren't copied per page chunk
+  (`docs/history.md`); `npm run check:dict` fails if the dictionary leaves
+  its single chunk. After a Next upgrade, re-measure with prefetch on and
+  drop the setting if the default stops duplicating.
+- ESLint stays on 9 (the React plugin isn't ESLint-10-ready). TypeScript
+  stays on 6: 7.0.2 (tried 2026-10-29) builds, but has no JS API, so
+  typescript-eslint refuses it (tracked for 7.1+, typescript-eslint#10940),
+  for ~3 s saved — not worth the npm-alias setup. Revisit when it supports 7.
+- `package.json` is NOT `"type": "module"` (breaks the Next/turbopack config
+  load); standalone Node scripts are `.mjs`.
+- No R2 (needs a card) and no off-platform backup: D1 Time Travel (7 days on
+  Free) is the only restore path, an accepted risk.
+- Body font (`lib/fonts.ts`): Intel One Mono self-hosted from
+  `@fontsource-variable/intel-one-mono` through `next/font/local` — the
+  build needs no network (a Google-font build fails offline). Four subset
+  families with their own `unicode-range`, all in the stack in
+  `app/globals.css`; Turbopack names each family after its const, so never
+  rename one through `declarations` (the variable keeps the const's name).
+  `display: 'optional'` + `preload: true` (no late swap, no reflow; the
+  preload makes a first visit catch the block window) and
+  `adjustFontFallback: false`. `finalize-export.mjs` copies the preload to
+  the 404 (the build fails if `index.html` has none).
+- `app/template.tsx` cross-fades client-side route changes (450 ms,
+  OPACITY ONLY — a transform would trap the fixed intro overlays and sticky
+  header), never the document's first page (LCP); keyed by pathname; both
+  front pages opt out (the intro's overlay); honours reduced motion.
+- `StatusDashboard`, `GeoMap` and `TrendsChart` are code-split (`Lazy*.tsx`,
+  `ssr: false`) and mount near the viewport; their headings (`Driftsstatus`,
+  `Hvor leserne kommer fra`, `Trafikk over tid`) stay in the server
+  components `Status.tsx`, `Visitors.tsx`, `Trends.tsx` — `smoke.sh` greps
+  them.

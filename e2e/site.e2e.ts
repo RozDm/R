@@ -379,7 +379,8 @@ test('404 page: HAL, a 404 status and the body font', async ({ page }) => {
   // without it, display: 'optional' renders the page in the system monospace.
   await expect(page.locator('link[rel="preload"][as="font"]')).toHaveCount(1)
   await page.evaluate(() => document.fonts.ready)
-  expect(await page.evaluate(() => [...document.fonts].some((f) => f.family.includes('Intel') && f.status === 'loaded'))).toBe(true)
+  // Its family is named after lib/fonts.ts's const (intelOneMono), hashed or not.
+  expect(await page.evaluate(() => [...document.fonts].some((f) => /intel/i.test(f.family) && f.status === 'loaded'))).toBe(true)
   await expect(page).toHaveTitle(/^404 – /)
   await page.getByRole('link', { name: 'Tilbake til forsiden' }).click()
   // The home URL itself: /\/$/ also matched the 404's own /finnes-ikke/.

@@ -8,7 +8,8 @@ export default function Hero({ lang }: { lang: Lang }) {
   const t = DICT[lang].hero
   return (
     // No fade-in here, unlike the sections below: this is the first screen, and
-    // an opacity-0 start holds back its paint and so the LCP (CLAUDE.md).
+    // an opacity-0 start holds back its paint and so the LCP
+    // (components/CLAUDE.md).
     <section id="about" className="flex flex-col gap-6 pt-8">
       <div>
         {/* The roles wrap as whole words with no separator at a line break:
