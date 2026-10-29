@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import type { Lang } from './i18n'
+import { OG_FONT_FAMILY, ogFonts } from './og-fonts'
 import { AUTHOR, SITE_CARD_SIZE, SITE_COPY } from './site'
 
 export { SITE_CARD_SIZE, siteCardAlt } from './site'
@@ -8,7 +9,7 @@ export { SITE_CARD_SIZE, siteCardAlt } from './site'
 // build time by app/opengraph-image.tsx (Norwegian) and
 // app/en/opengraph-image.tsx (English).
 
-export function siteCardImage(lang: Lang): ImageResponse {
+export async function siteCardImage(lang: Lang): Promise<ImageResponse> {
   return new ImageResponse(
     (
       <div
@@ -20,6 +21,7 @@ export function siteCardImage(lang: Lang): ImageResponse {
           justifyContent: 'space-between',
           background: '#030712',
           padding: 80,
+          fontFamily: OG_FONT_FAMILY,
         }}
       >
         {/* HAL 9000 eye */}
@@ -55,6 +57,6 @@ export function siteCardImage(lang: Lang): ImageResponse {
         </div>
       </div>
     ),
-    { ...SITE_CARD_SIZE },
+    { ...SITE_CARD_SIZE, fonts: await ogFonts() },
   )
 }

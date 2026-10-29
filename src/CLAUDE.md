@@ -26,7 +26,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `status.ts` — uptime cron config (`monitors(env)`; NetBox's URL is the
   `NETBOX_URL` secret) + pure snapshot/alert logic.
 - `contact.ts` — pure contact/alert mail logic: validation limits, Turnstile
-  verify, MIME building, the time windows over `contact`
+  verify, MIME building (with the `Date` RFC 5322 requires and a
+  `Message-ID`), the time windows over `contact`
   (`CONTACT_WINDOWS_MS`, `isoCutoff`) and the daily prune's cron pattern
   (`CONTACT_PRUNE_CRON`, held equal to `wrangler.jsonc` by a test — the
   privacy notice promises 30 days).
@@ -52,7 +53,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - Analytics Engine `rozsoshnykh_metrics` (`METRICS_AE`), channel in `blob1`:
   `geo` — every `recordGeo` call, `blob2` country, `blob3` `AS<asn>`, `blob4`
   network org (a bot diagnostic; AE only, no IP); `view` — `/api/views`
-  POSTs, not graphed yet; `csp` — browser CSP reports. Reads need the runtime
+  POSTs, not graphed yet; `csp` — browser CSP reports, one point per POST.
+  Reads need the runtime
   secrets `CF_ACCOUNT_ID` + `AE_API_TOKEN` (`Account Analytics:Read`);
   missing either, or an AE answer slower than 8 s, → empty series. Quote every AE SQL `INTERVAL` literal
   (`INTERVAL '6' HOUR`) — the bare form 422s.
@@ -112,8 +114,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   (same address + message → ack'd without a second mail).
 - `/api/csp-report` — POST → always 204, AE only, never D1/KV (anyone can
   POST to it); the body is read with `readCapped` (64 KB); `parseCspReports`
-  keeps own-origin reports only (origin + path; no query, UA or IP). GET →
-  405, which the smoke test checks.
+  keeps own-origin reports only (origin + path; no query, UA or IP), and a
+  POST writes at most one AE point — its batch's first — so junk batches
+  can't spend AE's daily points tenfold. GET → 405, which the smoke test
+  checks.
 - `/.well-known/mta-sts.txt` — GET, any host; senders fetch it from
   `mta-sts.rozsoshnykh.no` (a custom domain in `wrangler.jsonc`). Proxies
   Cloudflare Email Routing's policy (`mta-sts.mx.cloudflare.net`; edge-cached
@@ -248,5 +252,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   type-check under `tsconfig.worker.json` (Node bits in `node-shims.d.ts`)
   and are excluded from the app tsconfig.
 - A new endpoint or route behaviour gets a test there AND a
-  `scripts/smoke.sh` check. Not `@cloudflare/vitest-pool-workers` (it pins
+  `scripts/smoke.sh` check. The browser tests' stand-in answers
+  (`e2e/api-stub.ts`) are held to the handlers by
+  `tests/worker/api-stub.test.ts` (same status, same JSON shape): a route
+  change that alters an answer updates the stub. Not `@cloudflare/vitest-pool-workers` (it pins
   its own older wrangler and an alpha miniflare).

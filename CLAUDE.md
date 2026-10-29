@@ -142,8 +142,11 @@ answered, keep output and replies short.
   keep it (a drifted zone Browser Cache TTL would rewrite `max-age`, see
   `src/CLAUDE.md` Rules). Each one is a Worker request: share a fetch two
   components need (`fetchGeoCountries`, `lib/geo.ts`; `fetchStatus`,
-  `lib/status-fetch.ts` for the footer dot + dashboard) and don't poll what
-  isn't on screen (`StatusDashboard` polls only while `#status` is).
+  `lib/status-fetch.ts` for the footer dot + dashboard), load nothing below
+  the fold before a reader nears it (the status, map and Trends widgets and
+  the footer's status dot wait for `useNearViewport`,
+  `lib/use-near-viewport.ts`) and don't poll what isn't on screen
+  (`StatusDashboard` polls only while `#status` is).
 - Visit counting: `components/effects/VisitBeacon.tsx` (mounted by
   `app/layout.tsx`) aims at people, not page loads (`lib/visit.ts`): one
   `POST /api/visit` per browser per local day (localStorage `visit-day`),
@@ -194,7 +197,11 @@ answered, keep output and replies short.
   resets the widget (`TurnstileHandle.reset`) after every non-OK response and
   keeps the typed text. It reads the Worker's `{"error"}`: only a Turnstile
   refusal asks for the challenge; the filter, an edge 429 or a widget that
-  failed to load (`onError`) point to e-mail. Its limits, e-mail `pattern`
+  failed to load (`onError`: the script errored, or didn't load within 10 s)
+  point to e-mail. The script loads once per document; a failed load is
+  forgotten, so a return to the form tries (and reports) again. The widget
+  takes the site's theme, not the OS's, and is drawn again when the toggle
+  flips it. Its limits, e-mail `pattern`
   and the address come from `src/contact.ts` (`CONTACT_LIMITS`,
   `EMAIL_PATTERN`, `CONTACT_ADDRESS` — also the footer's and the privacy
   notice's), so the browser refuses what the Worker would.
@@ -211,14 +218,22 @@ answered, keep output and replies short.
   `npm run build` exports to `out/` (and finalizes it, above). CI and deploy
   then run `npm run check:waf` (`scripts/check-waf.mjs`): the WAF rule in
   `.github/waf/scanner-block.expr` must block no URL the build serves — and
-  `npm run check:csp` (`scripts/check-csp.mjs`). CI then runs the browser
+  `npm run check:csp` (`scripts/check-csp.mjs`) — and
+  `npx wrangler deploy --dry-run` (the Worker bundle and `wrangler.jsonc`, no
+  credentials needed). CI then runs the browser
   tests, `npm run test:e2e` (Playwright, `playwright.config.ts`, `e2e/`): the
   user flows — intro, theme, NO/EN, nav and the mobile menu, blog, contact
   form, the 404 — on desktop and mobile Chromium and an iPhone (WebKit),
   axe in both themes, and no console error or CSP violation on any page.
   They run on `out/` served by `scripts/serve-out.mjs` with `/api/*` stubbed
-  (`e2e/fixtures.ts`), so they need a build first and never touch the
-  Worker. WebKit gets them over HTTPS (`TLS=1`; why: `serve-out.mjs`). CI
+  (`e2e/fixtures.ts` → `e2e/api-stub.ts`, whose answers
+  `tests/worker/api-stub.test.ts` holds to the real route handlers: a route
+  change that alters an answer updates the stub), so they need a build first
+  and never touch the Worker. CI builds with Cloudflare's public test
+  Turnstile key and the fixtures serve a stand-in for its script; build with
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA` to run the widget
+  tests locally (without it they skip — never in CI). WebKit gets them over
+  HTTPS (`TLS=1`; why: `serve-out.mjs`). CI
   runs them in the Playwright image (`.github/CLAUDE.md`). A UI change that breaks a
   selector there updates the test in the same PR. `@playwright/test` and
   `playwright-core` stay pinned to one version (axe's peer dependency would
@@ -226,7 +241,9 @@ answered, keep output and replies short.
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml` (a
   secret-free job runs checks + build, then a job with the `production`
   secrets syncs them, runs `npx wrangler deploy` and `scripts/smoke.sh`
-  against the live site; details in `.github/CLAUDE.md`). Never deploy from a sandbox —
+  against the live site, and `wrangler rollback` to the previous version —
+  code and pages — when the smoke test fails; details in
+  `.github/CLAUDE.md`). Never deploy from a sandbox —
   it has no Cloudflare credentials and would skip the gate; `npm run deploy`
   is for a local machine with `wrangler login`.
 - The merge gate is hands-off: branch protection on `main` requires `check`
@@ -270,7 +287,8 @@ answered, keep output and replies short.
 - The 2001: A Space Odyssey theme is deliberate and load-bearing: intro
   (`HEI %USERNAME%` → stars → monolith → HAL eye), 404, `error.tsx`, the
   `HalIdle` screensaver (idle 75s on the front page, never while `#status` is
-  on screen; recurring, the script shortens each appearance, CRT line reveal
+  on screen or the window lacks focus; recurring, the script shortens each
+  appearance, CRT line reveal
   via `.hal-text-reveal`), loader copy («Åpner podbay-dørene…», «Kalibrerer
   AE-35-enheten…»), console greeting, `HISTORY_LIMIT = 149`. `%USERNAME%` is
   a literal joke, not a template var (English: `HELLO %USERNAME%`). The
@@ -291,14 +309,19 @@ answered, keep output and replies short.
   `data/tags.ts`); `TAG_LABELS_EN` gives the Norwegian-word tags their
   English label, which also forms the English tag URL. Reading time is
   computed; code blocks are highlighted at build by `rehype-highlight` (theme
-  in `app/globals.css`). Images: `![alt](/images/<slug>/file.webp)`, the file
+  in `app/globals.css`, drawn for the white block `PostPage` gives `pre` in
+  light mode — Typography's own is dark; e2e checks the contrast in both
+  themes), and each `pre` is focusable, since a long line scrolls it.
+  Images: `![alt](/images/<slug>/file.webp)`, the file
   in `public/images/<slug>/`; `rehypePostImages` (`lib/post-images.ts`, page
   and RSS) stamps width/height + lazy loading and fails the build on an
   external image (the CSP's `img-src 'self' data:` would block it), a
   missing file, no alt text or an unreadable format. `draft: true` keeps a post off every public surface
   in production builds (`NODE_ENV` filter in `getPostSlugs`/`getAllPosts`);
   `npm run dev` shows drafts with a red «Utkast» badge.
-- SEO: canonicals + trailing slash everywhere, OG images via `next/og`,
+- SEO: canonicals + trailing slash everywhere, OG images via `next/og` (in
+  Intel One Mono — `lib/og-fonts.ts` reads Fontsource's WOFF files; next/og
+  can't read the WOFF2 next/font serves),
   JSON-LD (Person + WebSite sitewide — the Person from `personJsonLd()` in
   `lib/metadata.ts`, with `knowsAbout` from `data/skills.ts` minus the
   learning group and `hasCredential` from `data/certifications.ts`, with
@@ -372,7 +395,9 @@ answered, keep output and replies short.
   exact match, `true` on a parent), styled via `[&[aria-current]]:`.
 - `StatusDashboard`, `GeoMap` and `TrendsChart` are code-split via
   `next/dynamic` (`ssr: false`) through `LazyStatusDashboard.tsx`,
-  `LazyGeoMap.tsx` and `LazyTrendsChart.tsx`, so none is in the static HTML.
+  `LazyGeoMap.tsx` and `LazyTrendsChart.tsx`, so none is in the static HTML,
+  and each mounts only as its section nears the viewport (`useNearViewport`;
+  the placeholder keeps the final height).
   Their headings (`Driftsstatus`, `Hvor leserne kommer fra`, `Trafikk over
   tid`) live in the server components `Status.tsx`, `Visitors.tsx` and
   `Trends.tsx` — keep them there: `smoke.sh` greps them and SEO sees the

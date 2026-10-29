@@ -43,14 +43,15 @@ Live: https://rozsoshnykh.no
 ### CI/CD
 
 Push to `main` triggers `.github/workflows/deploy.yml`, two jobs: a
-secret-free build (lint → typecheck → test → build → `check:waf`,
-`check:dict`, `check:csp`) and a deploy job with the `production`
+secret-free build (lint → typecheck → test → build → `wrangler deploy
+--dry-run` → `check:waf`, `check:dict`, `check:csp`) and a deploy job with the `production`
 environment's secrets: sync runtime secrets (one `wrangler secret bulk`) →
 `npx wrangler deploy` (the repo's pinned wrangler) → **`scripts/smoke.sh`**
 against production (pages, APIs, redirects, security headers and the live
 page CSPs, caching, noindex).
 Push to live takes about 2 minutes. If the
-smoke test fails, the deploy fails loudly. `ci.yml` runs the same gate on PRs,
+smoke test fails, the job rolls the Worker back to the previous version (code
+and pages) and fails loudly. `ci.yml` runs the same gate on PRs,
 plus the Playwright browser tests (desktop and mobile Chromium, an iPhone in
 WebKit), as the `check` status check (~4 minutes).
 
@@ -118,10 +119,12 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     stars.ts, site.ts (name/roles/titles/colours per language),
                     metadata.ts (pageMetadata), i18n.ts + use-lang.ts (NO/EN
                     paths and language), blog-paths.ts, feed.ts (RSS per
-                    language), og-site-card.tsx, og-post-card.tsx, geo.ts,
+                    language), og-site-card.tsx, og-post-card.tsx, og-fonts.ts
+                    (Intel One Mono for the OG cards), geo.ts,
                     post-images.ts (post images: size, lazy, build checks),
                     status-fetch.ts (one shared /api/status fetch),
-                    timeseries-fill.ts, trends-axis.ts, visit.ts
+                    use-near-viewport.ts (below-the-fold widgets load on
+                    approach), timeseries-fill.ts, trends-axis.ts, visit.ts
 schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
                     (postbuild), check-csp.mjs, check-waf.mjs, check-docs.mjs
@@ -130,7 +133,9 @@ src/                Cloudflare Worker for /api/* + MTA-STS (index.ts, csp.ts, ht
                     ip.ts, status.ts, metrics.ts, contact.ts, timeseries.ts,
                     routes/*)
 tests/              Vitest
-e2e/                Playwright browser tests (site.e2e.ts, fixtures.ts)
+e2e/                Playwright browser tests (site.e2e.ts, fixtures.ts,
+                    api-stub.ts: the Worker's answers, held to the route
+                    handlers by tests/worker/api-stub.test.ts)
 wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, METRICS_AE,
                     WRITE_LIMITER, CONTACT_EMAIL, crons, custom domains: apex,
                     www, mta-sts)

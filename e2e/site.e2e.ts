@@ -26,34 +26,44 @@ test('front page renders every section and the live widgets', async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 })
 
-// Each /api/* call is a Worker request against the free plan's daily quota.
-test('the footer dot and the dashboard share one /api/status request', async ({ page }) => {
-  let calls = 0
+// Each /api/* call is a Worker request against the free plan's daily quota:
+// the widgets below the fold (lib/use-near-viewport.ts) ask nothing until a
+// reader nears them, and the footer dot shares the dashboard's answer.
+test('below-the-fold widgets wait for the reader; the status is fetched once', async ({ page }) => {
+  const asked: string[] = []
   page.on('request', (r) => {
-    if (new URL(r.url()).pathname === '/api/status') calls++
+    const { pathname } = new URL(r.url())
+    if (pathname.startsWith('/api/') || pathname === '/world.svg') asked.push(pathname)
   })
   await page.goto('/')
+  await page.waitForLoadState('networkidle')
+  expect(asked, 'nothing below the fold on load').toEqual([])
   await page.locator('#status').scrollIntoViewIfNeeded()
   await expect(page.getByText('Alle systemer operative').first()).toBeVisible()
-  await page.waitForTimeout(500)
-  expect(calls).toBe(1)
+  await page.locator('footer').scrollIntoViewIfNeeded()
+  await expect(page.locator('footer').getByText('(alle systemer operative)')).toBeAttached()
+  expect(asked.filter((p) => p === '/api/status')).toHaveLength(1)
 })
 
-test('the dashboard polls only while it is on screen', async ({ page }) => {
+test('the dashboard loads and polls only while it is on screen', async ({ page }) => {
   await page.clock.install()
   let calls = 0
   page.on('request', (r) => {
     if (new URL(r.url()).pathname === '/api/status') calls++
   })
   await page.goto('/')
-  // The code-split dashboard has mounted and drawn the shared first answer.
-  await expect(page.locator('#status').getByText('Alle systemer operative').first()).toBeAttached()
+  await page.waitForLoadState('networkidle')
+  expect(calls, 'below the fold: not even loaded').toBe(0)
+  await page.locator('#status').scrollIntoViewIfNeeded()
+  await expect(page.locator('#status').getByText('Alle systemer operative').first()).toBeVisible()
   expect(calls).toBe(1)
-  // Past the 90 s refresh with #status below the fold: nothing is fetched…
+  // Scrolled away, past the 90 s refresh: nothing is fetched…
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+  await page.waitForTimeout(300) // the observer reports the section gone
   await page.clock.runFor(100_000)
   await page.waitForTimeout(300)
   expect(calls).toBe(1)
-  // …until it comes into view, when the overdue refresh runs at once.
+  // …until it comes back into view, when the overdue refresh runs at once.
   await page.locator('#status').scrollIntoViewIfNeeded()
   await expect.poll(() => calls).toBe(2)
 })
@@ -218,6 +228,61 @@ test.describe('contact form', () => {
     const i = pageProblems.findIndex((p) => p.includes('status of 403'))
     if (i >= 0) pageProblems.splice(i, 1)
   })
+
+  // The widget tests need an export built with a site key (ci.yml sets
+  // Cloudflare's test key; e2e/fixtures.ts stands in for its api.js). A local
+  // build without one renders no widget: they skip there, never in CI.
+  const widgetOrSkip = (asked: number) => {
+    test.skip(asked === 0 && !process.env.CI, 'export built without NEXT_PUBLIC_TURNSTILE_SITE_KEY')
+    expect(asked, 'the CI export renders the Turnstile widget (ci.yml site key)').toBeGreaterThan(0)
+  }
+
+  test('a blocked security check points to e-mail, also after coming back', async ({ page, pageProblems }) => {
+    let asked = 0
+    await page.route(
+      (url) => url.hostname === 'challenges.cloudflare.com',
+      (r) => (asked++, r.abort()),
+    )
+    await page.goto('/kontakt/')
+    await page.waitForLoadState('networkidle')
+    widgetOrSkip(asked)
+    const notice = page.getByRole('alert').filter({ hasText: 'Sikkerhetssjekken lastet ikke' })
+    await expect(notice).toBeVisible()
+    await expect(notice.getByRole('link', { name: 'contact@rozsoshnykh.no' })).toBeVisible()
+    // Back to the form by client-side navigation: the loader tries again and
+    // says so again (it used to wait forever on the dead <script>).
+    await page.getByRole('link', { name: /Tilbake til forsiden/ }).click()
+    await expect(page).toHaveURL(/\/\/[^/]+\/$/)
+    await page.goBack()
+    await expect(page).toHaveURL(/\/kontakt\/$/)
+    await expect(notice).toBeVisible()
+    await page.getByLabel('Navn').fill('Test Person')
+    await page.getByLabel('E-post').fill('test@example.com')
+    await page.getByLabel('Melding').fill('Hei! Dette er en testmelding.')
+    await page.getByRole('button', { name: 'Send melding' }).click()
+    // Still the e-mail notice, never a challenge with no widget to solve.
+    await expect(notice).toBeVisible()
+    await expect(page.getByRole('alert').filter({ hasText: 'Bekreft at du ikke er en bot' })).toHaveCount(0)
+    // The browser logs each refused script load; anything else still fails.
+    for (let i = pageProblems.length - 1; i >= 0; i--) {
+      if (/Failed to load resource/.test(pageProblems[i])) pageProblems.splice(i, 1)
+    }
+  })
+
+  test('the security check follows the site’s theme toggle', async ({ page }) => {
+    let asked = 0
+    page.on('request', (r) => {
+      if (new URL(r.url()).hostname === 'challenges.cloudflare.com') asked++
+    })
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.goto('/kontakt/')
+    await page.waitForLoadState('networkidle')
+    widgetOrSkip(asked)
+    const widget = page.locator('[data-fake-turnstile]')
+    await expect(widget).toHaveAttribute('data-fake-turnstile', 'light')
+    await page.getByRole('button', { name: 'Bytt til mørkt tema' }).click()
+    await expect(widget).toHaveAttribute('data-fake-turnstile', 'dark')
+  })
 })
 
 test.describe('visit beacon (lib/visit.ts)', () => {
@@ -355,3 +420,50 @@ for (const scheme of ['light', 'dark'] as const) {
     }
   })
 }
+
+// Code blocks: rehype-highlight's token colours (app/globals.css) on the
+// block PostPage gives `pre`. No published post has code yet, so blocks
+// marked up as PostPage renders them are planted in a copy of the post's
+// prose wrapper (same classes) and axe checks their contrast — the light
+// theme once drew dark text on a dark block.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`code blocks are readable (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme })
+    await page.goto('/blogg/velkommen/')
+    await page.waitForLoadState('networkidle')
+    await page.locator('.prose').evaluate((prose) => {
+      const copy = prose.cloneNode(false) as HTMLElement
+      copy.id = 'planted-code'
+      copy.innerHTML =
+        '<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># restart</span>\n' +
+        '<span class="hljs-keyword">for</span> h <span class="hljs-keyword">in</span> web01; <span class="hljs-keyword">do</span> ' +
+        'ssh <span class="hljs-string">"$h"</span> <span class="hljs-built_in">echo</span> <span class="hljs-variable">$?</span> ' +
+        '<span class="hljs-number">42</span> <span class="hljs-title">main</span> <span class="hljs-attr">key</span>; ' +
+        '<span class="hljs-keyword">done</span></code></pre><pre tabindex="0"><code>plain block, no language</code></pre>'
+      prose.after(copy)
+    })
+    const { violations } = await new AxeBuilder({ page }).include('#planted-code').withRules(['color-contrast']).analyze()
+    expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([])
+  })
+}
+
+// What visitors see while the site is young: below MIN_PUBLIC_VISITS
+// (lib/geo.ts) the map and the chart keep their shape but show no number,
+// and the chart says why.
+test('below the public threshold no visit number shows', async ({ page }) => {
+  await page.route('**/api/geo', (r) =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: '{"countries":{"NO":11,"US":2,"UA":1,"AM":1}}' }),
+  )
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme })
+    await page.goto('/')
+    await page.locator('#besok').scrollIntoViewIfNeeded()
+    await expect(page.locator('#besok').getByText('Norge').filter({ visible: true }).first()).toBeVisible()
+    await expect(page.locator('#besok')).not.toContainText(/\d+ besøk/)
+    await page.locator('#trender').scrollIntoViewIfNeeded()
+    await expect(page.getByText('Samler data — tallene vises fra 100 besøk.')).toBeVisible()
+    await page.waitForTimeout(1_000) // fade-ins and hover transitions settle
+    const { violations } = await new AxeBuilder({ page }).include('#besok').include('#trender').analyze()
+    expect(violations.map((v) => `${scheme} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([])
+  }
+})

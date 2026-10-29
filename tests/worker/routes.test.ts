@@ -27,6 +27,21 @@ describe('/api/csp-report', () => {
     ])
   })
 
+  it('records one point per POST, however many reports the batch holds', async () => {
+    const fake = makeEnv()
+    const one = (blocked: string) => ({
+      type: 'csp-violation',
+      body: { documentURL: `${ORIGIN}/`, blockedURL: blocked, effectiveDirective: 'script-src-elem' },
+    })
+    const batch = new Request(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/reports+json' },
+      body: JSON.stringify([one('inline'), one('https://evil.example/x.js'), one('eval')]),
+    })
+    expect((await handleCspReport(url, batch, fake.env))!.status).toBe(204)
+    expect(fake.aePoints).toEqual([{ indexes: ['csp'], blobs: ['csp', 'script-src-elem', 'inline', '/'], doubles: [1] }])
+  })
+
   it('answers 204 but records nothing for junk or foreign documents', async () => {
     const fake = makeEnv()
     const junk = new Request(url, { method: 'POST', body: 'not json' })

@@ -119,6 +119,17 @@ function base64Utf8(text: string): string {
   return btoa(binary)
 }
 
+// RFC 5322 requires a Date header and wants a Message-ID; both are set here
+// rather than left to the relay to fill in. The id's domain is the sender's.
+export function rfc5322Date(iso: string): string {
+  return new Date(iso).toUTCString().replace(/GMT$/, '+0000')
+}
+
+function messageIdHeaders(from: string, at: string): string[] {
+  const domain = from.slice(from.lastIndexOf('@') + 1)
+  return [`Date: ${rfc5322Date(at)}`, `Message-ID: <${crypto.randomUUID()}@${domain}>`]
+}
+
 // RFC 2047 encoded-word so non-ASCII subjects survive SMTP.
 export function encodeMimeHeader(text: string): string {
   if (/^[\x20-\x7e]*$/.test(text)) return text
@@ -141,6 +152,7 @@ export function buildContactMime(
   return [
     `From: Kontaktskjema <${from}>`,
     `To: <${to}>`,
+    ...messageIdHeaders(from, at),
     `Reply-To: <${payload.email}>`,
     `Subject: ${subject}`,
     'MIME-Version: 1.0',
@@ -171,6 +183,7 @@ export function buildStatusAlertMime(
   return [
     `From: Status <${from}>`,
     `To: <${to}>`,
+    ...messageIdHeaders(from, at),
     `Subject: ${subject}`,
     'MIME-Version: 1.0',
     'Content-Type: text/plain; charset=utf-8',

@@ -170,8 +170,18 @@ export default function PostPage({ lang, slug }: { lang: Lang; slug: string }) {
             </p>
           </header>
 
-          <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold prose-pre:border prose-pre:border-gray-200 dark:prose-pre:border-gray-800 prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight, [rehypePostImages, { post: post.slug }]]}>
+          {/* Code blocks: Typography's light `pre` is dark (slate-800), but the
+              highlight palette in globals.css is drawn for a light block — so
+              light mode sets a white block with dark text (e2e checks both
+              themes with axe). */}
+          <div className="prose dark:prose-invert max-w-none prose-a:text-red-600 dark:prose-a:text-red-400 prose-a:underline prose-a:underline-offset-2 hover:prose-a:decoration-2 prose-headings:font-bold prose-pre:border prose-pre:border-gray-200 dark:prose-pre:border-gray-800 prose-pre:bg-white prose-pre:text-slate-800 dark:prose-pre:bg-black/50 dark:prose-pre:text-gray-300 prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight, [rehypePostImages, { post: post.slug }]]}
+              // A long line makes a code block scroll sideways, and a scroller
+              // keyboard users can't focus can't be scrolled without a mouse.
+              components={{ pre: ({ node: _node, ...props }) => <pre tabIndex={0} {...props} /> }}
+            >
               {post.content}
             </ReactMarkdown>
           </div>

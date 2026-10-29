@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useImperativeHandle, useRef, type Ref } from 'react'
+import { useTheme } from '@/context/ThemeContext'
 
 // Minimal Turnstile widget wrapper. Lazy-loads the Cloudflare script on mount,
 // renders into our div, and surfaces the token via onToken. We use 'always'
@@ -42,20 +43,56 @@ export interface TurnstileHandle {
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit'
 
+// A script that neither loads nor fails (a stalled connection) counts as
+// failed after this, so the form points to e-mail instead of asking for a
+// challenge no widget is there to show.
+const LOAD_TIMEOUT_MS = 10_000
+
+// One load per document, shared by every mount. A failed load is forgotten
+// and its dead <script> removed, so the next mount (a return to the form by
+// client-side navigation) tries again — and reports again if it fails.
+let loading: Promise<void> | null = null
+
 function loadScript(): Promise<void> {
-  if (typeof window === 'undefined') return Promise.resolve()
   if (window.turnstile) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    window.onloadTurnstileCallback = () => resolve()
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${SCRIPT_SRC}"]`)
-    if (existing) return
-    const s = document.createElement('script')
-    s.src = SCRIPT_SRC
-    s.async = true
-    s.defer = true
-    s.onerror = () => reject(new Error('turnstile load failed'))
-    document.head.appendChild(s)
+  if (loading) return loading
+  const attempt = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('turnstile load timed out')), LOAD_TIMEOUT_MS)
+    window.onloadTurnstileCallback = () => {
+      clearTimeout(timer)
+      resolve()
+    }
+    // A script still in flight from a timed-out attempt is waited on again,
+    // not added twice.
+    let script = document.querySelector<HTMLScriptElement>(`script[src="${SCRIPT_SRC}"]`)
+    if (!script) {
+      script = document.createElement('script')
+      script.src = SCRIPT_SRC
+      script.async = true
+      document.head.appendChild(script)
+    }
+    const s = script
+    s.addEventListener(
+      'error',
+      () => {
+        clearTimeout(timer)
+        s.remove()
+        reject(new Error('turnstile load failed'))
+      },
+      { once: true },
+    )
   })
+  loading = attempt
+  attempt.catch(() => {
+    if (loading === attempt) loading = null
+  })
+  return attempt
+}
+
+// The site's theme as the page shows it (the <head> script sets the class
+// before paint, so it is right even before ThemeContext has synced).
+function siteTheme(): 'light' | 'dark' {
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
 }
 
 export default function Turnstile({
@@ -71,6 +108,10 @@ export default function Turnstile({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
+  // A dependency only: the widget can't restyle itself, so a flip of the
+  // site's theme renders it again in the new one ('auto' would follow the OS,
+  // not the toggle). A re-render issues a fresh token.
+  const { theme } = useTheme()
 
   useImperativeHandle(
     handleRef,
@@ -94,7 +135,7 @@ export default function Turnstile({
         if (cancelled || !ref.current || !window.turnstile) return
         widgetIdRef.current = window.turnstile.render(ref.current, {
           sitekey: siteKey,
-          theme: 'auto',
+          theme: siteTheme(),
           appearance: 'always',
           callback: (token) => onToken(token),
           'error-callback': () => {
@@ -105,7 +146,9 @@ export default function Turnstile({
           'timeout-callback': () => onToken(null),
         })
       })
-      .catch(() => onError?.())
+      .catch(() => {
+        if (!cancelled) onError?.()
+      })
     return () => {
       cancelled = true
       if (widgetIdRef.current && window.turnstile) {
@@ -113,8 +156,9 @@ export default function Turnstile({
           window.turnstile.remove(widgetIdRef.current)
         } catch {}
       }
+      widgetIdRef.current = null
     }
-  }, [siteKey, onToken, onError])
+  }, [siteKey, onToken, onError, theme])
 
   return <div ref={ref} />
 }
