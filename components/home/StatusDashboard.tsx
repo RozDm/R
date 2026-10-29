@@ -124,15 +124,15 @@ export default function StatusDashboard() {
               ? 'border-green-500/30 bg-green-500/5'
               : 'border-red-500/40 bg-red-500/10'
         }`}
-        role="status"
-        aria-live="polite"
       >
         <span
           className={`inline-block w-3 h-3 rounded-full shrink-0 ${
             neutral ? 'bg-gray-400' : allUp ? 'bg-green-500' : 'bg-red-500 animate-pulse'
           }`}
         />
-        <span className="font-medium text-gray-900 dark:text-white">
+        {/* The live region is the state alone: with the «Oppdatert» time in
+            it, a screen reader re-read the banner on every new snapshot. */}
+        <span role="status" aria-live="polite" className="font-medium text-gray-900 dark:text-white">
           {noData
             ? t.noData
             : stale
