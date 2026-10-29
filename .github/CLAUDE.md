@@ -141,7 +141,8 @@ incident background: `docs/history.md`.
 - `dependabot.yml` — weekly (Monday 06:00, Europe/Oslo) grouped PRs: npm
   minor+patch in one, wrangler alone, Playwright alone, security updates in
   one (npm has a 7-day cooldown), GitHub Actions in one; every
-  semver-major is ignored (migrations are done by hand — ESLint stays 9).
+  semver-major is ignored (migrations are done by hand — ESLint stays 9,
+  TypeScript 6: root `CLAUDE.md` Gotchas).
   Dependabot PRs get no secrets, which `check` doesn't need. Merge one
   by enabling squash auto-merge as the owner, so the merge push is the
   owner's and `deploy.yml` runs with its secrets (never a GITHUB_TOKEN merge
