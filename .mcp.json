@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "webhuset": {
+      "type": "http",
+      "url": "https://mcp.webhuset.no/mcp/v1"
+    }
+  }
+}

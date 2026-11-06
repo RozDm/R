@@ -156,6 +156,12 @@ answered; keep output and replies short.
   `https://rozsoshnykh.no/...` works for diagnosis (the gate is still smoke).
   Probe TLS with `curl --tls-max`, not `openssl s_client` (that bypasses the
   proxy).
+- Webhuset (the registrar) MCP server, `.mcp.json`: read-only (domains, its
+  leftover zone via `check_dns`, registry/DNS diagnostics, WHOIS). Cloud
+  sessions get the key from the environment's network secret for
+  `mcp.webhuset.no` (the proxy injects it); locally `claude mcp add
+  --transport http webhuset https://mcp.webhuset.no/mcp/v1 --header
+  "Authorization: Bearer <key>"` (local scope overrides this entry).
 - Session branches: one `claude/*` branch per session, reset onto
   `origin/main` before new work (else the next PR conflicts with its own
   squashed history).
