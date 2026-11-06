@@ -19,10 +19,10 @@ export default function Skills({ lang }: { lang: Lang }) {
         {skillGroups.map((group) => (
           <div
             key={group.title.nb}
-            // One card style for every group; the learning one only spans the
-            // row (it's the odd seventh card) and carries its «pågår» badge.
+            // One card style for every group; a wide one and the learning one
+            // span the row, and the learning one carries its «pågår» badge.
             className={`group p-5 bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500/30 dark:hover:border-red-500/20 transition-all duration-500 ${
-              group.learning ? 'sm:col-span-2' : ''
+              group.wide || group.learning ? 'sm:col-span-2' : ''
             }`}
           >
             <h3 className="font-mono text-sm text-red-600 dark:text-red-400 mb-4 flex items-center gap-2">

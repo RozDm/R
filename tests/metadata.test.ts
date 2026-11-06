@@ -65,7 +65,7 @@ describe('serializeJsonLd', () => {
 describe('personJsonLd', () => {
   it('lists the claimed skills, not the ones still being learned', () => {
     const p = personJsonLd()
-    expect(p.knowsAbout).toEqual(expect.arrayContaining(['Proxmox', 'Wazuh', 'Cloudflare Workers']))
+    expect(p.knowsAbout).toEqual(expect.arrayContaining(['Proxmox', 'Wazuh (SIEM)', 'Entra ID', 'OSPF']))
     expect(p.knowsAbout).not.toContain('Terraform')
   })
 

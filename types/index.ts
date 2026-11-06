@@ -5,6 +5,8 @@ export interface SkillGroup {
   title: Localized
   items: (string | Localized)[]
   learning?: boolean
+  /** Takes the whole row (a long list); the learning group always does. */
+  wide?: boolean
 }
 
 export interface Certification {
