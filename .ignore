@@ -3,3 +3,6 @@
 /worker-configuration.d.ts
 /package-lock.json
 /public/world.svg
+# Post diagrams: outlined glyphs, built from content/diagrams/ (npm run
+# diagrams) — read and edit the source there.
+/public/images/**/*.svg

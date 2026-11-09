@@ -110,6 +110,8 @@ components/         React components (Hero, Skills, StatusDashboard, GeoMap,
 content/blog/       Markdown posts (frontmatter: title, description, date, tags;
                     checked by lib/post-frontmatter.ts); English twins in
                     content/blog/en/ (translationOf)
+content/diagrams/   Post diagram sources (SVG with live text), built into
+                    public/images/ by scripts/build-diagrams.mjs
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, tag canon + aliases (tags.ts), UI
                     copy in both languages (i18n.ts; the error boundary's in
@@ -135,7 +137,8 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
 schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
                     (postbuild), check-csp.mjs, check-waf.mjs, check-docs.mjs
-                    (docs drift), serve-out.mjs (out/ for the browser tests)
+                    (docs drift), serve-out.mjs (out/ for the browser tests),
+                    build-diagrams.mjs (post diagrams: npm run diagrams)
 src/                Cloudflare Worker for /api/* + MTA-STS (index.ts, csp.ts, http.ts,
                     ip.ts, status.ts, metrics.ts, contact.ts, timeseries.ts,
                     routes/*)
