@@ -202,6 +202,12 @@ test('blog: index → post → tag page and back', async ({ page }) => {
 test('a post fits the screen, and inline code breaks between words only', async ({ page }) => {
   await page.goto(post.path)
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
+  // No table wider than the text column (a clipped table hides its overflow).
+  const wideTables = await page.locator('.post-body table').evaluateAll((tables) => {
+    const column = document.querySelector('.post-body')!.getBoundingClientRect().width
+    return tables.map((t) => Math.round(t.getBoundingClientRect().width)).filter((w) => w > column + 1)
+  })
+  expect(wideTables).toEqual([])
   // lib/inline-code.ts: each word is one .code-word span, so none spans two lines.
   const split = await page
     .locator('.post-body .code-word')

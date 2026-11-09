@@ -327,3 +327,11 @@ html.intro-active::before {
 .post-body .code-word {
   white-space: nowrap;
 }
+
+/* Post tables: a long word may break rather than push the table past the
+   column. WebKit keeps a hyphenated word like «DNS-oppføringen,» whole, so a
+   three-column table outgrew an iPhone screen. */
+.post-body td,
+.post-body th {
+  overflow-wrap: anywhere;
+}

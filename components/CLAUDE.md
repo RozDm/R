@@ -27,7 +27,9 @@ incident background: `docs/history.md`.
   gives `pre` a white block in light mode for the palette in
   `app/globals.css`; every `pre` is focusable (a long line scrolls it).
   Inline code is a chip (`.post-body`), each word a nowrap span from
-  `lib/inline-code.ts`, so a phone breaks lines between words only.
+  `lib/inline-code.ts`, so a phone breaks lines between words only. Table
+  cells take `overflow-wrap: anywhere`: WebKit keeps hyphenated words whole,
+  and a table once outgrew the iPhone screen.
 
 ## The 2001 theme (load-bearing)
 

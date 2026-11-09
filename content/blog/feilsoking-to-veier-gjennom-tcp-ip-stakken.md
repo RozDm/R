@@ -23,7 +23,7 @@ Svarene avgjør hvor du begynner.
 
 ## Lagene som tankeverktøy
 
-TCP/IP-modellen har fire lag. Når jeg feilsøker, deler jeg det nederste i to, fysisk lag og linklag, fordi en død kabel og et feilkonfigurert VLAN er to forskjellige feil. Da får hvert lag sitt eget spørsmål:
+TCP/IP-modellen beskrives med fire eller fem lag. Til feilsøking bruker jeg fem, med fysisk lag og linklag hver for seg, fordi en død kabel og et feilkonfigurert VLAN er to forskjellige feil. Da får hvert lag sitt eget spørsmål:
 
 | Lag | Spørsmålet | Typiske feil |
 | --- | --- | --- |
@@ -36,6 +36,8 @@ TCP/IP-modellen har fire lag. Når jeg feilsøker, deler jeg det nederste i to, 
 Det som gjør modellen nyttig, er avhengighetene. Hvert lag hviler på lagene under: virker et lag, virker alt under det også, og feiler det, ligger feilen der eller lenger ned. Slik blir et vagt «det virker ikke» til en rekke ja/nei-spørsmål der hvert svar betyr noe bestemt.
 
 Men et bevis gjelder bare veien du testet. Et svar på ping viser at ICMP kommer fram, ikke at TCP på port 443 gjør det: lastbalansering kan sende dem forskjellige veier, og brannmurer kan behandle dem ulikt. En test fra din egen maskin sier lite om brukerens. Test derfor så nær brukerens vei som mulig: samme maskin, samme nett, samme protokoll.
+
+Og et bevis gjelder bare det du testet med. Et lite ping beviser ikke at store pakker kommer fram, og ett svar beviser ikke at linjen tåler last: for liten MTU i en tunnel eller pakketap på en dårlig kabel slipper testene gjennom, men stopper den virkelige trafikken. Lagene lekker også: et ARP-oppslag uten svar ser ut som lag 2, men skyldes ofte en feil nettmaske på lag 3.
 
 ## Nedenfra og opp: sikker grunn
 
@@ -53,38 +55,40 @@ Den passer når én tjeneste feiler mens resten virker: e-posten går, men intra
 
 | Feilen sier | Det betyr | Let her |
 | --- | --- | --- |
-| Navnet kan ikke slås opp | Navnet ble aldri til en adresse | DNS, lag 5 |
-| Tilkoblingen avvises | Noe svarte, men ingenting lytter på porten | Tjenesten, lag 4 |
-| Tidsavbrudd | Ingen svarte: pakkene forsvinner på veien | Brannmur eller ruting, lag 4 og nedover |
-| Sertifikatfeil | Forbindelsen kom fram, men tilliten svikter | TLS, lag 5 |
+| Navnet finnes ikke | DNS svarte, men kjenner ikke navnet | DNS-oppføringen, lag 5 |
+| DNS svarer ikke | Spørsmålet nådde aldri DNS-serveren | Veien til DNS-serveren, lag 1–4 |
+| Tilkoblingen avvises | Noe sa nei: ingenting lytter, eller en brannmur avviser | Tjenesten eller brannmuren, lag 4 |
+| Tidsavbrudd ved tilkobling | Ingen svar: pakkene forsvinner på vei dit eller tilbake | Brannmur eller ruting, lag 4 og nedover |
+| Ikke noe svar etter tilkobling | Forbindelsen står, men tjenesten bak svarer ikke | Applikasjonen, lag 5 |
+| Sertifikatfeil | Tilliten svikter, eller du havnet hos feil vert | TLS, lag 5; ved feil vert DNS eller en proxy |
 
-Svakheten er at symptomer kan lyve. En feil langt nede kan forkle seg som en feil høyt oppe: uten nettverkskabel ser det ut som en DNS-feil, og du kan bruke tid på en DNS som virker. Forsvaret er å gi slipp raskt: holder ikke en hypotese høyt oppe, går du ned.
+Svakheten er at symptomer kan lyve. En feil langt nede kan forkle seg som en feil høyt oppe: gjennom en VPN-tunnel med for liten MTU slås navnet opp, ping svarer og porten åpner seg, men forbindelsen henger når serveren sender sertifikatkjeden. Det ser ut som en TLS-feil, men årsaken ligger på lag 3. Forsvaret er å gi slipp raskt: holder ikke en hypotese høyt oppe, går du ned.
 
-## Splitt og hersk: begynn på midten
+## Begynn på midten
 
-Er du usikker, begynn på midten. Én test som når målet på nettverkslaget, deler problemet i to: svarer målet, virker lag 1–3 og feilen ligger over; svarer det ikke, ligger den under. Neste test deler det som gjenstår, igjen. Det er binærsøk, og det er ofte den raskeste veien når symptomet ikke peker noe sted.
+Splitt og hersk er ingen tredje vei, men en måte å velge startpunkt på når symptomet ikke peker noe sted. Du begynner på midten, med én test mot målet på nettverkslaget, og svaret velger retningen. Svarer målet, virker lag 1–3, og du leter videre ovenfra og ned. Svarer det ikke, ligger feilen på lag 3 eller under, og du går nedenfra og opp. Svarer gatewayen, men ikke målet, er lag 1 og 2 i orden lokalt, og feilen ligger på veien videre. Hver test halverer det som gjenstår: det er binærsøk.
 
 Men en test er aldri bedre enn det den måler. Mange brannmurer blokkerer ping, så et ping uten svar beviser ingenting alene, og et ping med svar beviser ikke at applikasjonens trafikk kommer fram. Velg tester som går samme vei som det som feiler.
 
 ## Samme feil, to veier
 
-Et typisk tilfelle: mandag morgen kommer brukerne ikke inn på intranettet, men e-post og internett virker. Én tjeneste feiler for alle, så jeg går ovenfra og ned, og hver test fjerner en del av mulighetene:
+Et typisk tilfelle: mandag morgen kommer brukerne ikke inn på intranettet, men e-post og internett virker. Én tjeneste feiler for alle, så ovenfra og ned er det naturlige valget:
 
-1. Navnet slås opp, så DNS virker. Men forbindelsen kommer aldri i stand: tidsavbrudd, ikke avvisning. Ingen svarer, altså forsvinner pakkene et sted.
+1. Navnet slås opp, så DNS virker. Men tilkoblingen får tidsavbrudd, ikke avvisning: ingen svarer, altså forsvinner pakkene et sted.
 2. Serveren svarer på ping. Det finnes en vei dit, i hvert fall for ICMP.
-3. Porten svarer ikke, men på serveren lytter tjenesten som den skal.
-4. Forbindelsesforsøkene når aldri serveren. Noe mellom nettene kaster dem.
+3. På serveren kjører tjenesten og lytter på porten. Feilen er ikke en død prosess, men et sted på veien.
+4. Tilkoblingsforsøkene når aldri serveren. Noe mellom nettene kaster dem.
 5. Hva ble endret? En brannmurregel i helgen, som tok med seg tilgangen fra kontornettet.
 
-Fem tester, og hver av dem snevret inn det som gjensto. Nedenfra og opp hadde funnet det samme, men først etter å ha bevist kabel, nabo, adresse og gateway på en klient der alt var i orden: riktig, men tregt.
+Nedenfra og opp hadde gått gjennom den samme feilen slik: signal, nabo, adresse og gateway på klienten er i orden, fire bevis uten funn. Så svarer målet på ping, men porten svarer ikke, og derfra er resten likt: serveren lytter, pakkene kommer ikke fram, brannmuren. Begge veier ender i samme svar; nedenfra og opp bruker bare flere steg på å bevise det som allerede virket.
 
-Omvendt: hadde nettverkskortet mistet signalet, ville nedenfra og opp funnet feilen med første test, mens ovenfra og ned først hadde fått en DNS-feil å jage. Ingen av veiene er best i seg selv; symptomet og omfanget avgjør.
+Hadde det derimot vært kabelen, hadde brukeren hatt feil på alt, ikke bare intranettet. Da hadde de tre spørsmålene fra starten sendt deg nedenfra og opp med en gang, og første test hadde funnet feilen. Derfor kommer spørsmålene før testene.
 
 ## Hvilken vei?
 
 - Mange brukere eller alle tjenester nede, eller noe fysisk endret: nedenfra og opp.
 - Én tjeneste feiler, resten virker: ovenfra og ned.
-- Symptomet peker ingen steder: begynn på midten.
+- Symptomet peker ingen steder: begynn på midten, og la svaret velge retningen.
 - Og alltid først: hva ble endret?
 
 ## Prinsippene som gjelder uansett

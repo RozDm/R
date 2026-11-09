@@ -24,7 +24,7 @@ The answers decide where you start.
 
 ## Layers as a thinking tool
 
-The TCP/IP model has four layers. When I troubleshoot, I split the bottom one in two, physical and link, because a dead cable and a misconfigured VLAN are different faults. That gives each layer its own question:
+The TCP/IP model is described with four or five layers. For troubleshooting I use five, with physical and link apart, because a dead cable and a misconfigured VLAN are different faults. That gives each layer its own question:
 
 | Layer | The question | Typical faults |
 | --- | --- | --- |
@@ -37,6 +37,8 @@ The TCP/IP model has four layers. When I troubleshoot, I split the bottom one in
 What makes the model useful is the dependencies. Each layer rests on the ones below: if a layer works, everything under it works too, and if it fails, the fault lies there or further down. That turns a vague ‘it doesn't work’ into a series of yes/no questions where each answer means something definite.
 
 But a proof only holds for the path you tested. An answer to ping shows that ICMP gets through, not that TCP on port 443 does: load balancing can send them different ways, and firewalls can treat them differently. A test from your own machine says little about the user's. So test as close to the user's path as you can: the same machine, the same network, the same protocol.
+
+And a proof only holds for what you tested with. A small ping doesn't prove that big packets get through, and one answer doesn't prove the line copes with load: too small an MTU in a tunnel, or packet loss on a bad cable, lets the tests through but stops the real traffic. The layers leak, too: an ARP lookup without an answer looks like layer 2, but often comes from a wrong netmask at layer 3.
 
 ## Bottom-up: solid ground
 
@@ -54,38 +56,40 @@ It fits when one service fails while the rest work: email goes through, but the 
 
 | The error says | It means | Look here |
 | --- | --- | --- |
-| The name can't be resolved | The name never became an address | DNS, layer 5 |
-| The connection is refused | Something answered, but nothing listens on the port | The service, layer 4 |
-| Timed out | No one answered: the packets vanish on the way | Firewall or routing, layer 4 and down |
-| Certificate error | The connection got through, but the trust fails | TLS, layer 5 |
+| The name doesn't exist | DNS answered but doesn't know the name | The DNS record, layer 5 |
+| DNS doesn't answer | The question never reached the DNS server | The way to the DNS server, layers 1–4 |
+| The connection is refused | Something said no: nothing listens, or a firewall rejects | The service or the firewall, layer 4 |
+| The connection times out | No answer: packets vanish on the way there or back | Firewall or routing, layer 4 and down |
+| No reply once connected | The connection stands, but the service behind it doesn't answer | The application, layer 5 |
+| Certificate error | The trust fails, or you reached the wrong host | TLS, layer 5; for a wrong host, DNS or a proxy |
 
-Its weakness is that symptoms can lie. A fault far down can pass for one high up: with no network cable it looks like a DNS failure, and you can spend time on a DNS that works. The defence is to let go quickly: if a hypothesis high up doesn't hold, go down.
+Its weakness is that symptoms can lie. A fault far down can pass for one high up: through a VPN tunnel with too small an MTU, the name resolves, ping answers and the port opens, but the connection hangs when the server sends its certificate chain. It looks like a TLS fault, but the cause sits at layer 3. The defence is to let go quickly: if a hypothesis high up doesn't hold, go down.
 
-## Divide and conquer: start in the middle
+## Start in the middle
 
-When unsure, start in the middle. One test that reaches the target at the network layer splits the problem in two: if the target answers, layers 1–3 work and the fault lies above; if it doesn't, it lies below. The next test splits what is left again. That is a binary search, and it is often the fastest way when the symptom points nowhere.
+Divide and conquer is not a third way but a way to choose where to start when the symptom points nowhere. You start in the middle, with one test against the target at the network layer, and the answer picks the direction. If the target answers, layers 1–3 work and you carry on top-down. If it doesn't, the fault lies at layer 3 or below, and you go bottom-up. If the gateway answers but the target doesn't, layers 1 and 2 are fine locally, and the fault lies on the way beyond. Each test halves what is left: it is a binary search.
 
 But a test is never better than what it measures. Many firewalls block ping, so an unanswered ping proves nothing on its own, and an answered one doesn't prove that the application's traffic gets through. Choose tests that take the same path as whatever is failing.
 
 ## Same fault, two ways
 
-A typical case: on Monday morning users can't get into the intranet, but email and the internet work. One service fails for everyone, so I go top-down, and every test removes part of the possibilities:
+A typical case: on Monday morning users can't get into the intranet, but email and the internet work. One service fails for everyone, so top-down is the natural choice:
 
-1. The name resolves, so DNS works. But the connection never comes up: a time-out, not a refusal. No one answers, so the packets vanish somewhere.
+1. The name resolves, so DNS works. But the connection times out rather than being refused: no one answers, so the packets vanish somewhere.
 2. The server answers ping. There is a way there, at least for ICMP.
-3. The port doesn't answer, yet on the server the service is listening as it should.
+3. On the server, the service is running and listening on the port. The fault is not a dead process but somewhere on the way.
 4. The connection attempts never reach the server. Something between the networks drops them.
 5. What changed? A firewall rule over the weekend, which took the office network's access with it.
 
-Five tests, and each of them narrowed down what was left. Bottom-up would have found the same, but only after proving the cable, the neighbour, the address and the gateway on a client where everything was fine: correct, but slow.
+Bottom-up would have walked the same fault like this: signal, neighbour, address and gateway on the client are all fine, four proofs without a finding. Then the target answers ping but the port doesn't, and from there the rest is the same: the server listens, the packets don't arrive, the firewall. Both ways end at the same answer; bottom-up just spends more steps proving what already worked.
 
-The other way round: had the network card lost its signal, bottom-up would have found the fault with its first test, while top-down would first have had a DNS error to chase. Neither way is better in itself; the symptom and its scope decide.
+Had it been the cable, though, the user would have had trouble with everything, not just the intranet. The three questions from the start would then have sent you bottom-up at once, and the first test would have found the fault. That is why the questions come before the tests.
 
 ## Which way?
 
 - Many users or every service down, or something physical changed: bottom-up.
 - One service fails, the rest work: top-down.
-- The symptom points nowhere: start in the middle.
+- The symptom points nowhere: start in the middle, and let the answer pick the direction.
 - And always first: what changed?
 
 ## Principles for either way
