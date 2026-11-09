@@ -36,3 +36,72 @@ describe('ci.yml', () => {
   })
 })
 
+// Every secret lives in the `production` environment, deployable from `main`
+// only (.github/CLAUDE.md, "Secrets"), so only main's code ever gets one. The
+// workflow side of that: a job reading a secret names the environment, its
+// workflow starts only from a push to main, a manual run or the schedule, no
+// workflow runs base-repo code on PR input (`pull_request_target`,
+// `workflow_run`), and no GITHUB_TOKEN can write.
+const FILES = readdirSync(DIR).filter((f) => f.endsWith('.yml'))
+const read = (file: string) => readFileSync(join(DIR, file), 'utf8')
+
+/** The lines of a top-level block (`on:`, `jobs:`) up to the next top-level key. */
+function block(yml: string, key: string): string[] {
+  const lines = yml.split('\n')
+  const start = lines.findIndex((l) => l.startsWith(`${key}:`))
+  if (start < 0) return []
+  const end = lines.findIndex((l, i) => i > start && /^[^\s#]/.test(l))
+  return lines.slice(start + 1, end < 0 ? undefined : end)
+}
+
+/** A block's direct children (two-space keys) with their bodies. */
+function children(lines: string[]): Map<string, string> {
+  const out = new Map<string, string>()
+  let name = ''
+  for (const line of lines) {
+    const m = line.match(/^ {2}([\w-]+):/)
+    if (m) name = m[1]
+    if (name) out.set(name, `${out.get(name) ?? ''}${line}\n`)
+  }
+  return out
+}
+
+describe('workflow secrets', () => {
+  it('reads secrets only in jobs of the production environment', () => {
+    let jobs = 0
+    for (const file of FILES) {
+      const yml = read(file)
+      expect(yml, `${file}: secrets: inherit`).not.toMatch(/secrets:\s*inherit/)
+      for (const [job, body] of children(block(yml, 'jobs'))) {
+        if (!/secrets\.(?!GITHUB_TOKEN\b)\w/.test(body)) continue
+        jobs++
+        expect(body, `${file}: job ${job}`).toMatch(/^ {4}environment: production\s*$/m)
+      }
+    }
+    expect(jobs).toBeGreaterThan(0)
+  })
+
+  it('starts production jobs only from a push to main, a manual run or the schedule', () => {
+    for (const file of FILES) {
+      const yml = read(file)
+      const on = children(block(yml, 'on'))
+      expect(on.size, `${file}: triggers`).toBeGreaterThan(0)
+      expect([...on.keys()], file).not.toContain('pull_request_target')
+      expect([...on.keys()], file).not.toContain('workflow_run')
+      if (!/^ {4}environment:/m.test(yml)) continue
+      for (const [event, body] of on) {
+        expect(['push', 'workflow_dispatch', 'schedule'], `${file}: on ${event}`).toContain(event)
+        if (event === 'push') expect(body, `${file}: on push`).toMatch(/^ {4}branches: \[main\]\s*$/m)
+      }
+    }
+  })
+
+  it('gives every GITHUB_TOKEN read-only scopes', () => {
+    for (const file of FILES) {
+      const yml = read(file)
+      expect(yml, `${file}: top-level permissions`).toMatch(/^permissions:/m)
+      expect(yml, file).not.toMatch(/:\s*write(-all)?\b/)
+    }
+  })
+})
+
