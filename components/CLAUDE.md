@@ -26,6 +26,8 @@ incident background: `docs/history.md`.
 - Blog code blocks: Typography's own light `pre` is dark, so `PostPage`
   gives `pre` a white block in light mode for the palette in
   `app/globals.css`; every `pre` is focusable (a long line scrolls it).
+  Inline code is a chip (`.post-body`), each word a nowrap span from
+  `lib/inline-code.ts`, so a phone breaks lines between words only.
 
 ## The 2001 theme (load-bearing)
 

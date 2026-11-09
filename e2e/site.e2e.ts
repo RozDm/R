@@ -199,6 +199,16 @@ test('blog: index → post → tag page and back', async ({ page }) => {
   await expect(page).toHaveURL(/\/blogg\/$/)
 })
 
+test('a post fits the screen, and inline code breaks between words only', async ({ page }) => {
+  await page.goto(post.path)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
+  // lib/inline-code.ts: each word is one .code-word span, so none spans two lines.
+  const split = await page
+    .locator('.post-body .code-word')
+    .evaluateAll((els) => els.filter((el) => el.getClientRects().length > 1).map((el) => el.textContent))
+  expect(split).toEqual([])
+})
+
 test.describe('contact form', () => {
   async function fill(page: import('@playwright/test').Page) {
     await page.goto('/kontakt/')
