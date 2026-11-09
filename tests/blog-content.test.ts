@@ -28,6 +28,11 @@ function body(lang: Lang, slug: string): Node {
 }
 
 describe('blog posts', () => {
+  // The browser tests and the smoke test sample a post; the blog needs one.
+  it('finds the posts', () => {
+    expect(posts.length).toBeGreaterThan(0)
+  })
+
   // Reading throws an error that names every problem (a matcher would cut it short).
   it.each(posts)('%s has valid frontmatter', (_, lang, slug) => {
     getPostBySlug(slug, lang)

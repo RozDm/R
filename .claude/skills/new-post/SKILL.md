@@ -63,7 +63,7 @@ draft: true
 When the owner says the post is ready:
 
 1. In BOTH files: set `date` to today (UTC) if the draft was written on an earlier day — a post is dated the day it goes live — and remove `draft: true`. Later edits go to both files too, with `updated: "<YYYY-MM-DD>"` bumped in both.
-2. First real post only — while `content/blog/velkommen.md` exists: delete it and `content/blog/en/welcome.md`, and drop `'Velkommen'` from `STANDARD_TAGS`, its `TAG_LABELS_EN` entry and the `welcome` alias in `data/tags.ts` (`tests/tags.test.ts` insists the three agree). Nothing else names the welcome post: the browser tests (`e2e/posts.ts`) and `scripts/smoke.sh` take the newest post from the feeds.
+2. First real post only — while the welcome post (slug `velkommen`, English twin `welcome`) is still there: delete both files, drop `'Velkommen'` from `STANDARD_TAGS`, its `TAG_LABELS_EN` entry and the `welcome` alias in `data/tags.ts` (`tests/tags.test.ts` insists the three agree), and drop this step from the skill. Nothing else names the welcome post: the browser tests (`e2e/posts.ts`) and `scripts/smoke.sh` take the newest post from the feeds.
 3. `npm run check`, then `npm run build` (image, CSP and WAF checks need it), then a PR with squash auto-merge. After the merge, look at the deploy run once.
 
 ## Launch (search engines)
