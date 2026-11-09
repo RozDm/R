@@ -335,3 +335,13 @@ html.intro-active::before {
 .post-body th {
   overflow-wrap: anywhere;
 }
+
+/* Diagrams in posts (SVG, built by scripts/build-diagrams.mjs) fill the
+   column, and the dark theme inverts them: lightness flips, hue stays (the
+   white card turns black, the red stays red). Draw them for the light theme. */
+.post-body img[src$='.svg'] {
+  width: 100%;
+}
+.dark .post-body img[src$='.svg'] {
+  filter: invert(1) hue-rotate(180deg);
+}

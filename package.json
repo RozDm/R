@@ -19,7 +19,8 @@
     "deploy": "npm run build && wrangler deploy",
     "check": "npm run lint && npm run typecheck && npm test",
     "check:waf": "node scripts/check-waf.mjs",
-    "check:csp": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-csp.mjs"
+    "check:csp": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-csp.mjs",
+    "diagrams": "node scripts/build-diagrams.mjs"
   },
   "engines": {
     "node": ">=22"

@@ -2,7 +2,7 @@
 title: "Feilsøking i nettverk: to veier gjennom TCP/IP-stakken"
 description: "Feilsøking i nettverk nedenfra og opp eller ovenfra og ned: tankegangen bak TCP/IP-modellen, og hvordan du velger riktig vei."
 date: "2026-11-09"
-tags: ["TCP/IP"]
+tags: ["Nettverk", "TCP/IP"]
 ---
 
 «Nettet virker ikke» er et symptom, ikke en diagnose. Feilsøking i nettverk handler mindre om kommandoer enn om tankegang: hvilke spørsmål du stiller, i hvilken rekkefølge, og hva svarene faktisk beviser. Her er de to veiene gjennom TCP/IP-stakken, nedenfra og opp og ovenfra og ned, og hvordan du velger mellom dem.
@@ -85,6 +85,8 @@ Nedenfra og opp hadde gått gjennom den samme feilen slik: signal, nabo, adresse
 Hadde det derimot vært kabelen, hadde brukeren hatt feil på alt, ikke bare intranettet. Da hadde de tre spørsmålene fra starten sendt deg nedenfra og opp med en gang, og første test hadde funnet feilen. Derfor kommer spørsmålene før testene.
 
 ## Hvilken vei?
+
+![TCP/IP-stakken med fem lag, fra 1 Fysisk nederst til 5 Applikasjon øverst. Nedenfra og opp begynner på lag 1 og går oppover, ovenfra og ned begynner på lag 5 og går nedover, og begynner du på midten, starter du på lag 3 og går opp eller ned, alt etter svaret.](/images/feilsoking-to-veier-gjennom-tcp-ip-stakken/tcp-ip-stakken.svg)
 
 - Mange brukere eller alle tjenester nede, eller noe fysisk endret: nedenfra og opp.
 - Én tjeneste feiler, resten virker: ovenfra og ned.

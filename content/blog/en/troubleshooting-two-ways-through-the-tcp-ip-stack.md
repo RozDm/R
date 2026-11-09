@@ -2,7 +2,7 @@
 title: "Network troubleshooting: two ways through the TCP/IP stack"
 description: "Network troubleshooting bottom-up or top-down: the thinking behind the TCP/IP model, and how to choose the right way."
 date: "2026-11-09"
-tags: ["TCP/IP"]
+tags: ["Nettverk", "TCP/IP"]
 translationOf: "feilsoking-to-veier-gjennom-tcp-ip-stakken"
 ---
 
@@ -86,6 +86,8 @@ Bottom-up would have walked the same fault like this: signal, neighbour, address
 Had it been the cable, though, the user would have had trouble with everything, not just the intranet. The three questions from the start would then have sent you bottom-up at once, and the first test would have found the fault. That is why the questions come before the tests.
 
 ## Which way?
+
+![The TCP/IP stack with five layers, from 1 Physical at the bottom to 5 Application at the top. Bottom-up starts at layer 1 and goes up, top-down starts at layer 5 and goes down, and starting in the middle means layer 3, then up or down depending on the answer.](/images/feilsoking-to-veier-gjennom-tcp-ip-stakken/tcp-ip-stack.svg)
 
 - Many users or every service down, or something physical changed: bottom-up.
 - One service fails, the rest work: top-down.

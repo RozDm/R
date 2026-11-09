@@ -29,7 +29,9 @@ incident background: `docs/history.md`.
   Inline code is a chip (`.post-body`), each word a nowrap span from
   `lib/inline-code.ts`, so a phone breaks lines between words only. Table
   cells take `overflow-wrap: anywhere`: WebKit keeps hyphenated words whole,
-  and a table once outgrew the iPhone screen.
+  and a table once outgrew the iPhone screen. SVG images (diagrams, drawn
+  for the light theme) fill the column, and the dark theme inverts them
+  (`invert(1) hue-rotate(180deg)`: lightness flips, hue stays).
 
 ## The 2001 theme (load-bearing)
 

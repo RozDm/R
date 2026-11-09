@@ -199,7 +199,15 @@ answered; keep output and replies short.
   `![alt](/images/<slug>/file.webp)`, file in `public/images/<slug>/`;
   `rehypePostImages` (`lib/post-images.ts`) stamps size + lazy loading and
   fails the build on an external image (the CSP's `img-src 'self' data:`
-  would block it), a missing file, no alt text or an unreadable format. `draft: true` keeps a post off every public surface in
+  would block it), a missing file, no alt text or an unreadable format.
+  `<slug>` is the Norwegian one for both twins. Diagrams: SVG, the source
+  with live `<text>` in `content/diagrams/<slug>/`, the copy in
+  `public/images/<slug>/` built by `npm run diagrams`
+  (`scripts/build-diagrams.mjs`: text outlined in Intel One Mono, which an
+  SVG in `<img>` can't load; `tests/diagrams.test.ts` fails on a stale copy;
+  the copies are skipped by Grep and binary to `git diff`). Draw for the
+  light theme on a white card: the dark theme inverts post SVGs
+  (`app/globals.css`). `draft: true` keeps a post off every public surface in
   production builds; `npm run dev` shows drafts with an «Utkast» badge.
 - SEO: canonicals with trailing slashes, OG images via `next/og` (Intel One
   Mono from Fontsource WOFF, `lib/og-fonts.ts` — next/og can't read WOFF2),
