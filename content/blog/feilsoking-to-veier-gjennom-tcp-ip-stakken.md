@@ -1,11 +1,11 @@
 ---
-title: "Feilsøking: to veier gjennom TCP/IP-stakken"
-description: "Nedenfra fra kabelen eller ovenfra fra applikasjonen: tankegangen bak feilsøking etter TCP/IP-modellen, og hvordan du velger vei."
+title: "Feilsøking i nettverk: to veier gjennom TCP/IP-stakken"
+description: "Feilsøking i nettverk nedenfra og opp eller ovenfra og ned: tankegangen bak TCP/IP-modellen, og hvordan du velger riktig vei."
 date: "2026-11-09"
 tags: ["TCP/IP"]
 ---
 
-«Nettet virker ikke» er et symptom, ikke en diagnose. Veien fra symptom til årsak handler mindre om kommandoer enn om tankegang: hvilke spørsmål du stiller, i hvilken rekkefølge, og hva svarene faktisk beviser.
+«Nettet virker ikke» er et symptom, ikke en diagnose. Feilsøking i nettverk handler mindre om kommandoer enn om tankegang: hvilke spørsmål du stiller, i hvilken rekkefølge, og hva svarene faktisk beviser. Her er de to veiene gjennom TCP/IP-stakken, nedenfra og opp og ovenfra og ned, og hvordan du velger mellom dem.
 
 ## Å bevise, ikke å gjette
 
@@ -21,9 +21,9 @@ Før første test lønner det seg å stille tre spørsmål:
 
 Svarene avgjør hvor du begynner.
 
-## Lagene som tankeverktøy
+## TCP/IP-lagene som tankeverktøy
 
-TCP/IP-modellen beskrives med fire eller fem lag. Til feilsøking bruker jeg fem, med fysisk lag og linklag hver for seg, fordi en død kabel og et feilkonfigurert VLAN er to forskjellige feil. Da får hvert lag sitt eget spørsmål:
+TCP/IP-modellen har fire lag i [RFC 1122](https://www.rfc-editor.org/rfc/rfc1122.html) og fem i mange lærebøker. Til feilsøking bruker jeg fem, med fysisk lag og linklag hver for seg, fordi en død kabel og et feilkonfigurert VLAN er to forskjellige feil. Da får hvert lag sitt eget spørsmål:
 
 | Lag | Spørsmålet | Typiske feil |
 | --- | --- | --- |
@@ -77,7 +77,7 @@ Et typisk tilfelle: mandag morgen kommer brukerne ikke inn på intranettet, men 
 1. Navnet slås opp, så DNS virker. Men tilkoblingen får tidsavbrudd, ikke avvisning: ingen svarer, altså forsvinner pakkene et sted.
 2. Serveren svarer på ping. Det finnes en vei dit, i hvert fall for ICMP.
 3. På serveren kjører tjenesten og lytter på porten. Feilen er ikke en død prosess, men et sted på veien.
-4. Tilkoblingsforsøkene når aldri serveren. Noe mellom nettene kaster dem.
+4. Trafikken på serveren viser at tilkoblingsforsøkene aldri kommer fram. Noe mellom nettene kaster dem.
 5. Hva ble endret? En brannmurregel i helgen, som tok med seg tilgangen fra kontornettet.
 
 Nedenfra og opp hadde gått gjennom den samme feilen slik: signal, nabo, adresse og gateway på klienten er i orden, fire bevis uten funn. Så svarer målet på ping, men porten svarer ikke, og derfra er resten likt: serveren lytter, pakkene kommer ikke fram, brannmuren. Begge veier ender i samme svar; nedenfra og opp bruker bare flere steg på å bevise det som allerede virket.
