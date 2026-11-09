@@ -95,11 +95,13 @@ incident background: `docs/history.md`; the zone: `docs/cloudflare-security.md`.
 - Every action is pinned to a full commit SHA with its release in a comment
   (`actions/checkout@<sha> # v7.0.1`); `tests/workflows.test.ts` fails on a
   bare tag; Dependabot bumps SHA and comment together.
-- `dependabot.yml` — weekly (Monday 06:00, Europe/Oslo) grouped PRs: npm
-  minor+patch, wrangler, Playwright, security updates (npm: 7-day cooldown),
-  GitHub Actions; every npm semver-major is ignored (migrations by hand —
-  ESLint 9, TypeScript 6: root `CLAUDE.md` Gotchas; the Actions entry has no
-  such rule, so action majors do come). Dependabot PRs get no secrets.
+- `dependabot.yml` — monthly (the 1st, 06:00 Europe/Oslo; owner's call
+  2026-11-09, was weekly) grouped PRs: npm minor+patch, wrangler,
+  Playwright, GitHub Actions (npm: 7-day cooldown); security updates come
+  as soon as an advisory appears, whatever the schedule. Every npm
+  semver-major is ignored (migrations by hand — ESLint 9, TypeScript 6:
+  root `CLAUDE.md` Gotchas; the Actions entry has no such rule, so action
+  majors do come). Dependabot PRs get no secrets.
   Merge one by enabling squash auto-merge as the owner, so the merge push is
   the owner's and `deploy.yml` gets its secrets (never a GITHUB_TOKEN merge
   workflow). The wrangler PR stays red until `npm run cf-typegen` is
