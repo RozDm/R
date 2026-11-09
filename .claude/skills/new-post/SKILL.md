@@ -14,7 +14,7 @@ The rules below are enforced, so a slip fails `npm run dev`, `npm test` and the 
 If the user did not state them, ask once (combined `AskUserQuestion`) for:
 
 1. **Topic / title** — in any language; you write the Norwegian and English titles (sentence case).
-2. **Tags** — at least one, from `STANDARD_TAGS` in `data/tags.ts`. Show 3–5 that fit and let the user pick. Do NOT invent tags (the build refuses them), and never `Velkommen` (the welcome post's own). Both files carry the same canonical tags (English frontmatter may use an alias like `Security`, but canonical is clearer); the English blog shows `TAG_LABELS_EN` labels automatically.
+2. **Tags** — at least one, from `STANDARD_TAGS` in `data/tags.ts`. Show 3–5 that fit and let the user pick. Do NOT invent tags (the build refuses them). Both files carry the same canonical tags (English frontmatter may use an alias like `Security`, but canonical is clearer); the English blog shows `TAG_LABELS_EN` labels automatically.
 3. **Description** (one sentence, 50–160 characters, aim for ~140) — you write it in both languages; meta + RSS + OG.
 4. **Body** — the user's draft or notes, if any.
 
@@ -63,8 +63,7 @@ draft: true
 When the owner says the post is ready:
 
 1. In BOTH files: set `date` to today (UTC) if the draft was written on an earlier day — a post is dated the day it goes live — and remove `draft: true`. Later edits go to both files too, with `updated: "<YYYY-MM-DD>"` bumped in both.
-2. First real post only — while the welcome post (slug `velkommen`, English twin `welcome`) is still there: delete both files, drop `'Velkommen'` from `STANDARD_TAGS`, its `TAG_LABELS_EN` entry and the `welcome` alias in `data/tags.ts` (`tests/tags.test.ts` insists the three agree), and drop this step from the skill. Nothing else names the welcome post: the browser tests (`e2e/posts.ts`) and `scripts/smoke.sh` take the newest post from the feeds.
-3. `npm run check`, then `npm run build` (image, CSP and WAF checks need it), then a PR with squash auto-merge. After the merge, look at the deploy run once.
+2. `npm run check`, then `npm run build` (image, CSP and WAF checks need it), then a PR with squash auto-merge. After the merge, look at the deploy run once.
 
 ## Launch (search engines)
 
@@ -80,4 +79,4 @@ Then the owner submits `https://rozsoshnykh.no/sitemap.xml` in Google Search Con
 
 - Files: `content/blog/<slug>.md` and `content/blog/en/<en-slug>.md`; slugs lowercase ASCII + dashes.
 - Dates are quoted `"YYYY-MM-DD"` strings (an unquoted date is read as the same day, but quoted keeps the files uniform).
-- Do not edit `lib/`, the sitemap, RSS or components as part of this skill — new posts flow through the existing pipeline. A genuinely new tag is a separate change to `data/tags.ts` (add it to `STANDARD_TAGS`, and to `TAG_LABELS_EN` if it is a Norwegian word); the welcome-post cleanup above is the one exception.
+- Do not edit `lib/`, the sitemap, RSS or components as part of this skill — new posts flow through the existing pipeline. A genuinely new tag is a separate change to `data/tags.ts` (add it to `STANDARD_TAGS`, and to `TAG_LABELS_EN` if it is a Norwegian word).

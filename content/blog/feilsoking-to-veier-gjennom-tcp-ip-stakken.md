@@ -3,7 +3,6 @@ title: "Feilsøking: to veier gjennom TCP/IP-stakken"
 description: "Nedenfra fra kabelen eller ovenfra fra applikasjonen: slik velger du vei gjennom TCP/IP-stakken når noe ikke virker, med kommandoer for hvert lag."
 date: "2026-11-09"
 tags: ["TCP/IP"]
-draft: true
 ---
 
 «Nettet virker ikke» er et symptom, ikke en diagnose. Den raskeste veien fra symptom til årsak er å gå gjennom TCP/IP-stakken ett lag om gangen — og å begynne i riktig ende.

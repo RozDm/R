@@ -75,10 +75,6 @@ export const STANDARD_TAGS = [
   'Automatisering',
   'Migrering',
   'SRE',
-
-  // The welcome post's only (content/blog/velkommen.md): goes with it, along
-  // with its TAG_LABELS_EN and TAG_ALIASES entries. Never for a new post.
-  'Velkommen',
 ] as const
 
 // Topic pages search engines may index, as canonical tags. Owner's call
@@ -98,7 +94,6 @@ export const TAG_LABELS_EN: Record<string, string> = {
   Nettverk: 'Networking',
   Automatisering: 'Automation',
   Migrering: 'Migration',
-  Velkommen: 'Welcome',
 }
 
 // Aliaser: lowercase nøkkel → kanonisk tag.
@@ -157,6 +152,5 @@ export const TAG_ALIASES: Record<string, string> = {
   // Operasjoner
   migration: 'Migrering',
   automation: 'Automatisering',
-  welcome: 'Velkommen',
   migrasjon: 'Migrering',
 }

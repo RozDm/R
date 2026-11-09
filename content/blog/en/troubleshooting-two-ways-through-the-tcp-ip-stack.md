@@ -4,7 +4,6 @@ description: "Bottom-up from the cable or top-down from the application: how to 
 date: "2026-11-09"
 tags: ["TCP/IP"]
 translationOf: "feilsoking-to-veier-gjennom-tcp-ip-stakken"
-draft: true
 ---
 
 ‘The network is down’ is a symptom, not a diagnosis. The quickest way from symptom to cause is to walk the TCP/IP stack one layer at a time — and to start at the right end.
