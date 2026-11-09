@@ -56,7 +56,7 @@ Den passer når én tjeneste feiler mens resten virker: e-posten går, men intra
 | Feilen sier | Det betyr | Let her |
 | --- | --- | --- |
 | Navnet finnes ikke | DNS svarte, men kjenner ikke navnet | DNS-oppføringen, lag 5 |
-| DNS svarer ikke | Spørsmålet nådde aldri DNS-serveren | Veien til DNS-serveren, lag 1–4 |
+| DNS svarer ikke | Ingen svar: tapt på vei dit eller tilbake, eller DNS-tjenesten er nede | Veien til DNS-serveren, lag 1–4, eller selve tjenesten |
 | Tilkoblingen avvises | Noe sa nei: ingenting lytter, eller en brannmur avviser | Tjenesten eller brannmuren, lag 4 |
 | Tidsavbrudd ved tilkobling | Ingen svar: pakkene forsvinner på vei dit eller tilbake | Brannmur eller ruting, lag 4 og nedover |
 | Ikke noe svar etter tilkobling | Forbindelsen står, men tjenesten bak svarer ikke | Applikasjonen, lag 5 |
@@ -66,7 +66,7 @@ Svakheten er at symptomer kan lyve. En feil langt nede kan forkle seg som en fei
 
 ## Begynn på midten
 
-Splitt og hersk er ingen tredje vei, men en måte å velge startpunkt på når symptomet ikke peker noe sted. Du begynner på midten, med én test mot målet på nettverkslaget, og svaret velger retningen. Svarer målet, virker lag 1–3, og du leter videre ovenfra og ned. Svarer det ikke, ligger feilen på lag 3 eller under, og du går nedenfra og opp. Svarer gatewayen, men ikke målet, er lag 1 og 2 i orden lokalt, og feilen ligger på veien videre. Hver test halverer det som gjenstår: det er binærsøk.
+Splitt og hersk er ingen tredje vei, men en måte å velge startpunkt på når symptomet ikke peker noe sted. Du begynner på midten, med én test mot målet på nettverkslaget, og svaret velger retningen. Svarer målet, virker lag 1–3, og du går oppover til lag 4 og 5. Svarer det ikke, ligger feilen på lag 3 eller under, og du går nedover. Neste test deler den halvdelen igjen: svarer gatewayen, men ikke målet, er lag 1 og 2 i orden lokalt, og feilen ligger på veien videre. Hver test halverer det som gjenstår: det er binærsøk.
 
 Men en test er aldri bedre enn det den måler. Mange brannmurer blokkerer ping, så et ping uten svar beviser ingenting alene, og et ping med svar beviser ikke at applikasjonens trafikk kommer fram. Velg tester som går samme vei som det som feiler.
 
