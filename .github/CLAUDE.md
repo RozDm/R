@@ -97,15 +97,27 @@ incident background: `docs/history.md`; the zone: `docs/cloudflare-security.md`.
   bare tag; Dependabot bumps SHA and comment together.
 - `dependabot.yml` — weekly (Monday 06:00, Europe/Oslo) grouped PRs: npm
   minor+patch, wrangler, Playwright, security updates (npm: 7-day cooldown),
-  GitHub Actions; every semver-major is ignored (migrations by hand — ESLint
-  9, TypeScript 6: root `CLAUDE.md` Gotchas). Dependabot PRs get no secrets.
+  GitHub Actions; every npm semver-major is ignored (migrations by hand —
+  ESLint 9, TypeScript 6: root `CLAUDE.md` Gotchas; the Actions entry has no
+  such rule, so action majors do come). Dependabot PRs get no secrets.
   Merge one by enabling squash auto-merge as the owner, so the merge push is
   the owner's and `deploy.yml` gets its secrets (never a GITHUB_TOKEN merge
   workflow). The wrangler PR stays red until `npm run cf-typegen` is
   committed on it; the Playwright PR until `ci.yml`'s image tag and digest
   follow (the `Docker-Content-Digest` header of
   `https://mcr.microsoft.com/v2/playwright/manifests/v<version>-noble`).
-  Pushing to a Dependabot branch stops its rebases.
+  Pushing to a Dependabot branch stops its rebases. All of this runs
+  unattended: every Monday at 07:32 Europe/Oslo the owner's Claude scheduled
+  task «Dependabot weekly merge (RozDm/R)» (its prompt lives in the task)
+  wakes the session of the same name, which has this repository checked out
+  (a fresh session fired by a task gets none; don't archive that session).
+  It vets each PR: minor/patch only, expected files only, `npm ci
+  --ignore-scripts` + `npm audit signatures`. It then auto-merges the green
+  ones, carries the wrangler/Playwright fixes in one superseding PR from
+  branch claude/dependabot-weekly (as RozDm/R#235), leaves majors and
+  anything odd to the owner (push notification) and checks the deploy.
+  Before touching a Dependabot PR, check whether the task already took it
+  (auto-merge on, or a PR from that branch superseding it).
 - Repository security (owner-only settings, no CI or session token can
   switch them): CodeQL in default setup (GitHub-managed: no workflow file,
   no `security-events: write` here; its PR checks aren't required), private
