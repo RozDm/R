@@ -34,20 +34,21 @@ ip -br link                # names: eth0 here, often ens18 or enp3s0
 ethtool eth0 | grep -E 'Link detected|Speed|Duplex'
 ip -s link show eth0       # growing error counters: cable, port, duplex
 
-# 2 Link: does the gateway answer ARP? Forget its entry, then ping to
-# make the kernel ask again; ARP gets an answer even when ping doesn't
-sudo ip neigh flush 192.168.1.1
-ping -c 1 192.168.1.1 > /dev/null
-ip neigh show 192.168.1.1  # REACHABLE: OK; INCOMPLETE/FAILED: VLAN, port
+# 2 Link: do frames flow? These need no IP address (DHCP may have failed)
+sudo tcpdump -ni eth0 -c 5 arp            # neighbours' ARP: frames arrive
+ip route show default                     # the gateway, if DHCP gave one
+sudo arping -D -c 3 -I eth0 192.168.1.1   # a reply with a MAC: L2 works
 
 # 3 Internet: an address, a route and an answer
 ip -br addr                # no IPv4, or 169.254.x.x: no DHCP answer
-ip route get 10.20.0.15    # the gateway and interface the packet uses
+ping -c 3 192.168.1.1      # the gateway first
+ip route get 10.20.0.15    # then the target: the gateway and interface
 ping -c 3 10.20.0.15
 traceroute -n 10.20.0.15   # where the path stops (or tracepath, mtr)
 # UDP probes blocked? Follow TCP 443, like the application does
 sudo traceroute -n -T -p 443 10.20.0.15
-# full-size packets: if only these get lost, it's the MTU
+# MTU: -s 1472 makes a 1500-byte packet. Through a VPN or overlay less
+# is normal (WireGuard: 1420); lower -s until it passes
 ping -c 3 -M do -s 1472 10.20.0.15
 
 # 4 Transport: does the port answer? Without nc, bash can test it too
@@ -59,6 +60,8 @@ getent hosts app.example.com  # the same lookup programs make
 curl -v https://app.example.com/
 ```
 
+`arping -D` is the iputils version (Debian/Ubuntu: the `iputils-arping` package), and `traceroute -T` needs the `traceroute` package; otherwise `mtr -n -T -P 443 10.20.0.15` does the same.
+
 The upside is that nothing gets skipped: once you reach the top, you know everything below works. The downside is time. If the fault is an expired certificate, you have checked four layers for nothing.
 
 ## Top-down
@@ -69,21 +72,25 @@ Start at the application when one service fails while the rest work: email goes 
 curl -v --connect-timeout 5 https://app.example.com/
 ```
 
+Behind a proxy, curl goes through it (the `https_proxy` environment variable; `curl -v` then says `Uses proxy env variable`), while ping, nc and traceroute go direct. Add `--noproxy '*'` when you test the network itself.
+
 | curl says | Layer | Next step |
 | --- | --- | --- |
 | `Could not resolve host` | 5, DNS | `getent hosts`, `dig`, the resolver setup |
+| `Resolving timed out` | 5, DNS | The DNS server doesn't answer: `dig`, `/etc/resolv.conf` |
+| `Connection refused` | 4 | The host (or a firewall) answers, but nothing listens on the port |
+| `Connection timed out` or `Timeout was reached` | 4 or below | The packets vanish: a firewall dropping them, routing or further down |
+| Hangs after `Client hello` | 3, MTU | Small packets pass, big ones vanish: test the MTU (layer 3, bottom-up) |
 | `SSL certificate problem` | 5, TLS | Certificate, chain, clock |
 | HTTP `502` or `503` | 5, the service | The logs of the proxy and the service behind it |
-| `Connection refused` | 4 | The host (or a firewall) answers, but nothing listens on the port |
-| `Connection timed out` or `Timeout was reached` | 3 or below | The packets vanish: firewall, routing or further down |
 
-A DNS trick: `dig` asks the DNS server directly, while programs use the system resolver, with the hosts file, search domains and cache. When `dig` and `getent hosts` disagree, the fault is in the machine's own setup, not in DNS.
+A DNS trick: `dig` asks the DNS server directly, while programs use the system resolver, with the hosts file, search domains and cache. When `dig` and `getent hosts` disagree, the fault is in the machine's own setup, not in DNS. And while DNS is down, you can test the rest past it: `curl -v --resolve app.example.com:443:10.20.0.15 https://app.example.com/` sends the right name in TLS (SNI) and HTTP without any DNS lookup.
 
 If the host answers but the service doesn't, continue on the server:
 
 ```bash
 # on the server: does anything listen on 443, and what does it log?
-sudo ss -tlnp | grep ':443'
+sudo ss -tlnp 'sport = :443'
 systemctl status nginx
 journalctl -u nginx --since '15 min ago'
 ```
@@ -95,10 +102,10 @@ The upside is speed: if the fault is high up, and day to day it often is, a coup
 A typical case: on Monday morning users can't get into app.example.com, but email and the internet work. One service fails and the rest work, so top-down:
 
 1. `curl -v` shows `Trying 10.20.0.15:443...` and then a timeout. The name was resolved, so DNS works, but the TCP connection never comes up.
-2. `ping 10.20.0.15` answers. There is a way there, so layers 1–3 work.
+2. `ping 10.20.0.15` answers. There is a way there, so layers 1–3 work, at least for ICMP.
 3. `nc -zv 10.20.0.15 443` times out, while `ss -tlnp` on the server shows nginx listening on 443.
-4. `sudo tcpdump -ni eth0 'tcp port 443'` on the server shows no SYN from the client: the packets stop before they reach the server. If the SYNs arrive and get no answer, it is the server's own firewall (`sudo nft list ruleset`).
-5. So it is the firewall between the networks. A change over the weekend had removed the rule that let the office network in on port 443.
+4. `sudo tcpdump -ni eth0 'tcp port 443'` on the server shows no SYN from the client: something before the server drops the packets. That can be a firewall in the network, or one that belongs to the server but filters outside it: a cloud security group (AWS, Azure) or the Proxmox firewall. If the SYNs arrive and get no answer, it is the server's own firewall (`sudo nft list ruleset`).
+5. Here it was the firewall between the networks. A change over the weekend had removed the rule that let the office network in on port 443.
 
 Five commands. Bottom-up would have found the same, but only after proving the cable, ARP, address and gateway on a client where everything was fine.
 
@@ -108,7 +115,7 @@ The other way round: had the network card shown `NO-CARRIER`, bottom-up would ha
 
 - Many users or every service down, or something physical changed: bottom-up.
 - One service fails, the rest work: top-down.
-- Unsure: start in the middle with a `ping` to the target. If it answers, layers 1–3 work and the fault lies above; if it doesn't, look below. That is divide and conquer. But many firewalls block ICMP, so an unanswered ping proves nothing on its own: confirm with a TCP test such as `nc -zv`.
+- Unsure: start in the middle with a `ping` to the target. If it answers, layers 1–3 work and the fault lies above; if it doesn't, look below. That is divide and conquer. Two caveats: many firewalls block ICMP, so an unanswered ping proves nothing on its own, and with load balancing (ECMP) or policy routing TCP can take another path than ping. Confirm with a TCP test such as `nc -zv` or `traceroute -T`.
 
 Whichever way: write down what you have proven at each layer, and change one thing at a time.
 
@@ -120,8 +127,10 @@ The same five layers in PowerShell:
 # 1 Physical: Status should be Up; Disconnected means no signal
 Get-NetAdapter
 
-# 2 Link: ping the gateway, then check its ARP entry:
-# Reachable means OK, Unreachable or Incomplete points at VLAN or port
+# 2 Link (needs an IPv4 address; 169.254.x.x = no DHCP answer, see 3):
+# forget the gateway's entry, ping it, read the answer. Reachable means
+# OK, Unreachable or Incomplete points at VLAN or port (run as admin)
+Remove-NetNeighbor -IPAddress 192.168.1.1 -Confirm:$false 2>$null
 ping -n 1 192.168.1.1 > $null
 Get-NetNeighbor -IPAddress 192.168.1.1
 

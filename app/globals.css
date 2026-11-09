@@ -303,3 +303,27 @@ html.intro-active::before {
 .dark .hljs-variable,
 .dark .hljs-template-variable,
 .dark .hljs-meta { color: #c4b5fd; }
+
+/* Inline code in posts (.post-body, PostPage): a quiet chip instead of
+   Typography's bold text between backticks, and no line break inside a word
+   of a command: lib/inline-code.ts wraps each word in a .code-word span. */
+.post-body :not(pre) > code {
+  font-weight: 400;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.dark .post-body :not(pre) > code {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+.post-body :not(pre) > code::before,
+.post-body :not(pre) > code::after {
+  content: none;
+}
+.post-body .code-word {
+  white-space: nowrap;
+}

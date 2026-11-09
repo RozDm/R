@@ -193,7 +193,9 @@ answered; keep output and replies short.
   blocks: highlighted at build by `rehype-highlight` with lowlight's common
   languages plus PowerShell (`HIGHLIGHT_OPTIONS` in `lib/markdown.ts`, shared
   by the page and RSS; a language left out renders plain), palette in
-  `app/globals.css` (e2e checks both themes). Images:
+  `app/globals.css` (e2e checks both themes). Inline code: a chip that
+  breaks only between words (`lib/inline-code.ts`, `.post-body` in
+  `app/globals.css`), so `curl -v` never splits at its hyphen. Images:
   `![alt](/images/<slug>/file.webp)`, file in `public/images/<slug>/`;
   `rehypePostImages` (`lib/post-images.ts`) stamps size + lazy loading and
   fails the build on an external image (the CSP's `img-src 'self' data:`

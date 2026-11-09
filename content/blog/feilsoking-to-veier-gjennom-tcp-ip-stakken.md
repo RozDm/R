@@ -33,20 +33,21 @@ ip -br link                # names: eth0 here, often ens18 or enp3s0
 ethtool eth0 | grep -E 'Link detected|Speed|Duplex'
 ip -s link show eth0       # growing error counters: cable, port, duplex
 
-# 2 Link: does the gateway answer ARP? Forget its entry, then ping to
-# make the kernel ask again; ARP gets an answer even when ping doesn't
-sudo ip neigh flush 192.168.1.1
-ping -c 1 192.168.1.1 > /dev/null
-ip neigh show 192.168.1.1  # REACHABLE: OK; INCOMPLETE/FAILED: VLAN, port
+# 2 Link: do frames flow? These need no IP address (DHCP may have failed)
+sudo tcpdump -ni eth0 -c 5 arp            # neighbours' ARP: frames arrive
+ip route show default                     # the gateway, if DHCP gave one
+sudo arping -D -c 3 -I eth0 192.168.1.1   # a reply with a MAC: L2 works
 
 # 3 Internet: an address, a route and an answer
 ip -br addr                # no IPv4, or 169.254.x.x: no DHCP answer
-ip route get 10.20.0.15    # the gateway and interface the packet uses
+ping -c 3 192.168.1.1      # the gateway first
+ip route get 10.20.0.15    # then the target: the gateway and interface
 ping -c 3 10.20.0.15
 traceroute -n 10.20.0.15   # where the path stops (or tracepath, mtr)
 # UDP probes blocked? Follow TCP 443, like the application does
 sudo traceroute -n -T -p 443 10.20.0.15
-# full-size packets: if only these get lost, it's the MTU
+# MTU: -s 1472 makes a 1500-byte packet. Through a VPN or overlay less
+# is normal (WireGuard: 1420); lower -s until it passes
 ping -c 3 -M do -s 1472 10.20.0.15
 
 # 4 Transport: does the port answer? Without nc, bash can test it too
@@ -58,6 +59,8 @@ getent hosts app.example.com  # the same lookup programs make
 curl -v https://app.example.com/
 ```
 
+`arping -D` er iputils-utgaven (Debian/Ubuntu: pakken `iputils-arping`), og `traceroute -T` krever pakken `traceroute`; ellers gjør `mtr -n -T -P 443 10.20.0.15` det samme.
+
 Fordelen er at ingenting hoppes over: når du er på toppen, vet du at alt under virker. Ulempen er tiden. Er feilen et utløpt sertifikat, har du sjekket fire lag forgjeves.
 
 ## Ovenfra og ned
@@ -68,21 +71,25 @@ Begynn i applikasjonen når én tjeneste feiler mens resten virker: e-posten gå
 curl -v --connect-timeout 5 https://app.example.com/
 ```
 
+Bak en proxy går curl via den (miljøvariabelen `https_proxy`; `curl -v` skriver da `Uses proxy env variable`), mens ping, nc og traceroute går direkte. Legg til `--noproxy '*'` når du tester selve nettet.
+
 | curl sier | Lag | Neste steg |
 | --- | --- | --- |
 | `Could not resolve host` | 5, DNS | `getent hosts`, `dig`, resolver-oppsettet |
+| `Resolving timed out` | 5, DNS | DNS-serveren svarer ikke: `dig`, `/etc/resolv.conf` |
+| `Connection refused` | 4 | Maskinen (eller en brannmur) svarer, men ingenting lytter på porten |
+| `Connection timed out` eller `Timeout was reached` | 4 eller lavere | Pakkene forsvinner: en brannmur som kaster dem, ruting eller lenger ned |
+| Henger etter `Client hello` | 3, MTU | Små pakker går, store forsvinner: test MTU (lag 3 nedenfra) |
 | `SSL certificate problem` | 5, TLS | Sertifikat, kjede, klokke |
 | HTTP `502` eller `503` | 5, tjenesten | Loggene i proxyen og tjenesten bak |
-| `Connection refused` | 4 | Maskinen (eller en brannmur) svarer, men ingenting lytter på porten |
-| `Connection timed out` eller `Timeout was reached` | 3 eller lavere | Pakkene forsvinner: brannmur, ruting eller lenger ned |
 
-Et DNS-triks: `dig` spør DNS-serveren direkte, mens programmene bruker systemets resolver, med hosts-filen, søkedomener og cache. Er `dig` og `getent hosts` uenige, ligger feilen i maskinens eget oppsett, ikke i DNS.
+Et DNS-triks: `dig` spør DNS-serveren direkte, mens programmene bruker systemets resolver, med hosts-filen, søkedomener og cache. Er `dig` og `getent hosts` uenige, ligger feilen i maskinens eget oppsett, ikke i DNS. Og mens DNS er nede, kan du teste resten forbi den: `curl -v --resolve app.example.com:443:10.20.0.15 https://app.example.com/` sender riktig navn i TLS (SNI) og HTTP uten noe DNS-oppslag.
 
 Svarer maskinen, men ikke tjenesten, fortsetter du på serveren:
 
 ```bash
 # on the server: does anything listen on 443, and what does it log?
-sudo ss -tlnp | grep ':443'
+sudo ss -tlnp 'sport = :443'
 systemctl status nginx
 journalctl -u nginx --since '15 min ago'
 ```
@@ -94,10 +101,10 @@ Fordelen er farten: ligger feilen høyt oppe, og i hverdagen gjør den ofte det,
 Et typisk tilfelle: mandag morgen kommer brukerne ikke inn på app.example.com, men e-post og internett virker. Én tjeneste feiler og resten virker, altså ovenfra og ned:
 
 1. `curl -v` viser `Trying 10.20.0.15:443...` og deretter timeout. Navnet ble slått opp, så DNS virker, men TCP-forbindelsen kommer ikke i stand.
-2. `ping 10.20.0.15` svarer. Det finnes en vei dit, så lag 1–3 virker.
+2. `ping 10.20.0.15` svarer. Det finnes en vei dit, så lag 1–3 virker, i hvert fall for ICMP.
 3. `nc -zv 10.20.0.15 443` får timeout, mens `ss -tlnp` på serveren viser at nginx lytter på 443.
-4. `sudo tcpdump -ni eth0 'tcp port 443'` på serveren viser ingen SYN fra klienten: pakkene stopper før de når serveren. Kommer SYN-pakkene fram uten svar, er det serverens egen brannmur (`sudo nft list ruleset`).
-5. Altså er det brannmuren mellom nettene. En endring i helgen hadde fjernet regelen som slapp kontornettet inn på port 443.
+4. `sudo tcpdump -ni eth0 'tcp port 443'` på serveren viser ingen SYN fra klienten: noe før serveren kaster pakkene. Det kan være en brannmur i nettet, eller en som hører til serveren, men filtrerer utenfor den: en security group i skyen (AWS, Azure) eller brannmuren i Proxmox. Kommer SYN-pakkene fram uten svar, er det serverens egen brannmur (`sudo nft list ruleset`).
+5. Her var det brannmuren mellom nettene. En endring i helgen hadde fjernet regelen som slapp kontornettet inn på port 443.
 
 Fem kommandoer. Nedenfra og opp hadde funnet det samme, men først etter å ha bevist kabel, ARP, adresse og gateway på en klient der alt var i orden.
 
@@ -107,7 +114,7 @@ Omvendt: hadde nettverkskortet vist `NO-CARRIER`, ville nedenfra og opp funnet f
 
 - Mange brukere eller alle tjenester nede, eller noe fysisk endret: nedenfra og opp.
 - Én tjeneste feiler, resten virker: ovenfra og ned.
-- Usikker: begynn på midten med `ping` til målet. Svarer det, virker lag 1–3, og feilen ligger over. Svarer det ikke, let under. Det kalles splitt og hersk. Men mange brannmurer blokkerer ICMP, så et ping uten svar beviser ingenting alene: bekreft med en TCP-test som `nc -zv`.
+- Usikker: begynn på midten med `ping` til målet. Svarer det, virker lag 1–3, og feilen ligger over. Svarer det ikke, let under. Det kalles splitt og hersk. To forbehold: mange brannmurer blokkerer ICMP, så et ping uten svar beviser ingenting alene, og med lastbalansering (ECMP) eller policy-ruting kan TCP ta en annen vei enn ping. Bekreft med en TCP-test som `nc -zv` eller `traceroute -T`.
 
 Uansett vei: skriv ned hva du har bevist på hvert lag, og endre én ting om gangen.
 
@@ -119,8 +126,10 @@ De samme fem lagene i PowerShell:
 # 1 Physical: Status should be Up; Disconnected means no signal
 Get-NetAdapter
 
-# 2 Link: ping the gateway, then check its ARP entry:
-# Reachable means OK, Unreachable or Incomplete points at VLAN or port
+# 2 Link (needs an IPv4 address; 169.254.x.x = no DHCP answer, see 3):
+# forget the gateway's entry, ping it, read the answer. Reachable means
+# OK, Unreachable or Incomplete points at VLAN or port (run as admin)
+Remove-NetNeighbor -IPAddress 192.168.1.1 -Confirm:$false 2>$null
 ping -n 1 192.168.1.1 > $null
 Get-NetNeighbor -IPAddress 192.168.1.1
 

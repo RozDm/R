@@ -128,6 +128,7 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     (Intel One Mono for the OG cards), geo.ts,
                     post-images.ts (post images: size, lazy, build checks),
                     post-frontmatter.ts (a post's frontmatter, checked on read),
+                    inline-code.ts (inline code breaks between words only),
                     status-fetch.ts (one shared /api/status fetch),
                     use-near-viewport.ts (below-the-fold widgets load on
                     approach), timeseries-fill.ts, trends-axis.ts, visit.ts
