@@ -1,16 +1,30 @@
 ---
 title: "Troubleshooting: two ways through the TCP/IP stack"
-description: "Bottom-up from the cable or top-down from the application: how to pick a way through the TCP/IP stack when something breaks, with commands for every layer."
+description: "Bottom-up from the cable or top-down from the application: the thinking behind troubleshooting with the TCP/IP model, and how to choose a way."
 date: "2026-11-09"
 tags: ["TCP/IP"]
 translationOf: "feilsoking-to-veier-gjennom-tcp-ip-stakken"
 ---
 
-‘The network is down’ is a symptom, not a diagnosis. The quickest way from symptom to cause is to walk the TCP/IP stack one layer at a time — and to start at the right end.
+‘The network is down’ is a symptom, not a diagnosis. Getting from symptom to cause is less about commands than about a way of thinking: which questions you ask, in what order, and what the answers actually prove.
 
-## Five layers, five questions
+## Prove, don't guess
 
-The TCP/IP model has four layers. When I troubleshoot, I split the bottom one in two, physical and link, because a dead cable and a misconfigured VLAN are different faults with different tools. That gives each layer its own question:
+Good troubleshooting is a series of small experiments. Each step tests a claim — ‘the cable works’, ‘the name resolves’, ‘the port answers’ — and the answer is either a proof or an elimination. A step whose answer you already know is wasted; a good step splits what is left in two.
+
+The most dangerous trap is the convincing first guess. ‘It must be DNS’ may well be true, but the hypothesis you like best is the one you must test hardest. Otherwise you only look for what confirms it.
+
+Before the first test, three questions pay off:
+
+- What fails, and what works? One website, everything on the internet, or just the printer?
+- For whom? One user, one office or everyone?
+- Since when, and what changed? A change over the weekend is often the whole explanation.
+
+The answers decide where you start.
+
+## Layers as a thinking tool
+
+The TCP/IP model has four layers. When I troubleshoot, I split the bottom one in two, physical and link, because a dead cable and a misconfigured VLAN are different faults. That gives each layer its own question:
 
 | Layer | The question | Typical faults |
 | --- | --- | --- |
@@ -20,174 +34,66 @@ The TCP/IP model has four layers. When I troubleshoot, I split the bottom one in
 | 4 Transport | Is the port open? | Firewall, a service that isn't listening |
 | 5 Application | Does the service answer correctly? | DNS, TLS, HTTP, login |
 
-Each layer rests on the ones below. If a layer works, everything under it works too — at least on the way there. That is the whole logic behind both methods: prove one layer and you learn something about the others.
+What makes the model useful is the dependencies. Each layer rests on the ones below: if a layer works, everything under it works too, and if it fails, the fault lies there or further down. That turns a vague ‘it doesn't work’ into a series of yes/no questions where each answer means something definite.
 
-The examples use IPv4. With IPv6 the layers are the same, but ARP becomes NDP (`ip -6 neigh`), and an `fe80::` address is perfectly normal.
+But a proof only holds for the path you tested. An answer to ping shows that ICMP gets through, not that TCP on port 443 does: load balancing can send them different ways, and firewalls can treat them differently. A test from your own machine says little about the user's. So test as close to the user's path as you can: the same machine, the same network, the same protocol.
 
-## Bottom-up
+## Bottom-up: solid ground
 
-Start at the cable when many users or every service is down, when something physical has changed (a move, a new cable, a new switch), or when one machine has no network at all. Prove each layer before moving on. Under each layer, Linux comes first and Windows in PowerShell 7 after it. Some commands work in both: `curl` is the same, with the same options, and `ping` exists on both with options of its own (`-n` instead of `-c`). On Windows you can use both sets: the PowerShell commands, and the Linux ones through WSL (see the last part).
+The first way starts at the cable and proves layer by layer upwards: a signal, contact with the neighbour, a route to the target, an open port, a service that answers.
 
-### 1 Physical: is there a signal?
+It fits when the symptom is broad — many users or every service down — when something physical has changed, on new installations, and when one machine has no network at all. It also fits when you know little: the method needs no theory about the fault, only thoroughness.
 
-```bash
-# Linux
-ip -br link            # NO-CARRIER means no signal; eth0 may be ens18
-ethtool eth0 | grep -E 'Link detected|Speed|Duplex'
-ip -s link show eth0   # growing error counters: cable, port, duplex
-```
+Its strength is that nothing gets skipped. Every proven layer is solid ground, and you never chase a ghost high up that really comes from a fault further down. Its weakness is time: if the fault is an expired certificate, you have proven four layers for nothing. And it needs access to the lower layers — cables, switches, routing — which you don't always have.
 
-```powershell
-# Windows, PowerShell 7
-Get-NetAdapter         # Status Up; Disconnected means no signal
-Get-NetAdapterStatistics | Format-List Name, *Errors, *Discarded*
-```
+## Top-down: start where the symptom is
 
-### 2 Link: can I reach the neighbour?
+The second way starts where the user notices the fault, in the application, and goes only as far down as it needs to.
 
-```bash
-# Linux: needs no IP address, so it works even when DHCP has failed
-sudo tcpdump -ni eth0 -c 5 arp            # neighbours' ARP: frames arrive
-ip route show default                     # the gateway, if DHCP gave one
-sudo arping -D -c 3 -I eth0 192.168.1.1   # a reply with a MAC: L2 works
-```
+It fits when one service fails while the rest work: email goes through, but the intranet won't open. Its strength is speed, because day to day the fault is often high up: a service that has stopped, a certificate that has expired, a DNS record that is missing. And here the error message is not just a sign that something is wrong, but a signpost:
 
-```powershell
-# Windows, PowerShell 7
-Get-NetRoute -DestinationPrefix 0.0.0.0/0   # the gateway, from DHCP
-# Forget its ARP entry, ping it, read the answer (needs an IPv4 address
-# and admin): Reachable means OK, Unreachable or Incomplete: VLAN, port
-Remove-NetNeighbor -IPAddress 192.168.1.1 -Confirm:$false 2>$null
-ping -n 1 192.168.1.1 > $null
-Get-NetNeighbor -IPAddress 192.168.1.1
-```
-
-### 3 Internet: is there a route?
-
-```bash
-# Linux
-ip -br addr                # no IPv4, or 169.254.x.x: no DHCP answer
-ping -c 3 192.168.1.1      # the gateway first
-ip route get 10.20.0.15    # then the target: the gateway and interface
-ping -c 3 10.20.0.15
-traceroute -n 10.20.0.15   # where the path stops (or tracepath, mtr)
-# UDP probes blocked? Follow TCP 443, like the application does
-sudo traceroute -n -T -p 443 10.20.0.15
-# MTU: -s 1472 makes a 1500-byte packet. Through a VPN or overlay less
-# is normal (WireGuard: 1420); lower -s until it passes
-ping -c 3 -M do -s 1472 10.20.0.15
-```
-
-```powershell
-# Windows, PowerShell 7
-Get-NetIPConfiguration                      # address, gateway, DNS
-ping 192.168.1.1                            # the gateway first
-Find-NetRoute -RemoteIPAddress 10.20.0.15   # the route to the target
-ping 10.20.0.15
-Test-Connection 10.20.0.15 -Traceroute      # where the path stops
-Test-Connection 10.20.0.15 -MtuSize         # finds the path MTU itself
-```
-
-### 4 Transport: is the port open?
-
-```bash
-# Linux
-nc -zv -w 3 10.20.0.15 443
-timeout 3 bash -c '</dev/tcp/10.20.0.15/443' && echo open   # without nc
-```
-
-```powershell
-# Windows, PowerShell 7
-Test-Connection 10.20.0.15 -TcpPort 443   # True or False
-Test-NetConnection 10.20.0.15 -Port 443   # the same, with details
-```
-
-### 5 Application: does the service answer correctly?
-
-```bash
-# Linux
-getent hosts app.example.com  # the same lookup programs make
-curl -v https://app.example.com/
-```
-
-```powershell
-# Windows, PowerShell 7
-Resolve-DnsName app.example.com    # the Windows resolver, hosts file too
-curl -v https://app.example.com/   # PowerShell 7: the real curl.exe
-```
-
-`arping -D` is the iputils version (Debian/Ubuntu: the `iputils-arping` package), and `traceroute -T` needs the `traceroute` package; otherwise `mtr -n -T -P 443 10.20.0.15` does the same.
-
-The upside is that nothing gets skipped: once you reach the top, you know everything below works. The downside is time. If the fault is an expired certificate, you have checked four layers for nothing.
-
-## Top-down
-
-Start at the application when one service fails while the rest work: email goes through, but the intranet won't open. The first command is `curl -v`, in PowerShell 7 too, where `curl` is the real curl rather than an alias. It goes through every layer in one go, and its error message tells you where to look next. `--connect-timeout` spares you a wait of over two minutes when the packets vanish:
-
-```bash
-curl -v --connect-timeout 5 https://app.example.com/
-```
-
-Behind a proxy, curl goes through it (the `https_proxy` environment variable; `curl -v` then says `Uses proxy env variable`), while ping, nc and traceroute go direct. Add `--noproxy '*'` when you test the network itself. On Windows the browser follows the system proxy settings, while curl only reads the environment variables.
-
-| curl says | Layer | Next step |
+| The error says | It means | Look here |
 | --- | --- | --- |
-| `Could not resolve host` | 5, DNS | `getent hosts`, `dig`, the resolver setup |
-| `Resolving timed out` | 5, DNS | The DNS server doesn't answer: `dig`, `/etc/resolv.conf` |
-| `Connection refused` | 4 | The host (or a firewall) answers, but nothing listens on the port |
-| `Connection timed out` or `Timeout was reached` | 4 or below | The packets vanish: a firewall dropping them, routing or further down |
-| Hangs after `Client hello` | 3, MTU | Small packets pass, big ones vanish: test the MTU (layer 3, bottom-up) |
-| `SSL certificate problem`, on Windows `schannel:` | 5, TLS | Certificate, chain, clock |
-| HTTP `502` or `503` | 5, the service | The logs of the proxy and the service behind it |
+| The name can't be resolved | The name never became an address | DNS, layer 5 |
+| The connection is refused | Something answered, but nothing listens on the port | The service, layer 4 |
+| Timed out | No one answered: the packets vanish on the way | Firewall or routing, layer 4 and down |
+| Certificate error | The connection got through, but the trust fails | TLS, layer 5 |
 
-A DNS trick: `dig` asks the DNS server directly, while programs use the system resolver, with the hosts file, search domains and cache. When `dig` and `getent hosts` disagree, the fault is in the machine's own setup, not in DNS. On Windows, `Resolve-DnsName -Server` does what `dig` does. And while DNS is down, you can test the rest past it: `curl -v --resolve app.example.com:443:10.20.0.15 https://app.example.com/` sends the right name in TLS (SNI) and HTTP without any DNS lookup.
+Its weakness is that symptoms can lie. A fault far down can pass for one high up: with no network cable it looks like a DNS failure, and you can spend time on a DNS that works. The defence is to let go quickly: if a hypothesis high up doesn't hold, go down.
 
-If the host answers but the service doesn't, continue on the server:
+## Divide and conquer: start in the middle
 
-```bash
-# on the server: does anything listen on 443, and what does it log?
-sudo ss -tlnp 'sport = :443'
-systemctl status nginx
-journalctl -u nginx --since '15 min ago'
-```
+When unsure, start in the middle. One test that reaches the target at the network layer splits the problem in two: if the target answers, layers 1–3 work and the fault lies above; if it doesn't, it lies below. The next test splits what is left again. That is a binary search, and it is often the fastest way when the symptom points nowhere.
 
-```powershell
-# on a Windows server (IIS here): anything on 443, the service, the log
-Get-NetTCPConnection -State Listen -LocalPort 443
-Get-Service W3SVC
-Get-WinEvent -LogName System -MaxEvents 20
-```
-
-The upside is speed: if the fault is high up, and day to day it often is, a couple of commands find it. The downside is that a fault far down can pass for one high up. With no network cable, curl says `Could not resolve host`, and you can spend time on a DNS that works.
+But a test is never better than what it measures. Many firewalls block ping, so an unanswered ping proves nothing on its own, and an answered one doesn't prove that the application's traffic gets through. Choose tests that take the same path as whatever is failing.
 
 ## Same fault, two ways
 
-A typical case: on Monday morning users can't get into app.example.com, but email and the internet work. One service fails and the rest work, so top-down:
+A typical case: on Monday morning users can't get into the intranet, but email and the internet work. One service fails for everyone, so I go top-down, and every test removes part of the possibilities:
 
-1. `curl -v` shows `Trying 10.20.0.15:443...` and then a timeout. The name was resolved, so DNS works, but the TCP connection never comes up.
-2. `ping 10.20.0.15` answers. There is a way there, so layers 1–3 work, at least for ICMP.
-3. `nc -zv 10.20.0.15 443` times out (on Windows, `Test-Connection 10.20.0.15 -TcpPort 443` answers `False`), while `ss -tlnp` on the server shows nginx listening on 443.
-4. `sudo tcpdump -ni eth0 'tcp port 443'` on the server shows no SYN from the client: something before the server drops the packets. That can be a firewall in the network, or one that belongs to the server but filters outside it: a cloud security group (AWS, Azure) or the Proxmox firewall. If the SYNs arrive and get no answer, it is the server's own firewall (`sudo nft list ruleset`).
-5. Here it was the firewall between the networks. A change over the weekend had removed the rule that let the office network in on port 443.
+1. The name resolves, so DNS works. But the connection never comes up: a time-out, not a refusal. No one answers, so the packets vanish somewhere.
+2. The server answers ping. There is a way there, at least for ICMP.
+3. The port doesn't answer, yet on the server the service is listening as it should.
+4. The connection attempts never reach the server. Something between the networks drops them.
+5. What changed? A firewall rule over the weekend, which took the office network's access with it.
 
-Five commands. Bottom-up would have found the same, but only after proving the cable, ARP, address and gateway on a client where everything was fine.
+Five tests, and each of them narrowed down what was left. Bottom-up would have found the same, but only after proving the cable, the neighbour, the address and the gateway on a client where everything was fine: correct, but slow.
 
-The other way round: had the network card shown `NO-CARRIER`, bottom-up would have found the fault with its first command, while top-down would first have had a DNS error to chase.
+The other way round: had the network card lost its signal, bottom-up would have found the fault with its first test, while top-down would first have had a DNS error to chase. Neither way is better in itself; the symptom and its scope decide.
 
 ## Which way?
 
 - Many users or every service down, or something physical changed: bottom-up.
 - One service fails, the rest work: top-down.
-- Unsure: start in the middle with a `ping` to the target. If it answers, layers 1–3 work and the fault lies above; if it doesn't, look below. That is divide and conquer. Two caveats: many firewalls block ICMP, so an unanswered ping proves nothing on its own, and with load balancing (ECMP) or policy routing TCP can take another path than ping. Confirm with a TCP test: `nc -zv`, `Test-Connection -TcpPort` or `traceroute -T`.
+- The symptom points nowhere: start in the middle.
+- And always first: what changed?
 
-Whichever way: write down what you have proven at each layer, and change one thing at a time.
+## Principles for either way
 
-## Linux commands in WSL
+- **Write down what you have proven, and how.** The notes become the diagnosis, and a colleague can carry on where you left off.
+- **Change one thing at a time.** Otherwise you don't know what fixed the fault, or what caused a new one.
+- **Don't trust a single signal.** Confirm with a second, independent test.
+- **Test from the user's side.** A proof only holds for the path you tested.
+- **Tell the symptom from the cause.** The fault isn't solved when it works again, but when you know why the rule disappeared and how to stop it happening again.
 
-From PowerShell 7 you can run the Linux tools directly, for example `wsl ip -br addr` or `wsl curl -v https://app.example.com/`. But in WSL 2 they run in a lightweight virtual machine with its own network card behind NAT in Windows, the default mode:
-
-- Layers 1 and 2 see the virtual network, not your cable: `ethtool`, `arping` and `tcpdump` show WSL's own switch. Check these layers in PowerShell.
-- Layers 3–5 from WSL go through Windows, DNS included (on Windows 11, DNS goes through Windows by default). A fault that only shows in WSL may lie in WSL itself: run the same test in PowerShell and compare.
-- With `networkingMode=mirrored` in `.wslconfig` (Windows 11 22H2 and later), WSL mirrors the host's network cards, and layers 3–5 behave almost as on the host. Layers 1 and 2 still belong to Windows.
-
-PowerShell 7 also exists for Linux (`pwsh`). There `Test-Connection` and all the Linux commands work, but not `Get-Net*`, which only exists on Windows.
+Commands change with tools and operating systems. The way of thinking doesn't.
