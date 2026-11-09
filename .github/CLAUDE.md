@@ -35,7 +35,9 @@ incident background: `docs/history.md`; the zone: `docs/cloudflare-security.md`.
   `TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN`, `NETBOX_URL` (unset
   ones skipped, never blanked) → `npx wrangler deploy` with the repo's pinned
   wrangler (not `cloudflare/wrangler-action`: Node 20) → `scripts/smoke.sh`
-  (also `check-csp.mjs --live` on five pages). A failed smoke runs
+  (also `check-csp.mjs --live` on the front pages, the sample posts and
+  `/kontakt/`; it takes its sample posts from the deployed build's feeds,
+  never by name, so posts can come and go). A failed smoke runs
   `wrangler rollback` to the previous version — code and pages; D1/KV
   untouched — and the run stays red. A failure the zone causes fails the old
   version too: fix it, then re-run Deploy (workflow_dispatch).

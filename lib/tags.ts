@@ -28,33 +28,17 @@ export function normalizeTag(input: string): string {
 }
 
 /**
- * Normaliserer en hel tag-liste (fra frontmatter) og fjerner duplikater
- * som oppstår etter normalisering (f.eks. ["devops", "DevOps"] → ["DevOps"]).
- */
-export function normalizeTags(tags: unknown): string[] {
-  if (!Array.isArray(tags)) return []
-  const seen = new Set<string>()
-  const result: string[] = []
-  for (const raw of tags) {
-    if (typeof raw !== 'string') continue
-    const normalized = normalizeTag(raw)
-    if (!normalized) continue
-    const dedupeKey = normalized.toLowerCase()
-    if (seen.has(dedupeKey)) continue
-    seen.add(dedupeKey)
-    result.push(normalized)
-  }
-  return result
-}
-
-/**
  * URL-safe slug for a tag, used in /blogg/tag/<slug>.
- * «CI/CD» → «ci-cd», «Node.js» → «node-js», «C++» → «c». Lossy, so always
+ * «CI/CD» → «ci-cd», «Node.js» → «node-js», «C++» → «c», «Overvåking» →
+ * «overvaking» (æ/ø/å folded like post slugs, not dropped). Lossy, so always
  * resolve back by comparing slugs of known tags rather than reversing.
  */
 export function tagToSlug(tag: string): string {
   return tag
     .toLowerCase()
+    .replaceAll('æ', 'ae')
+    .replaceAll('ø', 'o')
+    .replaceAll('å', 'a')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }

@@ -320,9 +320,12 @@ function servedUrls() {
     }
     urls.add(`/api/views/${s}`).add(`/_next/static/chunks/${s}_0x.js`)
   }
-  // Everything the post-deploy smoke test fetches.
+  // Everything the post-deploy smoke test fetches. A path built from a
+  // variable (its sample post, found in the feed) is a built page or a post's
+  // /api/views, both covered above.
   for (const [, p] of fs.readFileSync(path.join(ROOT, 'scripts/smoke.sh'), 'utf8').matchAll(/"\$BASE(\/[^"?]*)/g)) {
-    urls.add(p.replaceAll('$$', '0'))
+    const url = p.replaceAll('$$', '0')
+    if (!/\$[\w{(]/.test(url)) urls.add(url)
   }
   return [...urls].sort()
 }

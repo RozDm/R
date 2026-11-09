@@ -75,6 +75,10 @@ export const STANDARD_TAGS = [
   'Automatisering',
   'Migrering',
   'SRE',
+
+  // The welcome post's only (content/blog/velkommen.md): goes with it, along
+  // with its TAG_LABELS_EN and TAG_ALIASES entries. Never for a new post.
+  'Velkommen',
 ] as const
 
 // Topic pages search engines may index, as canonical tags. Owner's call

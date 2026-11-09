@@ -107,8 +107,9 @@ app/                Next App Router: home, /blogg, /blogg/tag/[slug], /kontakt,
                     template.tsx (opacity route cross-fade)
 components/         React components (Hero, Skills, StatusDashboard, GeoMap,
                     HalIdle, ContactForm, Turnstile, …)
-content/blog/       Markdown posts (frontmatter: title, description, date, tags);
-                    English twins in content/blog/en/ (translationOf)
+content/blog/       Markdown posts (frontmatter: title, description, date, tags;
+                    checked by lib/post-frontmatter.ts); English twins in
+                    content/blog/en/ (translationOf)
 context/            ThemeContext (light/dark with no FOUC)
 data/               Skills, certifications, tag canon + aliases (tags.ts), UI
                     copy in both languages (i18n.ts; the error boundary's in
@@ -126,6 +127,7 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     language), og-site-card.tsx, og-post-card.tsx, og-fonts.ts
                     (Intel One Mono for the OG cards), geo.ts,
                     post-images.ts (post images: size, lazy, build checks),
+                    post-frontmatter.ts (a post's frontmatter, checked on read),
                     status-fetch.ts (one shared /api/status fetch),
                     use-near-viewport.ts (below-the-fold widgets load on
                     approach), timeseries-fill.ts, trends-axis.ts, visit.ts
