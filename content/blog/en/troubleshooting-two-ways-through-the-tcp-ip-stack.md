@@ -57,7 +57,7 @@ It fits when one service fails while the rest work: email goes through, but the 
 | The error says | It means | Look here |
 | --- | --- | --- |
 | The name doesn't exist | DNS answered but doesn't know the name | The DNS record, layer 5 |
-| DNS doesn't answer | The question never reached the DNS server | The way to the DNS server, layers 1–4 |
+| DNS doesn't answer | No reply: lost on the way there or back, or the DNS service is down | The way to the DNS server, layers 1–4, or the service itself |
 | The connection is refused | Something said no: nothing listens, or a firewall rejects | The service or the firewall, layer 4 |
 | The connection times out | No answer: packets vanish on the way there or back | Firewall or routing, layer 4 and down |
 | No reply once connected | The connection stands, but the service behind it doesn't answer | The application, layer 5 |
@@ -67,7 +67,7 @@ Its weakness is that symptoms can lie. A fault far down can pass for one high up
 
 ## Start in the middle
 
-Divide and conquer is not a third way but a way to choose where to start when the symptom points nowhere. You start in the middle, with one test against the target at the network layer, and the answer picks the direction. If the target answers, layers 1–3 work and you carry on top-down. If it doesn't, the fault lies at layer 3 or below, and you go bottom-up. If the gateway answers but the target doesn't, layers 1 and 2 are fine locally, and the fault lies on the way beyond. Each test halves what is left: it is a binary search.
+Divide and conquer is not a third way but a way to choose where to start when the symptom points nowhere. You start in the middle, with one test against the target at the network layer, and the answer picks the direction. If the target answers, layers 1–3 work and you move up to layers 4 and 5. If it doesn't, the fault lies at layer 3 or below, and you work your way down. The next test splits that half again: if the gateway answers but the target doesn't, layers 1 and 2 are fine locally, and the fault lies on the way beyond. Each test halves what is left: it is a binary search.
 
 But a test is never better than what it measures. Many firewalls block ping, so an unanswered ping proves nothing on its own, and an answered one doesn't prove that the application's traffic gets through. Choose tests that take the same path as whatever is failing.
 
