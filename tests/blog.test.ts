@@ -10,23 +10,23 @@ vi.mock('node:fs', () => {
   const POSTS: Record<string, string> = {
     eldst: `---
 title: "Eldst"
-description: "Den eldste."
+description: "Den eldste posten i testsettet, skrevet lenge før de andre."
 date: "2026-01-01"
 tags: ["Linux"]
 ---
 Eldste post.`,
     midt: `---
 title: "Midt"
-description: "Midt i mellom."
+description: "Posten i midten av testsettet, mellom den eldste og den nyeste."
 date: "2026-03-01"
 tags: ["Linux", "Docker"]
 ---
 Midterste post.`,
-    // Tag stored lower-case on purpose: normalizeTags must canonicalise it to
+    // Tag stored lower-case on purpose: the frontmatter check canonicalises it to
     // "Docker" so a lower-case query still finds this post.
     nyest: `---
 title: "Nyest"
-description: "Den nyeste."
+description: "Den nyeste posten i testsettet, skrevet etter alle de andre."
 date: "2026-06-01"
 tags: ["docker"]
 ---

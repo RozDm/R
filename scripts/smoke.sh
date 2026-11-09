@@ -131,13 +131,60 @@ for i in $(seq 1 30); do
   sleep 10
 done
 
+fetch_ok() { # url -> 0 once it answers 200 (body in $TMP), retried like check()
+  local i
+  for i in 1 2 3 4 5 6; do
+    [ "$(fetch "$1")" = 200 ] && return 0
+    sleep 15
+  done
+  return 1
+}
+
+need() { # name value -> 0 if the sample the check needs was found, else FAIL
+  [ -n "$2" ] && return 0
+  echo "FAIL $1: no sample (feed or post page)"
+  FAIL=1
+  return 1
+}
+
+# Sample posts, so smoke names none (any post can come, go or change its
+# slug): the newest item of each feed (lib/feed.ts), and the English twin
+# and the tag pages from the post pages' own links. Read from the build being
+# deployed (out/: the deploy job has it) — right after a deploy an edge can
+# still serve the previous feed, naming a post this version no longer has —
+# else, run by hand without a build, from the live site.
+sample() { # site path -> its body in $TMP
+  local f="out$1"
+  case "$1" in */) f="${f}index.html" ;; esac
+  if [ -f "$f" ]; then cp "$f" "$TMP"; else fetch_ok "$BASE$1"; fi
+}
+newest_item() { # path of the newest <item> of the feed in $TMP
+  tr -d '\n' < "$TMP" | grep -oE '<item>[[:space:]]*<title>[^<]*</title>[[:space:]]*<link>[^<]+' \
+    | head -1 | sed -E 's#.*<link>https?://[^/]+##'
+}
+NB_POST="" NB_TAG="" EN_POST="" EN_TAG="" PAIRED=""
+sample /feed.xml && NB_POST=$(newest_item)
+if [ -n "$NB_POST" ] && sample "$NB_POST"; then
+  NB_TAG=$(grep -oE 'href="/blogg/tag/[a-z0-9-]+/"' "$TMP" | head -1 | cut -d'"' -f2)
+  EN_POST=$(grep -oE 'hrefLang="en" href="[^"]+"' "$TMP" | head -1 | cut -d'"' -f4 | sed -E 's#^https?://[^/]+##')
+  [ -n "$EN_POST" ] && PAIRED=1
+fi
+[ -n "$EN_POST" ] || { sample /en/feed.xml && EN_POST=$(newest_item); }
+if [ -n "$EN_POST" ] && sample "$EN_POST"; then
+  EN_TAG=$(grep -oE 'href="/en/blog/tag/[a-z0-9-]+/"' "$TMP" | head -1 | cut -d'"' -f2)
+fi
+NB_SLUG=$(basename "${NB_POST:-/}")
+echo "sample posts ($([ -f out/feed.xml ] && echo build || echo live)): ${NB_POST:-none} (${NB_TAG:-no tag}), ${EN_POST:-none} (${EN_TAG:-no tag})"
+
 echo "== Pages =="
 # Home asserts noindex too: the soft launch must not accidentally start
-# getting indexed before launch (flip robots in app/layout.tsx when ready).
+# getting indexed before launch. Launch (owner's word only) flips this check,
+# robots.index in app/layout.tsx and the e2e test "pre-launch: every page
+# tells search engines noindex" together.
 check "home"        "$BASE/"                 200 "Dmytro Rozsoshnykh" "Driftsstatus" 'name="robots" content="noindex' '<html lang="nb"'
 check "blogg"       "$BASE/blogg/"           200 "Artikler"
-check "post"        "$BASE/blogg/velkommen/" 200 "Velkommen"
-check "tag"         "$BASE/blogg/tag/velkommen/" 200 "Velkommen"
+need "post" "$NB_POST" && check "post" "$BASE$NB_POST" 200 '"@type":"BlogPosting"' '<html lang="nb"'
+need "tag" "$NB_TAG" && check "tag" "$BASE$NB_TAG" 200 "href=\"$NB_POST\""
 check "kontakt"     "$BASE/kontakt/"         200 "Kontaktskjema"
 check "personvern"  "$BASE/personvern/"      200 "Dine rettigheter"
 check "404"         "$BASE/finnes-ikke/"     404
@@ -147,13 +194,21 @@ check "en contact"  "$BASE/en/contact/"      200 '<html lang="en"' "Contact form
 check "en privacy"  "$BASE/en/privacy/"      200 '<html lang="en"' "Privacy notice"
 check "en og-image" "$BASE/en/opengraph-image" 200
 check "en blog"     "$BASE/en/blog/"         200 '<html lang="en"' "Articles"
-check "en post"     "$BASE/en/blog/welcome/" 200 '<html lang="en"' "Welcome to the blog" 'hrefLang="nb"'
-check "en tag"      "$BASE/en/blog/tag/welcome/" 200 "Welcome"
+# An English post: the Norwegian sample's twin, which must name it back;
+# else the newest English post; none at all is allowed (one language is fine).
+if [ -n "$EN_POST" ]; then
+  EN_WANT=('<html lang="en"' '"@type":"BlogPosting"')
+  [ -n "$PAIRED" ] && EN_WANT+=('hrefLang="nb"')
+  check "en post" "$BASE$EN_POST" 200 "${EN_WANT[@]}"
+  need "en tag" "$EN_TAG" && check "en tag" "$BASE$EN_TAG" 200 "href=\"$EN_POST\""
+else
+  echo "SKIP en post: no English post"
+fi
 check "en rss"      "$BASE/en/feed.xml"      200 "<rss" "<language>en-GB</language>"
 
 echo "== Machine endpoints =="
 check "api/status"  "$BASE/api/status"       200 '"results"'
-check "api/views"   "$BASE/api/views/velkommen" 200 '"views"'
+need "api/views" "$NB_POST" && check "api/views" "$BASE/api/views/$NB_SLUG" 200 '"views"'
 check "api/geo"     "$BASE/api/geo"          200 '"countries"'
 check "api/ts/geo"  "$BASE/api/timeseries?metric=geo&range=7d" 200 '"points"'
 check "api/ts/all"  "$BASE/api/timeseries?metric=geo&range=all" 200 '"points"'
@@ -176,7 +231,7 @@ check "icon-512"    "$BASE/icons/icon-512.png" 200
 check "favicon.ico" "$BASE/favicon.ico"      200
 # Next exports the OG cards without an extension; public/_headers types them.
 check_header "og-image png"      "$BASE/opengraph-image"                    "^content-type: image/png"
-check_header "post og-image png" "$BASE/blogg/velkommen/opengraph-image"    "^content-type: image/png"
+need "post og-image" "$NB_POST" && check_header "post og-image png" "$BASE${NB_POST}opengraph-image" "^content-type: image/png"
 
 echo "== Canonical host and redirects =="
 # www and plain HTTP: the edge (zone-rules.yml). Slash-less pages and
@@ -219,8 +274,8 @@ check_header "CSP report" "$BASE/" "^reporting-endpoints: csp-endpoint="
 # right after a deploy some edges still serve the previous version.
 for i in 1 2 3 4 5 6; do
   if node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-csp.mjs --live "$BASE" \
-      / /en/ /blogg/velkommen/ /en/blog/welcome/ /kontakt/; then
-    echo "OK   CSP (hash) on 5 pages"; break
+      / /en/ ${NB_POST:+"$NB_POST"} ${EN_POST:+"$EN_POST"} /kontakt/; then
+    echo "OK   CSP (hash) on the front pages, the sample posts and /kontakt/"; break
   fi
   [ "$i" = 6 ] && { echo "FAIL CSP (hash)"; FAIL=1; break; }
   echo "  retry $i: CSP (hash)"; sleep 15

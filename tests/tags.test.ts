@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeTag, normalizeTags } from '@/lib/tags'
+import { normalizeTag, tagLabel, tagToSlug } from '@/lib/tags'
+import { INDEXED_TAGS, STANDARD_TAGS, TAG_ALIASES, TAG_LABELS_EN } from '@/data/tags'
 
 describe('normalizeTag', () => {
   it('canonicalises a known tag with different casing', () => {
@@ -22,17 +23,44 @@ describe('normalizeTag', () => {
   })
 })
 
-describe('normalizeTags', () => {
-  it('deduplicates after normalisation', () => {
-    expect(normalizeTags(['devops', 'DevOps', 'dev-ops'])).toEqual(['DevOps'])
+describe('tagToSlug', () => {
+  it('folds æ/ø/å the way post slugs do', () => {
+    expect(tagToSlug('Overvåking')).toBe('overvaking')
+    expect(tagToSlug('Ærlig Ødegård')).toBe('aerlig-odegard')
   })
 
-  it('returns empty array for non-array input', () => {
-    expect(normalizeTags(undefined)).toEqual([])
-    expect(normalizeTags('linux')).toEqual([])
+  it('turns everything else outside a-z0-9 into single dashes', () => {
+    expect(tagToSlug('CI/CD')).toBe('ci-cd')
+    expect(tagToSlug('Node.js')).toBe('node-js')
+  })
+})
+
+// The vocabulary in data/tags.ts holds together: post frontmatter may only
+// use STANDARD_TAGS (lib/post-frontmatter.ts), so every alias, English label
+// and indexed tag must lead to one of them, and no two tags may share a page.
+describe('tag vocabulary', () => {
+  const canon = STANDARD_TAGS as readonly string[]
+
+  it('lists each tag once', () => {
+    const keys = canon.map((t) => t.toLowerCase())
+    expect(keys.filter((k, i) => keys.indexOf(k) !== i)).toEqual([])
   })
 
-  it('skips non-string and empty entries', () => {
-    expect(normalizeTags(['linux', 42, '', null])).toEqual(['Linux'])
+  it('points every alias, English label and indexed tag at a standard tag', () => {
+    const stray = [
+      ...Object.values(TAG_ALIASES),
+      ...Object.keys(TAG_LABELS_EN),
+      ...INDEXED_TAGS,
+    ].filter((t) => !canon.includes(t))
+    expect(stray).toEqual([])
+  })
+
+  it('keys aliases in lower case (normalizeTag looks them up lower-cased)', () => {
+    expect(Object.keys(TAG_ALIASES).filter((k) => k !== k.toLowerCase())).toEqual([])
+  })
+
+  it.each(['nb', 'en'] as const)('gives every tag its own %s page', (lang) => {
+    const slugs = canon.map((t) => tagToSlug(tagLabel(t, lang)))
+    expect(slugs.filter((s, i) => !s || slugs.indexOf(s) !== i)).toEqual([])
   })
 })

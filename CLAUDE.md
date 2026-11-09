@@ -139,9 +139,10 @@ answered; keep output and replies short.
   with Cloudflare's public test Turnstile key and the fixtures fake its
   script; locally build with
   `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA` or the widget
-  tests skip (never in CI). A UI change that breaks a selector updates the
-  test in the same PR. `@playwright/test` and `playwright-core` stay pinned
-  to one version.
+  tests skip (never in CI). Blog tests take their post from the build's
+  feeds (`e2e/posts.ts`), never by name. A UI change that breaks a selector
+  updates the test in the same PR. `@playwright/test` and `playwright-core`
+  stay pinned to one version.
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml`:
   secret-free checks + build, then the `production` job syncs secrets, runs
   `npx wrangler deploy` and `scripts/smoke.sh`, and `wrangler rollback`s
@@ -177,12 +178,18 @@ answered; keep output and replies short.
 - Blog posts: Norwegian `content/blog/<slug>.md`, English
   `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>`; one
   language only is fine. Frontmatter `title`, `description`, `date` (ISO),
-  `tags`, optional `updated`, `draft: true`. Twins share date, `updated`,
-  tags and draft (`tests/blog-pairs.test.ts`); `/new-post` writes both
-  drafts. `lib/blog.ts` takes `lang` everywhere, URLs come from
-  `lib/blog-paths.ts`, one view counter per post (`viewKey`: the Norwegian
-  slug). Tags are canonical across languages (`lib/tags.ts`; canon + aliases
-  in `data/tags.ts`; `TAG_LABELS_EN` gives English labels and URLs). Code
+  `tags`, optional `updated`, `draft: true`. Reading a post checks it
+  (`lib/post-frontmatter.ts`: no unknown field, `draft` a real boolean, real
+  days, tags from `STANDARD_TAGS`, description 50–160 chars), so a slip stops
+  dev, tests and the build instead of going live; `tests/blog-content.test.ts`
+  adds the text: headings from `##`, one level at a time, links to other
+  posts only to published ones. Twins share date, `updated`, tags and draft
+  (`tests/blog-pairs.test.ts`); `/new-post` writes both drafts and publishes
+  them (date = the publish day). `lib/blog.ts` takes `lang` everywhere,
+  URLs come from `lib/blog-paths.ts`, one view counter per post (`viewKey`:
+  the Norwegian slug). Tags are canonical across languages (`lib/tags.ts`;
+  canon + aliases in `data/tags.ts`; `TAG_LABELS_EN` gives English labels
+  and URLs; tag URLs fold æ/ø/å like post slugs). Code
   blocks: highlighted at build by `rehype-highlight`, palette in
   `app/globals.css` (e2e checks both themes). Images:
   `![alt](/images/<slug>/file.webp)`, file in `public/images/<slug>/`;
@@ -199,11 +206,13 @@ answered; keep output and replies short.
   language, hreflang (pages + sitemap), prev/next, tag pages. Tag pages are
   noindex and out of the sitemap unless in `INDEXED_TAGS` (`data/tags.ts`) —
   add one ONLY on the owner's command. `robots.index: false` in
-  `app/layout.tsx` until launch — flip it only when asked (the e2e test
-  "pre-launch: every page tells search engines noindex" flips with it), then
-  submit the sitemap. `/kontakt`, `/personvern` and utility pages stay
-  noindex for good; the sitemap never lists noindex URLs (pre-launch
-  excepted).
+  `app/layout.tsx` until launch — flip it only when the owner says so (not
+  with the first post; their call, 2026-11-09), together with the e2e test
+  "pre-launch: every page tells search engines noindex" and the home check
+  in `scripts/smoke.sh` (all three, or CI or the deploy fails; steps:
+  `/new-post`), then the owner submits the sitemap. `/kontakt`, `/personvern`
+  and utility pages stay noindex for good; the sitemap never lists noindex
+  URLs (pre-launch excepted).
 
 ## Gotchas
 

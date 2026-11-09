@@ -29,8 +29,11 @@ export function postStaticParams(lang: Lang) {
 function load(lang: Lang, slug: string): Post | null {
   try {
     return getPostBySlug(slug, lang)
-  } catch {
-    return null
+  } catch (e) {
+    // No such file is a 404; a frontmatter mistake (lib/post-frontmatter.ts)
+    // must reach the author, not become one.
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw e
   }
 }
 

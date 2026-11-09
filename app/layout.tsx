@@ -46,9 +46,11 @@ export const metadata: Metadata = {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml', sizes: 'any' }],
     apple: '/icons/apple-touch-icon.png',
   },
-  // Mykt-lansering: domenet er på plass, men indeksering venter til de
-  // første postene er publisert. Sett index: true når innholdet er klart,
-  // og send inn sitemap i Search Console da.
+  // Soft launch: nothing is indexed until the owner says so (not with the
+  // first post). Launch flips this, the e2e test "pre-launch: every page tells
+  // search engines noindex" and the home check in scripts/smoke.sh together —
+  // all three, or CI or the deploy fails (.claude/skills/new-post) — and the
+  // owner then submits the sitemap in Search Console.
   robots: {
     index: false,
     follow: true,

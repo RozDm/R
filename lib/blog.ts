@@ -1,8 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import matter from 'gray-matter'
-import { normalizeTags } from './tags'
 import { INDEXED_TAGS } from '@/data/tags'
+import { parseFrontmatter } from './post-frontmatter'
 import { readingTimeMinutes } from './reading-time'
 import { INTL_LOCALE, type Lang } from './i18n'
 import type { Post, PostMeta } from '@/types'
@@ -35,18 +35,11 @@ export function filterPublished<T extends { draft?: boolean }>(
 
 function readPostFile(slug: string, lang: Lang): Post {
   const fullPath = path.join(BLOG_DIRS[lang], `${slug}.md`)
-  const raw = fs.readFileSync(fullPath, 'utf8')
-  const { data, content } = matter(raw)
+  const { data, content } = matter(fs.readFileSync(fullPath, 'utf8'))
   return {
     slug,
     lang,
-    translationOf: lang === 'en' && typeof data.translationOf === 'string' ? data.translationOf : undefined,
-    title: data.title ?? slug,
-    description: data.description ?? '',
-    date: data.date ?? '',
-    updated: data.updated || undefined,
-    draft: data.draft === true,
-    tags: normalizeTags(data.tags),
+    ...parseFrontmatter(data, lang, path.relative(process.cwd(), fullPath)),
     readingMinutes: readingTimeMinutes(content),
     content,
   }

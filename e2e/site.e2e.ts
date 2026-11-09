@@ -1,7 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures'
+import { endsWith, post, tagPage, twin } from './posts'
 
 // User-level flows on the built export, desktop and mobile (playwright.config.ts).
+// Blog tests take their post from the build (e2e/posts.ts), never by name.
 
 // Reload once the network is quiet: WebKit fails a reload that cancels
 // in-flight requests (Next's viewport prefetches) with "WebKit encountered an
@@ -121,12 +123,13 @@ test('flipping back to the OS theme follows the OS again, live', async ({ page }
 })
 
 test('NO/EN switch moves between the language twins', async ({ page }) => {
-  await page.goto('/blogg/velkommen/')
+  test.skip(!twin, 'no published post has an English twin')
+  await page.goto(twin!.nb)
   await page.getByRole('link', { name: /^EN/ }).click()
-  await expect(page).toHaveURL(/\/en\/blog\/welcome\/$/)
+  await expect(page).toHaveURL(endsWith(twin!.en))
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   await page.getByRole('link', { name: /^NO/ }).click()
-  await expect(page).toHaveURL(/\/blogg\/velkommen\/$/)
+  await expect(page).toHaveURL(endsWith(twin!.nb))
   await expect(page.locator('html')).toHaveAttribute('lang', 'nb')
 })
 
@@ -174,7 +177,7 @@ test('mobile menu closes when Tab leaves it', async ({ page, isMobile, browserNa
 
 test('every page starts with a skip link to its main content', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', "WebKit's Tab skips links")
-  for (const path of ['/', '/kontakt/', '/blogg/velkommen/', '/en/privacy/']) {
+  for (const path of ['/', '/kontakt/', post.path, '/en/privacy/']) {
     await page.goto(path)
     await page.keyboard.press('Tab')
     const skip = page.getByRole('link', { name: /Hopp til hovedinnhold|Skip to main content/ })
@@ -186,12 +189,12 @@ test('every page starts with a skip link to its main content', async ({ page, br
 
 test('blog: index → post → tag page and back', async ({ page }) => {
   await page.goto('/blogg/')
-  await page.getByRole('link', { name: /Velkommen til bloggen/ }).click()
-  await expect(page).toHaveURL(/\/blogg\/velkommen\/$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Velkommen til bloggen')
-  await page.getByRole('main').getByRole('link', { name: 'Velkommen', exact: true }).first().click()
-  await expect(page).toHaveURL(/\/blogg\/tag\/velkommen\/$/)
-  await page.goto('/blogg/velkommen/')
+  await page.getByRole('link', { name: post.title, exact: true }).first().click()
+  await expect(page).toHaveURL(endsWith(post.path))
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(post.title)
+  await page.locator(`main a[href="${tagPage}"]`).first().click()
+  await expect(page).toHaveURL(endsWith(tagPage))
+  await page.goto(post.path)
   await page.getByRole('link', { name: /Tilbake til bloggen/ }).click()
   await expect(page).toHaveURL(/\/blogg\/$/)
 })
@@ -330,7 +333,7 @@ test.describe('post view counter', () => {
   const calls = (page: import('@playwright/test').Page) => {
     const methods: string[] = []
     page.on('request', (r) => {
-      if (new URL(r.url()).pathname === '/api/views/velkommen') methods.push(r.method())
+      if (new URL(r.url()).pathname === `/api/views/${post.slug}`) methods.push(r.method())
     })
     return methods
   }
@@ -338,7 +341,7 @@ test.describe('post view counter', () => {
   test('counts on the first human input, then only reads', async ({ page }) => {
     await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }))
     const methods = calls(page)
-    await page.goto('/blogg/velkommen/')
+    await page.goto(post.path)
     await page.waitForTimeout(1_000)
     expect(methods, 'nothing on load alone').toEqual([])
     await page.keyboard.press('ArrowDown')
@@ -349,7 +352,7 @@ test.describe('post view counter', () => {
 
   test('only reads under automation', async ({ page }) => {
     const methods = calls(page)
-    await page.goto('/blogg/velkommen/')
+    await page.goto(post.path)
     await page.keyboard.press('ArrowDown')
     await page.waitForTimeout(1_000)
     expect(methods).toEqual(['GET'])
@@ -357,13 +360,14 @@ test.describe('post view counter', () => {
 })
 
 // Pre-launch (CLAUDE.md, SEO): no page may be indexed until the owner says
-// "launch" — this test flips together with robots.index in app/layout.tsx.
+// "launch" — this test flips together with robots.index in app/layout.tsx
+// and the home check in scripts/smoke.sh (all three, or CI or the deploy fails).
 test('pre-launch: every page tells search engines noindex', async ({ page, request, isMobile }) => {
   test.skip(isMobile, 'markup, not layout')
   const xml = await (await request.get('/sitemap.xml')).text()
   const paths = [...xml.matchAll(/<loc>https:\/\/rozsoshnykh\.no([^<]*)<\/loc>/g)].map((m) => m[1])
   expect(paths.length).toBeGreaterThan(0)
-  for (const path of [...paths, '/kontakt/', '/personvern/', '/blogg/tag/velkommen/']) {
+  for (const path of [...paths, '/kontakt/', '/personvern/', tagPage]) {
     await page.goto(path)
     const robots = await page.locator('meta[name="robots"]').evaluateAll((els) => els.map((e) => e.getAttribute('content')))
     expect(robots.length, path).toBeGreaterThan(0)
@@ -407,7 +411,7 @@ test('the contact page’s footer doesn’t invite to the contact page', async (
 for (const scheme of ['light', 'dark'] as const) {
   test(`no axe violations (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme })
-    for (const path of ['/', '/en/', '/blogg/velkommen/', '/kontakt/', '/personvern/', '/finnes-ikke/']) {
+    for (const path of ['/', '/en/', post.path, '/kontakt/', '/personvern/', '/finnes-ikke/']) {
       await page.goto(path)
       // Let the lazy widgets and fade-ins settle before scanning contrast.
       await page.evaluate(async () => {
@@ -426,14 +430,14 @@ for (const scheme of ['light', 'dark'] as const) {
 }
 
 // Code blocks: rehype-highlight's token colours (app/globals.css) on the
-// block PostPage gives `pre`. No published post has code yet, so blocks
-// marked up as PostPage renders them are planted in a copy of the post's
-// prose wrapper (same classes) and axe checks their contrast — the light
-// theme once drew dark text on a dark block.
+// block PostPage gives `pre`. Blocks marked up as PostPage renders them are
+// planted in a copy of the post's prose wrapper (same classes), so the check
+// needs no post with code, and axe checks their contrast — the light theme
+// once drew dark text on a dark block.
 for (const scheme of ['light', 'dark'] as const) {
   test(`code blocks are readable (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme })
-    await page.goto('/blogg/velkommen/')
+    await page.goto(post.path)
     await page.waitForLoadState('networkidle')
     await page.locator('.prose').evaluate((prose) => {
       const copy = prose.cloneNode(false) as HTMLElement
