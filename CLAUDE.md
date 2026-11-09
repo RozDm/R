@@ -141,8 +141,8 @@ answered; keep output and replies short.
   `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA` or the widget
   tests skip (never in CI). Blog tests take their post from the build's
   feeds (`e2e/posts.ts`), never by name. A UI change that breaks a selector
-  updates the test in the same PR. `@playwright/test` and `playwright-core` stay pinned
-  to one version.
+  updates the test in the same PR. `@playwright/test` and `playwright-core`
+  stay pinned to one version.
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml`:
   secret-free checks + build, then the `production` job syncs secrets, runs
   `npx wrangler deploy` and `scripts/smoke.sh`, and `wrangler rollback`s
@@ -185,10 +185,11 @@ answered; keep output and replies short.
   adds the text: headings from `##`, one level at a time, links to other
   posts only to published ones. Twins share date, `updated`, tags and draft
   (`tests/blog-pairs.test.ts`); `/new-post` writes both drafts and publishes
-  them (date = the publish day). `lib/blog.ts` takes `lang` everywhere, URLs come from
-  `lib/blog-paths.ts`, one view counter per post (`viewKey`: the Norwegian
-  slug). Tags are canonical across languages (`lib/tags.ts`; canon + aliases
-  in `data/tags.ts`; `TAG_LABELS_EN` gives English labels and URLs). Code
+  them (date = the publish day). `lib/blog.ts` takes `lang` everywhere,
+  URLs come from `lib/blog-paths.ts`, one view counter per post (`viewKey`:
+  the Norwegian slug). Tags are canonical across languages (`lib/tags.ts`;
+  canon + aliases in `data/tags.ts`; `TAG_LABELS_EN` gives English labels
+  and URLs; tag URLs fold æ/ø/å like post slugs). Code
   blocks: highlighted at build by `rehype-highlight`, palette in
   `app/globals.css` (e2e checks both themes). Images:
   `![alt](/images/<slug>/file.webp)`, file in `public/images/<slug>/`;
