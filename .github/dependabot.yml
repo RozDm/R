@@ -1,5 +1,7 @@
-# Dependabot: one weekly batch per ecosystem, so a normal week brings one or
-# two PRs. Each runs the required `check` (ci.yml needs no secrets).
+# Dependabot: one monthly batch per ecosystem (on the 1st; owner's call
+# 2026-11-09, was weekly), so a normal month brings one to three PRs.
+# Security updates come as soon as an advisory appears, whatever the
+# schedule. Each runs the required `check` (ci.yml needs no secrets).
 # Merge by enabling squash auto-merge as the owner, so the merge push is the
 # owner's and deploy.yml gets the `production` environment's secrets
 # (.github/CLAUDE.md).
@@ -8,8 +10,7 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "06:00"
       timezone: Europe/Oslo
     # A release must be a week old before it is proposed (supply-chain
@@ -42,7 +43,7 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
     ignore:
-      # Majors are migrations, done by hand in a session, never a weekly bump:
+      # Majors are migrations, done by hand in a session, never a monthly bump:
       # eslint 10 (the React plugin eslint-config-next pulls in isn't
       # ESLint-10-ready, see CLAUDE.md), typescript 7, next 17 / react 20 with
       # @types/react* and eslint-config-next, @types/node past the .nvmrc
@@ -53,8 +54,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "06:00"
       timezone: Europe/Oslo
     open-pull-requests-limit: 2
