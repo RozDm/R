@@ -106,18 +106,11 @@ incident background: `docs/history.md`; the zone: `docs/cloudflare-security.md`.
   committed on it; the Playwright PR until `ci.yml`'s image tag and digest
   follow (the `Docker-Content-Digest` header of
   `https://mcr.microsoft.com/v2/playwright/manifests/v<version>-noble`).
-  Pushing to a Dependabot branch stops its rebases. All of this runs
-  unattended: every Monday at 07:32 Europe/Oslo the owner's Claude scheduled
-  task «Dependabot weekly merge (RozDm/R)» (its prompt lives in the task)
-  wakes the session of the same name, which has this repository checked out
-  (a fresh session fired by a task gets none; don't archive that session).
-  It vets each PR: minor/patch only, expected files only, `npm ci
-  --ignore-scripts` + `npm audit signatures`. It then auto-merges the green
-  ones, carries the wrangler/Playwright fixes in one superseding PR from
-  branch claude/dependabot-weekly (as RozDm/R#235), leaves majors and
-  anything odd to the owner (push notification) and checks the deploy.
-  Before touching a Dependabot PR, check whether the task already took it
-  (auto-merge on, or a PR from that branch superseding it).
+  Pushing to a Dependabot branch stops its rebases. The owner forwards
+  Dependabot's e-mail to a session, which supersedes a red PR with its fix
+  from the session's own branch (as RozDm/R#235). A weekly scheduled task
+  doing this unattended was tried and declined (owner's call, 2026-11-09):
+  don't re-propose it.
 - Repository security (owner-only settings, no CI or session token can
   switch them): CodeQL in default setup (GitHub-managed: no workflow file,
   no `security-events: write` here; its PR checks aren't required), private
