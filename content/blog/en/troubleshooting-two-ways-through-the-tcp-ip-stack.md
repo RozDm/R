@@ -1,12 +1,12 @@
 ---
-title: "Troubleshooting: two ways through the TCP/IP stack"
-description: "Bottom-up from the cable or top-down from the application: the thinking behind troubleshooting with the TCP/IP model, and how to choose a way."
+title: "Network troubleshooting: two ways through the TCP/IP stack"
+description: "Network troubleshooting bottom-up or top-down: the thinking behind the TCP/IP model, and how to choose the right way."
 date: "2026-11-09"
 tags: ["TCP/IP"]
 translationOf: "feilsoking-to-veier-gjennom-tcp-ip-stakken"
 ---
 
-‘The network is down’ is a symptom, not a diagnosis. Getting from symptom to cause is less about commands than about a way of thinking: which questions you ask, in what order, and what the answers actually prove.
+‘The network is down’ is a symptom, not a diagnosis. Network troubleshooting is less about commands than about a way of thinking: which questions you ask, in what order, and what the answers actually prove. Here are the two ways through the TCP/IP stack, bottom-up and top-down, and how to choose between them.
 
 ## Prove, don't guess
 
@@ -22,9 +22,9 @@ Before the first test, three questions pay off:
 
 The answers decide where you start.
 
-## Layers as a thinking tool
+## The TCP/IP layers as a thinking tool
 
-The TCP/IP model is described with four or five layers. For troubleshooting I use five, with physical and link apart, because a dead cable and a misconfigured VLAN are different faults. That gives each layer its own question:
+The TCP/IP model has four layers in [RFC 1122](https://www.rfc-editor.org/rfc/rfc1122.html) and five in many textbooks. For troubleshooting I use five, with physical and link apart, because a dead cable and a misconfigured VLAN are different faults. That gives each layer its own question:
 
 | Layer | The question | Typical faults |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ A typical case: on Monday morning users can't get into the intranet, but email a
 1. The name resolves, so DNS works. But the connection times out rather than being refused: no one answers, so the packets vanish somewhere.
 2. The server answers ping. There is a way there, at least for ICMP.
 3. On the server, the service is running and listening on the port. The fault is not a dead process but somewhere on the way.
-4. The connection attempts never reach the server. Something between the networks drops them.
+4. The traffic on the server shows the connection attempts never arrive. Something between the networks drops them.
 5. What changed? A firewall rule over the weekend, which took the office network's access with it.
 
 Bottom-up would have walked the same fault like this: signal, neighbour, address and gateway on the client are all fine, four proofs without a finding. Then the target answers ping but the port doesn't, and from there the rest is the same: the server listens, the packets don't arrive, the firewall. Both ways end at the same answer; bottom-up just spends more steps proving what already worked.
