@@ -190,7 +190,9 @@ answered; keep output and replies short.
   the Norwegian slug). Tags are canonical across languages (`lib/tags.ts`;
   canon + aliases in `data/tags.ts`; `TAG_LABELS_EN` gives English labels
   and URLs; tag URLs fold æ/ø/å like post slugs). Code
-  blocks: highlighted at build by `rehype-highlight`, palette in
+  blocks: highlighted at build by `rehype-highlight` with lowlight's common
+  languages plus PowerShell (`HIGHLIGHT_OPTIONS` in `lib/markdown.ts`, shared
+  by the page and RSS; a language left out renders plain), palette in
   `app/globals.css` (e2e checks both themes). Images:
   `![alt](/images/<slug>/file.webp)`, file in `public/images/<slug>/`;
   `rehypePostImages` (`lib/post-images.ts`) stamps size + lazy loading and
@@ -223,7 +225,8 @@ answered; keep output and replies short.
   15000 }` so shared client modules aren't copied per page chunk
   (`docs/history.md`); `npm run check:dict` fails if the dictionary leaves
   its single chunk. After a Next upgrade, re-measure with prefetch on and
-  drop the setting if the default stops duplicating.
+  drop the setting if the default stops duplicating. `agentRules: false`
+  there keeps `next dev` from writing an AGENTS.md into the repo root.
 - ESLint stays on 9 (the React plugin isn't ESLint-10-ready). TypeScript
   stays on 6: 7.0.2 (tried 2026-10-29) builds, but has no JS API, so
   typescript-eslint refuses it (tracked for 7.1+, typescript-eslint#10940),

@@ -10,6 +10,9 @@ const nextConfig = {
   // chunk: -12 to -32 KB gzip per first view (CLAUDE.md Gotchas; CI checks
   // the dictionary stays in one chunk).
   experimental: { turbopackChunking: { minChunkSize: 15000 } },
+  // Without this, `next dev` writes an AGENTS.md into the repo root: an
+  // untracked file a session can commit by accident.
+  agentRules: false,
 }
 
 export default nextConfig
