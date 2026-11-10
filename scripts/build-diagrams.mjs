@@ -185,9 +185,22 @@ const plainText = (raw) =>
       e[0] !== '#' ? (ENTITIES[e] ?? m) : String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1))),
     )
 
+// Source comments stay out of the copy. Taking one out can join the halves of
+// another (`<!<!-- -->--` leaves `<!--`), so repeat until nothing changes,
+// then refuse a comment that never closes.
+function withoutComments(svg, file) {
+  let previous
+  do {
+    previous = svg
+    svg = svg.replace(/<!--[\s\S]*?-->/g, '')
+  } while (svg !== previous)
+  if (svg.includes('<!--')) throw new Error(`${file}: a comment that never closes (-->)`)
+  return svg
+}
+
 export function outlineText(svg, file) {
   const glyphs = new Map()
-  const body = svg.replace(/<!--[\s\S]*?-->/g, '').replace(/<text\b([^>]*)>([^<]*)<\/text>/g, (_, attrs, raw) => {
+  const body = withoutComments(svg, file).replace(/<text\b([^>]*)>([^<]*)<\/text>/g, (_, attrs, raw) => {
     const a = {}
     for (const [, name, value] of attrs.matchAll(/([\w:-]+)="([^"]*)"/g)) {
       if (!ATTRIBUTES.has(name)) throw new Error(`${file}: <text ${name}="…"> is not supported`)
