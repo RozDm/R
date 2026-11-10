@@ -28,7 +28,7 @@ describe('diagrams', () => {
   })
 
   it('drops source comments, nested ones too, and refuses one that never closes', () => {
-    expect(outlineText('<svg><!<!-- a -->-- b --></svg>', 'test')).not.toMatch(/<!--|-->|\ba\b|\bb\b/)
+    expect(outlineText('<svg><!<!-- a -->-- b --></svg>', 'test')).toBe('<svg>\n<defs>\n</defs></svg>\n')
     expect(() => outlineText('<svg><!<!-- a -->--</svg>', 'test')).toThrow(/never closes/)
   })
 })
