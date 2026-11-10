@@ -262,5 +262,5 @@ answered; keep output and replies short.
 - `StatusDashboard`, `GeoMap` and `TrendsChart` are code-split (`Lazy*.tsx`,
   `ssr: false`) and mount near the viewport; their headings (`Driftsstatus`,
   `Hvor leserne kommer fra`, `Trafikk over tid`) stay in the server
-  components `Status.tsx`, `Visitors.tsx`, `Trends.tsx` — `smoke.sh` greps
-  them.
+  components `Status.tsx`, `Visitors.tsx`, `Trends.tsx` (through
+  `SectionHeading`, a server component too) — `smoke.sh` greps them.

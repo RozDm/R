@@ -72,6 +72,42 @@ test('the dashboard loads and polls only while it is on screen', async ({ page }
   await expect.poll(() => calls).toBe(2)
 })
 
+// The uptime bar is 149 coloured slivers with mouse-only titles. The caption
+// under it says the same in words — how many checks, how many of them failed —
+// and the slivers themselves are hidden from assistive tech.
+test('the uptime caption counts the failed checks', async ({ page }) => {
+  const now = Date.now()
+  const up = (i: number) => ({ NetBox: i !== 2 && i !== 1, Grafana: true })
+  await page.route('**/api/status', (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        updatedAt: new Date(now - 60_000).toISOString(),
+        results: ['NetBox', 'Grafana'].map((name) => ({ name, ok: true, status: 200, ms: 120 })),
+        history: [3, 2, 1, 0].map((i) => ({ at: new Date(now - i * 300_000).toISOString(), up: up(i) })),
+      }),
+    }),
+  )
+  await page.goto('/')
+  const status = page.locator('#status')
+  await status.scrollIntoViewIfNeeded()
+  await expect(status.getByText('Siste 4 sjekker · 2 feilet')).toBeVisible()
+  await expect(status.getByText('Siste 4 sjekker · ingen feil')).toBeVisible()
+  await expect(status.locator('[title*="nede"]').first().locator('..')).toHaveAttribute('aria-hidden', 'true')
+})
+
+// The footer is a phone's last stop. Its links read 16–20 px tall, but the
+// finger gets 40 px or more (padding that moves nothing).
+test('footer links are finger-sized', async ({ page }) => {
+  await page.goto('/')
+  const heights = await page
+    .locator('footer a')
+    .evaluateAll((links) => links.map((a) => Math.round(a.getBoundingClientRect().height)))
+  expect(heights.length).toBeGreaterThanOrEqual(6)
+  expect(heights.filter((h) => h < 40)).toEqual([])
+})
+
 test.describe('first visit', () => {
   test.use({ introSeen: false })
 
@@ -385,6 +421,31 @@ test.describe('visit beacon (lib/visit.ts)', () => {
     await page.mouse.move(200, 200)
     await page.waitForTimeout(1_000)
     expect(sent).toHaveLength(0)
+  })
+})
+
+// The form is a fetch() behind a Turnstile check: without JavaScript it can't
+// send, and a native submit would be a GET with the message in the address
+// bar. The page says so and gives the address, hides the fields that would
+// lead nowhere, and the form's method keeps a message out of any URL.
+test.describe('contact form without JavaScript', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('points to e-mail instead of offering a dead form', async ({ page }) => {
+    await page.goto('/kontakt/')
+    const form = page.locator('main form')
+    // By its element, not getByText: Playwright's text matching never looks
+    // inside a <noscript>.
+    const note = form.locator('noscript p')
+    await expect(note).toBeVisible()
+    await expect(note).toContainText('Skjemaet trenger JavaScript')
+    await expect(form.getByRole('link', { name: 'contact@rozsoshnykh.no' })).toHaveAttribute(
+      'href',
+      'mailto:contact@rozsoshnykh.no',
+    )
+    await expect(form).toHaveAttribute('method', 'post')
+    await expect(form.getByLabel('Navn')).toBeHidden()
+    await expect(form.getByRole('button', { name: 'Send melding' })).toBeHidden()
   })
 })
 

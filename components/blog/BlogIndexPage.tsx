@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import Eyebrow from '@/components/layout/Eyebrow'
 import BlogList from './BlogList'
 import { DICT } from '@/data/i18n'
 import { getAllPosts, getAllTags } from '@/lib/blog'
@@ -28,9 +29,7 @@ export default function BlogIndexPage({ lang }: { lang: Lang }) {
           &larr; {t.backHome}
         </Link>
 
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          {t.blog.eyebrow}
-        </p>
+        <Eyebrow>{t.blog.eyebrow}</Eyebrow>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-10">{t.blog.title}</h1>
 
         <BlogList posts={getAllPosts(lang)} tags={getAllTags(lang)} lang={lang} />

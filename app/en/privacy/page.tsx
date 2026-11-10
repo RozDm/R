@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import Eyebrow from '@/components/layout/Eyebrow'
 import { pageMetadata } from '@/lib/metadata'
 import { CONTACT_ADDRESS } from '@/src/contact'
 
@@ -27,9 +28,7 @@ export default function PrivacyPage() {
           &larr; Back to the home page
         </Link>
 
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          Privacy
-        </p>
+        <Eyebrow>Privacy</Eyebrow>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Privacy notice
         </h1>

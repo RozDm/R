@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import Eyebrow from '@/components/layout/Eyebrow'
 import PostCard from './PostCard'
 import { DICT } from '@/data/i18n'
 import { getAllTags, getPostsByTag, isTagIndexed } from '@/lib/blog'
@@ -65,9 +66,7 @@ export default function TagPage({ lang, slug }: { lang: Lang; slug: string }) {
           &larr; {t.back}
         </Link>
 
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          {t.topic}
-        </p>
+        <Eyebrow>{t.topic}</Eyebrow>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">{tagLabel(tag, lang)}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">{t.count(posts.length)}</p>
 

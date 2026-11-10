@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import HalEye from './HalEye'
 import Starfield from './Starfield'
 import { makeStars, type Star } from '@/lib/stars'
 import { DICT } from '@/data/i18n'
@@ -174,13 +175,11 @@ export default function HalIdle() {
 
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-12">
         {/* HAL eye */}
-        <div
-          className="relative hal-jitter transition-opacity duration-1000"
+        <HalEye
+          look="idle"
+          className="hal-jitter transition-opacity duration-1000"
           style={{ opacity: phase >= 2 ? 1 : 0 }}
-        >
-          <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[radial-gradient(circle,#ff2020_0%,#cc0000_25%,#800000_45%,#3d0000_65%,#1a0a0a_100%)] shadow-[0_0_60px_15px_rgba(255,0,0,0.25)]" />
-          <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
-        </div>
+        />
 
         {/* Each line focuses in (keyed reveal); the whole slot blurs+fades
             back out when its time is up via the parent transition. */}

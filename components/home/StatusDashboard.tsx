@@ -171,7 +171,8 @@ export default function StatusDashboard() {
             </div>
             {history.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <div className="flex gap-px sm:gap-[3px] min-w-0">
+                {/* The caption under it says the same in words. */}
+                <div aria-hidden className="flex gap-px sm:gap-[3px] min-w-0">
                   {history.map((h, i) => {
                     const up = h.up?.[r.name]
                     return (
@@ -186,7 +187,7 @@ export default function StatusDashboard() {
                   })}
                 </div>
                 <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
-                  {t.lastChecks(history.length)}
+                  {t.lastChecks(history.length, history.filter((h) => h.up?.[r.name] === false).length)}
                   {history.length === HISTORY_LIMIT && (
                     <span title={t.monolith} className="text-gray-500 dark:text-gray-400">
                       {' '}· 1:4:9

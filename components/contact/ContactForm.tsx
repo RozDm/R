@@ -153,8 +153,28 @@ export default function ContactForm() {
     )
   }
 
+  // The form is a fetch() behind a Turnstile check, so without JavaScript it
+  // can't send: a submit would be the browser's own, a GET with the message
+  // in the address bar and no answer. Say so instead (<noscript>), hide the
+  // fields that would lead nowhere (the scripting media query — a browser too
+  // old for it keeps them, under the note), and make that native submit a
+  // POST so the message at least never lands in a URL.
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4 max-w-xl">
+    <form
+      onSubmit={onSubmit}
+      method="post"
+      className="flex flex-col gap-4 max-w-xl [@media(scripting:none)]:[&>:not(noscript)]:hidden"
+    >
+      <noscript>
+        <p className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 p-5 text-sm text-gray-900 dark:text-white">
+          {t.noscript}{' '}
+          <a href={`mailto:${CONTACT_ADDRESS}`} className="text-red-600 dark:text-red-400 underline underline-offset-2 hover:decoration-2">
+            {CONTACT_ADDRESS}
+          </a>
+          .
+        </p>
+      </noscript>
+
       {/* Honeypot: off-screen rather than display:none, since modern bots
           increasingly skip display:none. Hidden from assistive tech via
           aria-hidden and tabIndex={-1}. */}

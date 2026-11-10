@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import HalEye from '@/components/effects/HalEye'
+import Eyebrow from '@/components/layout/Eyebrow'
 import { DICT } from '@/data/i18n'
 import { localePath, type Lang } from '@/lib/i18n'
 
@@ -18,18 +20,13 @@ export default function NotFound() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
       {/* Static HAL 9000 eye (no animation) */}
-      <div className="relative mb-10" aria-hidden>
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[radial-gradient(circle,#ff2020_0%,#cc0000_25%,#800000_45%,#3d0000_65%,#1a0a0a_100%)] shadow-[0_0_50px_10px_rgba(255,0,0,0.2)]" />
-        <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
-      </div>
+      <HalEye look="page" className="mb-10" />
 
       {(['nb', 'en'] as const).map((lang) => {
         const t = DICT[lang]
         return (
           <div key={lang} lang={lang} className={`${SHOW[lang]} flex-col items-center`}>
-            <p className="font-mono text-sm tracking-widest text-red-600 dark:text-red-400 uppercase mb-4">
-              {t.notFound.eyebrow}
-            </p>
+            <Eyebrow className="mb-4">{t.notFound.eyebrow}</Eyebrow>
 
             <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white max-w-2xl leading-tight">
               {t.notFound.title}
