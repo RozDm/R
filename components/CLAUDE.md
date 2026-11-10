@@ -14,8 +14,8 @@ incident background: `docs/history.md`.
   duration-500`) — every card, status/map/Trends included — with staggered
   `animate-fade-in` delays (150/300/450/600/750 ms). The hero (`#about`, the
   first screen) has none: an opacity-0 start delays LCP (`docs/history.md`).
-  Skill chips are labels and don't react to the pointer; the blog's tag
-  chips, which look the same, are links and do.
+  Skill chips highlight under the pointer like the blog's tag chips, though
+  they are labels, not links: the owner likes it (2026-11-10) — keep it.
 - Accent TEXT: red-600 light / red-400 dark; red-500 only for decoration
   (dots, borders, selection, chart dots) — as text on light it fails WCAG
   AA. In-text links are underlined.

@@ -33,7 +33,7 @@ export default function Skills({ lang }: { lang: Lang }) {
                 return (
                 <span
                   key={item}
-                  className="text-[12px] px-2.5 py-1 rounded-md border font-mono border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
+                  className="text-[12px] px-2.5 py-1 rounded-md border font-mono transition-colors border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400"
                 >
                   {item}
                 </span>
