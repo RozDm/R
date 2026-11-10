@@ -54,7 +54,8 @@ const nb = {
     lastKnown: (ok: boolean) => `Sist kjent: ${ok ? 'operativ' : 'nede'}`,
     bar: (when: string, up: boolean | undefined) =>
       `${when} — ${up === undefined ? 'ingen data' : up ? 'oppe' : 'nede'}`,
-    lastChecks: (n: number) => `Siste ${n} sjekker`,
+    lastChecks: (n: number, failed: number) =>
+      `Siste ${n} sjekker · ${failed === 0 ? 'ingen feil' : `${failed} feilet`}`,
     monolith: 'Monolittens proporsjoner: 1² : 2² : 3²',
   },
   visitors: {
@@ -141,6 +142,7 @@ const nb = {
     errorChallenge: 'Bekreft at du ikke er en bot, så prøv igjen.',
     errorBlocked: 'Meldingen ble stanset av sikkerhetsfiltrene. Prøv på nytt, eller send en e-post direkte til',
     errorWidget: 'Sikkerhetssjekken lastet ikke (kanskje blokkert av en nettleserutvidelse). Send gjerne en e-post direkte til',
+    noscript: 'Skjemaet trenger JavaScript, som er slått av i nettleseren din. Send gjerne en e-post direkte til',
   },
   blog: {
     eyebrow: 'Blogg',
@@ -217,7 +219,7 @@ const en: Dict = {
     down: 'Down',
     lastKnown: (ok) => `Last known: ${ok ? 'operational' : 'down'}`,
     bar: (when, up) => `${when} — ${up === undefined ? 'no data' : up ? 'up' : 'down'}`,
-    lastChecks: (n) => `Last ${n} checks`,
+    lastChecks: (n, failed) => `Last ${n} checks · ${failed === 0 ? 'no failures' : `${failed} failed`}`,
     monolith: 'The monolith’s proportions: 1² : 2² : 3²',
   },
   visitors: {
@@ -300,6 +302,7 @@ const en: Dict = {
     errorChallenge: 'Please confirm you are not a bot, then try again.',
     errorBlocked: 'The message was stopped by the security filters. Try again, or email me directly at',
     errorWidget: 'The security check did not load (perhaps blocked by a browser extension). Feel free to email me directly at',
+    noscript: 'The form needs JavaScript, which is switched off in your browser. Feel free to email me directly at',
   },
   blog: {
     eyebrow: 'Blog',

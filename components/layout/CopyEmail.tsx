@@ -26,7 +26,7 @@ export default function CopyEmail({ email }: { email: string }) {
       href={`mailto:${email}`}
       onClick={copy}
       title={t.copyHint}
-      className="inline-flex items-center gap-2 font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
+      className="inline-flex items-center gap-2 py-3 -my-3 font-mono text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
     >
       {email}
       {copied && (

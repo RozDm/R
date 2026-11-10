@@ -6,13 +6,16 @@ incident background: `docs/history.md`.
 
 ## UI conventions
 
-- Front-page section: mono uppercase red eyebrow (`text-red-600
-  dark:text-red-400 font-mono … tracking-widest uppercase`) + bold h2 +
-  cards (`bg-white dark:bg-gray-900/50 rounded-xl border …
+- Front-page section: `home/SectionHeading.tsx` — the mono uppercase red
+  eyebrow (`layout/Eyebrow.tsx`: also the page headers, the footer, the 404
+  and `error.tsx`), a bold h2 and, where the section explains itself, a
+  lead — then cards (`bg-white dark:bg-gray-900/50 rounded-xl border …
   hover:border-red-500/30 dark:hover:border-red-500/20 transition-all
   duration-500`) — every card, status/map/Trends included — with staggered
   `animate-fade-in` delays (150/300/450/600/750 ms). The hero (`#about`, the
   first screen) has none: an opacity-0 start delays LCP (`docs/history.md`).
+  Skill chips are labels and don't react to the pointer; the blog's tag
+  chips, which look the same, are links and do.
 - Accent TEXT: red-600 light / red-400 dark; red-500 only for decoration
   (dots, borders, selection, chart dots) — as text on light it fails WCAG
   AA. In-text links are underlined.
@@ -47,6 +50,8 @@ incident background: `docs/history.md`.
 - `effects/HalIdle.tsx`: after 75 s idle on the front page — never while
   `#status` is on screen, the tab hidden or the window unfocused; recurring,
   the script shortens each appearance; CRT line reveal `.hal-text-reveal`.
+- `effects/HalEye.tsx`: the eye itself, drawn once for the intro, the
+  screensaver, the 404 and `error.tsx`; `look` picks its size and glow.
 - Also: the 404 and `error.tsx` copy, loader lines («Åpner podbay-dørene…»,
   «Kalibrerer AE-35-enheten…»), the console greeting,
   `HISTORY_LIMIT = 149`.
@@ -72,7 +77,9 @@ incident background: `docs/history.md`.
   they near the viewport (`useNearViewport`, `lib/use-near-viewport.ts`;
   each `Lazy*.tsx` placeholder keeps the final height). `StatusDashboard`
   polls only while `#status` is on screen; its live region is the state
-  text alone.
+  text alone. An uptime bar is colour and mouse-only titles, so it is
+  `aria-hidden` and the caption under it says the same in words: the
+  checks and how many failed.
 - `effects/VisitBeacon.tsx` (mounted by `app/layout.tsx`): one
   `POST /api/visit` per browser per local day (localStorage `visit-day`),
   sent on the first trusted human input (`lib/visit.ts`: pointer move/press,
@@ -121,6 +128,13 @@ incident background: `docs/history.md`.
   and its confirmation replace each other, so focus is moved by hand: to the
   confirmation's heading after a send, back to the name field on «Send en
   til» — the element that had it is unmounted, and focus fell to `<body>`.
+  Without JavaScript the form can't send (a `fetch()` behind Turnstile), and
+  a native submit was a GET with the message in the address bar: a
+  `<noscript>` note gives the address, `@media (scripting: none)` hides the
+  fields, `method="post"` keeps a message out of any URL. In e2e find the
+  note by element — Playwright's text matching never looks inside
+  `<noscript>`.
 - Footer e-mail (`layout/CopyEmail.tsx`): a click copies on desktop, a tap
   opens the mail app on touch screens; its «kopiert!» live region stays
-  mounted.
+  mounted. The footer's links carry `py-3 -my-3` (the inline privacy link
+  `py-3`): 40 px or more to the finger on a 16–20 px line, nothing moves.

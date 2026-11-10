@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import Eyebrow from '@/components/layout/Eyebrow'
 import ContactForm from './ContactForm'
 import { DICT } from '@/data/i18n'
 import { localePath, type Lang } from '@/lib/i18n'
@@ -19,9 +20,7 @@ export default function ContactPage({ lang }: { lang: Lang }) {
           &larr; {t.backHome}
         </Link>
 
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          {t.contact.eyebrow}
-        </p>
+        <Eyebrow>{t.contact.eyebrow}</Eyebrow>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
           {t.contact.title}
         </h1>

@@ -1,3 +1,4 @@
+import SectionHeading from './SectionHeading'
 import { certifications } from '@/data/certifications'
 import { DICT } from '@/data/i18n'
 import { pick, type Lang } from '@/lib/i18n'
@@ -10,14 +11,7 @@ export default function Certifications({ lang }: { lang: Lang }) {
   const t = DICT[lang].certs
   return (
     <section id="certifications" className="flex flex-col gap-8 animate-fade-in [animation-delay:300ms]">
-      <div>
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          {t.eyebrow}
-        </p>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          {t.title}
-        </h2>
-      </div>
+      <SectionHeading eyebrow={t.eyebrow} title={t.title} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         {certifications.map((cert) => {

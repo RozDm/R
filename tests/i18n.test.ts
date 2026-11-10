@@ -86,6 +86,15 @@ describe('dictionary', () => {
     expect(from).toContain('@/data/i18n-error')
   })
 
+  // The words under the uptime bar (StatusDashboard): the bar itself is
+  // colour only, so the caption carries the count of failed checks.
+  it('captions the uptime bar with the checks and how many failed', () => {
+    expect(DICT.nb.status.lastChecks(149, 0)).toBe('Siste 149 sjekker · ingen feil')
+    expect(DICT.nb.status.lastChecks(149, 2)).toBe('Siste 149 sjekker · 2 feilet')
+    expect(DICT.en.status.lastChecks(149, 0)).toBe('Last 149 checks · no failures')
+    expect(DICT.en.status.lastChecks(3, 1)).toBe('Last 3 checks · 1 failed')
+  })
+
   it('picks a localized value or passes a neutral one through', () => {
     expect(pick('en', { nb: 'Nettverk', en: 'Networking' })).toBe('Networking')
     expect(pick('en', 'Proxmox')).toBe('Proxmox')

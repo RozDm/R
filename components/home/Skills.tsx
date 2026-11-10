@@ -1,3 +1,4 @@
+import SectionHeading from './SectionHeading'
 import { DICT } from '@/data/i18n'
 import { skillGroups } from '@/data/skills'
 import { pick, type Lang } from '@/lib/i18n'
@@ -6,14 +7,7 @@ export default function Skills({ lang }: { lang: Lang }) {
   const t = DICT[lang].skills
   return (
     <section id="skills" className="flex flex-col gap-8 animate-fade-in [animation-delay:150ms]">
-      <div>
-        <p className="text-red-600 dark:text-red-400 font-mono text-sm tracking-widest uppercase mb-2">
-          {t.eyebrow}
-        </p>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          {t.title}
-        </h2>
-      </div>
+      <SectionHeading eyebrow={t.eyebrow} title={t.title} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {skillGroups.map((group) => (
@@ -39,7 +33,7 @@ export default function Skills({ lang }: { lang: Lang }) {
                 return (
                 <span
                   key={item}
-                  className="text-[12px] px-2.5 py-1 rounded-md border font-mono transition-colors border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400"
+                  className="text-[12px] px-2.5 py-1 rounded-md border font-mono border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
                 >
                   {item}
                 </span>

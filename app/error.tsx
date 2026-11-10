@@ -6,6 +6,8 @@
 
 import Link from 'next/link'
 import { useEffect } from 'react'
+import HalEye from '@/components/effects/HalEye'
+import Eyebrow from '@/components/layout/Eyebrow'
 import { ERROR_COPY } from '@/data/i18n-error'
 import { localePath } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
@@ -26,14 +28,9 @@ export default function Error({
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <div className="relative mb-10" aria-hidden>
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[radial-gradient(circle,#ff2020_0%,#cc0000_25%,#800000_45%,#3d0000_65%,#1a0a0a_100%)] shadow-[0_0_50px_10px_rgba(255,0,0,0.2)]" />
-        <div className="absolute inset-[34%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
-      </div>
+      <HalEye look="page" className="mb-10" />
 
-      <p className="font-mono text-sm tracking-widest text-red-600 dark:text-red-400 uppercase mb-4">
-        {t.error.eyebrow}
-      </p>
+      <Eyebrow className="mb-4">{t.error.eyebrow}</Eyebrow>
       <h1 className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white max-w-2xl leading-tight">
         {t.error.title}
       </h1>

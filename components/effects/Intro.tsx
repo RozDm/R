@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import HalEye from './HalEye'
 import Starfield from './Starfield'
 import { makeStars, type Star } from '@/lib/stars'
 import { DICT } from '@/data/i18n'
@@ -165,17 +166,15 @@ export default function Intro() {
 
         {/* HAL 9000 Eye: pulses out on phase 6 (slight scale up + fade)
             so the eye doesn't just blink off with the overlay. */}
-        <div
-          className="relative z-10 mt-10"
+        <HalEye
+          look="intro"
+          className="z-10 mt-10"
           style={{
             transition: halTransition,
             opacity: phase >= 5 && phase < 6 ? 1 : 0,
             transform: phase >= 6 ? 'scale(1.25)' : phase >= 5 ? 'scale(1)' : 'scale(0.3)',
           }}
-        >
-          <div className="w-[50px] h-[50px] md:w-[60px] md:h-[60px] rounded-full bg-[radial-gradient(circle,#ff2020_0%,#cc0000_25%,#800000_45%,#3d0000_65%,#1a0a0a_100%)] shadow-[0_0_50px_15px_rgba(255,0,0,0.25)]" />
-          <div className="absolute inset-[30%] rounded-full bg-[radial-gradient(circle,rgba(255,200,100,0.9)_0%,rgba(255,50,0,0.6)_100%)]" />
-        </div>
+        />
       </div>
 
       {/* Skip hint */}
