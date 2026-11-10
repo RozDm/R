@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import Turnstile, { type TurnstileHandle } from './Turnstile'
 import { DICT } from '@/data/i18n'
 import { useLang } from '@/lib/use-lang'
@@ -56,6 +56,23 @@ export default function ContactForm() {
   const [state, setState] = useState<FormState>('idle')
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const turnstileRef = useRef<TurnstileHandle>(null)
+
+  // The form and its confirmation replace each other, so the element that had
+  // focus (the submit button, then «Send en til») is unmounted and focus
+  // would fall back to <body>: a keyboard or screen-reader user is thrown to
+  // the top of the page, and a status region that appears together with its
+  // text is often not announced at all. Move focus instead — to the
+  // confirmation's heading, which a screen reader then reads with the line
+  // under it, and back to the first field for the next message.
+  const sentRef = useRef<HTMLHeadingElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const sentBodyId = useId()
+  const wasSent = useRef(false)
+  useEffect(() => {
+    if (state === 'sent') sentRef.current?.focus()
+    else if (wasSent.current) nameRef.current?.focus()
+    wasSent.current = state === 'sent'
+  }, [state])
 
   // A fresh token clears a challenge prompt, and a widget that failed to
   // load but recovered clears its notice.
@@ -114,9 +131,18 @@ export default function ContactForm() {
 
   if (state === 'sent') {
     return (
-      <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-6" role="status">
-        <p className="font-medium text-gray-900 dark:text-white">{t.sentTitle}</p>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.sentBody}</p>
+      <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-6">
+        <h2
+          ref={sentRef}
+          tabIndex={-1}
+          aria-describedby={sentBodyId}
+          className="font-medium text-gray-900 dark:text-white"
+        >
+          {t.sentTitle}
+        </h2>
+        <p id={sentBodyId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          {t.sentBody}
+        </p>
         <button
           onClick={() => setState('idle')}
           className="mt-4 text-sm font-mono text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 ease-out"
@@ -145,6 +171,7 @@ export default function ContactForm() {
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-gray-900 dark:text-white">{t.name}</span>
         <input
+          ref={nameRef}
           name="name"
           required
           maxLength={CONTACT_LIMITS.name}

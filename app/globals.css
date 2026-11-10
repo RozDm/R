@@ -330,10 +330,34 @@ html.intro-active::before {
 
 /* Post tables: a long word may break rather than push the table past the
    column. WebKit keeps a hyphenated word like «DNS-oppføringen,» whole, so a
-   three-column table outgrew an iPhone screen. */
+   three-column table outgrew an iPhone screen.
+   But a word broken just anywhere reads as a typo («Interne/tt»), so a cell
+   hyphenates first — the page's lang picks the dictionary — and `anywhere`
+   is what is left when there is none. Words of 8 letters and up, 3 on each
+   side of the hyphen. Code keeps its characters: a hyphen that isn't in the
+   command would be a lie. */
 .post-body td,
 .post-body th {
   overflow-wrap: anywhere;
+  hyphens: auto;
+  hyphenate-limit-chars: 8 3 3;
+  /* Safari's spelling of the same limits. */
+  -webkit-hyphenate-limit-before: 3;
+  -webkit-hyphenate-limit-after: 3;
+}
+.post-body :is(td, th) code {
+  hyphens: manual;
+}
+/* `anywhere` also lets a column shrink to one character, and on a phone auto
+   layout then gave the short label column 7 characters: «5 Applikasjon» took
+   three lines. In a table of up to three columns (the selector counts the
+   row's cells) no column goes below 11 characters — or 28% of the screen
+   where that is less, so three of them always fit. */
+@media (max-width: 639px) {
+  .post-body tr > :is(td, th):first-child:nth-last-child(-n + 3),
+  .post-body tr > :is(td, th):first-child:nth-last-child(-n + 3) ~ :is(td, th) {
+    min-width: min(11ch, 28vw);
+  }
 }
 
 /* Diagrams in posts (SVG, built by scripts/build-diagrams.mjs) fill the

@@ -81,6 +81,26 @@ describe('workflow secrets', () => {
     expect(jobs).toBeGreaterThan(0)
   })
 
+  // deploy.yml's rule, held for every workflow: in a job that reads a secret
+  // no package install script runs (a compromised dependency would find the
+  // token) and no npm cache is restored (a job running package code could
+  // have written it). The manual D1 workflows once did both.
+  it('installs without scripts or an npm cache in jobs that read secrets', () => {
+    let installs = 0
+    for (const file of FILES) {
+      for (const [job, body] of children(block(read(file), 'jobs'))) {
+        if (!/secrets\.(?!GITHUB_TOKEN\b)\w/.test(body)) continue
+        expect(body, `${file}: job ${job} restores an npm cache`).not.toMatch(/^\s*cache:\s*npm\b/m)
+        const lines = body.split('\n').filter((l) => !/^\s*#/.test(l) && /\bnpm (ci|install|i)\b/.test(l))
+        for (const line of lines) {
+          installs++
+          expect(line, `${file}: job ${job}`).toMatch(/\bnpm ci --ignore-scripts\b/)
+        }
+      }
+    }
+    expect(installs).toBeGreaterThan(0)
+  })
+
   it('starts production jobs only from a push to main, a manual run or the schedule', () => {
     for (const file of FILES) {
       const yml = read(file)

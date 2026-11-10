@@ -50,6 +50,19 @@ function redirect301(target: string | null, location: string, secure = true): Re
 
 // Cron: ping each monitor, record latency/status, append to rolling history.
 async function runHealthChecks(env: Env): Promise<void> {
+  // A failed read is not "no snapshot yet": building on it would replace the
+  // 149-check history with this one tick and forget which outages were
+  // already mailed (a second «nede» for the same outage). Skip the tick — a
+  // snapshot that stays unwritten goes stale on the dashboard and fails the
+  // watchdog, which is the true signal.
+  let raw: string | null
+  try {
+    raw = await env.STATUS.get(STATUS_KEY)
+  } catch (err) {
+    console.error('status: KV read failed, tick skipped', err)
+    return
+  }
+
   const results = await Promise.all(
     monitors(env).map(async (monitor) => {
       const start = Date.now()
@@ -78,7 +91,6 @@ async function runHealthChecks(env: Env): Promise<void> {
     }),
   )
 
-  const raw = await env.STATUS.get(STATUS_KEY).catch(() => null)
   const previousHistory = parseHistory(raw)
   const transitions = detectTransitions(previousHistory, results)
   const updatedAt = new Date().toISOString()

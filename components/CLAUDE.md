@@ -29,7 +29,11 @@ incident background: `docs/history.md`.
   Inline code is a chip (`.post-body`), each word a nowrap span from
   `lib/inline-code.ts`, so a phone breaks lines between words only. Table
   cells take `overflow-wrap: anywhere`: WebKit keeps hyphenated words whole,
-  and a table once outgrew the iPhone screen. SVG images (diagrams, drawn
+  and a table once outgrew the iPhone screen. Ahead of it they hyphenate
+  (`hyphens: auto`, by the page's lang; never inside code) — a word broken
+  just anywhere read as a typo («Interne/tt») — and on a phone a table of up
+  to three columns keeps each at 11ch or more (`anywhere` let auto layout
+  starve the label column). SVG images (diagrams, drawn
   for the light theme) fill the column, and the dark theme inverts them
   (`invert(1) hue-rotate(180deg)`: lightness flips, hue stays).
 
@@ -113,7 +117,10 @@ incident background: `docs/history.md`.
   again. The widget takes the site's theme (not the OS's) and is redrawn
   when the toggle flips it. Limits, the e-mail `pattern` and the address
   come from `src/contact.ts` (`CONTACT_LIMITS`, `EMAIL_PATTERN`,
-  `CONTACT_ADDRESS`), so the browser refuses what the Worker would.
+  `CONTACT_ADDRESS`), so the browser refuses what the Worker would. The form
+  and its confirmation replace each other, so focus is moved by hand: to the
+  confirmation's heading after a send, back to the name field on «Send en
+  til» — the element that had it is unmounted, and focus fell to `<body>`.
 - Footer e-mail (`layout/CopyEmail.tsx`): a click copies on desktop, a tap
   opens the mail app on touch screens; its «kopiert!» live region stays
   mounted.

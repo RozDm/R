@@ -107,6 +107,42 @@ describe('5-minute health check', () => {
     expect(fake.sent).toHaveLength(1)
     expect(fake.sent[0].raw).toContain('Subject: Status: Grafana er nede')
   })
+
+  // A failed read used to count as "no snapshot yet": the tick then wrote a
+  // one-entry history over the 149 checks and forgot the outage it had
+  // already mailed, so the next failed probe mailed «nede» again.
+  it('skips the tick when the KV read fails: history and alert state survive', async () => {
+    const store = new Map<string, string>()
+    let down = false
+    const fake = makeEnv({
+      STATUS: {
+        get: async (key: string) => {
+          if (down) throw new Error('KV down')
+          return store.get(key) ?? null
+        },
+        put: async (key: string, value: string) => void store.set(key, value),
+      },
+    })
+    const probe = answer(503)
+    vi.stubGlobal('fetch', probe)
+    await runCron(fake, HEALTH_CRON)
+    await runCron(fake, HEALTH_CRON)
+    expect(fake.sent).toHaveLength(1)
+    const before = store.get('status')
+
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    down = true
+    probe.mockClear()
+    await runCron(fake, HEALTH_CRON)
+    expect(store.get('status')).toBe(before)
+    expect(probe).not.toHaveBeenCalled()
+    expect(error).toHaveBeenCalledWith('status: KV read failed, tick skipped', expect.any(Error))
+
+    down = false
+    await runCron(fake, HEALTH_CRON)
+    expect(JSON.parse(store.get('status')!).history).toHaveLength(3)
+    expect(fake.sent).toHaveLength(1)
+  })
 })
 
 describe('/api/status', () => {
@@ -123,8 +159,9 @@ describe('/api/status', () => {
     expect(puts).toEqual([url.href])
   })
 
-  it('answers a KV failure with an empty, uncached snapshot', async () => {
+  it('answers a KV failure with an empty, uncached snapshot, and logs it', async () => {
     stubCache()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const fake = makeEnv({ STATUS: { get: async () => Promise.reject(new Error('KV down')) } })
     const { ctx, settle } = makeCtx()
     const res = (await handleStatus(url, fake.env, ctx))!
@@ -132,6 +169,7 @@ describe('/api/status', () => {
     expect(await res.json()).toEqual({ results: [], history: [] })
     expect(res.headers.get('cache-control')).toBe('no-store')
     expect(puts).toEqual([])
+    expect(error).toHaveBeenCalledWith('status: KV read failed', expect.any(Error))
   })
 })
 

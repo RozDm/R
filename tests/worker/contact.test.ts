@@ -32,7 +32,10 @@ function seed(fake: ReturnType<typeof makeEnv>, minutesAgo: number, over: Partia
     .run(at, over.ip ?? BROWSER_HEADERS['cf-connecting-ip'], FORM.name, over.email ?? FORM.email, over.message ?? FORM.message)
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 // Email Routing sends only to the binding's verified destination, so the
 // inbox the mail is addressed to must be that one.
@@ -164,6 +167,29 @@ describe('POST /api/contact', () => {
     seed(later, 120, { ip: '198.51.100.1', message: 'første melding her' })
     seed(later, 180, { ip: '198.51.100.2', message: 'andre melding her' })
     expect((await send(later)).status).toBe(200)
+  })
+
+  // The windows and the dedup are D1 reads that fail open (the burst cap and
+  // Turnstile still stand). Unlogged, a dead D1 switched them off unseen.
+  it('fails open when the D1 reads fail, and logs each skipped check', async () => {
+    const fake = makeEnv()
+    const d1 = fake.env.METRICS
+    const readsFail = {
+      prepare: (sql: string) =>
+        sql.startsWith('SELECT')
+          ? { bind: () => ({ first: async () => Promise.reject(new Error('D1 down')) }) }
+          : d1.prepare(sql),
+    }
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const res = (await handleContact(URL_, post(FORM), { ...fake.env, METRICS: readsFail } as unknown as Env))!
+    expect(res.status).toBe(200)
+    expect(fake.sent).toHaveLength(1)
+    expect(rows(fake)).toBe(1)
+    expect(error.mock.calls.map(([message]) => message)).toEqual([
+      'contact: D1 per-sender window read failed, check skipped',
+      'contact: D1 per-address window read failed, check skipped',
+      'contact: D1 duplicate read failed, check skipped',
+    ])
   })
 
   it('enforces Turnstile when the secret is set', async () => {

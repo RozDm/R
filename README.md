@@ -64,8 +64,9 @@ automatically — which triggers the deploy above — and GitHub then deletes th
 merged head branch. A failing `check` just leaves the PR open with auto-merge
 pending; open a draft (and skip auto-merge) to hold a change for manual review.
 
-Monitoring workflows: `status-watchdog` (scheduled hourly, but GitHub runs
-it only every 2–8 hours — measured in October 2026; fails, and GitHub
+Monitoring workflows: `status-watchdog` (scheduled four times an hour,
+because GitHub starts only some scheduled runs — hourly, they came 4–11
+hours apart in November 2026; fails, and GitHub
 e-mails, when the site is down, the status snapshot is older than 25 minutes,
 the D1 database fails a read or the Analytics Engine read is degraded three
 runs in a row) and
@@ -162,7 +163,7 @@ can't drift apart here.
 - **Uptime**: a 5-minute cron probes the services in `monitors()`
   (`src/status.ts`), keeps a rolling snapshot in KV and mails flap-damped
   «nede» / «oppe igjen» alerts. The front page's status section shows it and
-  greys out when the cron itself goes quiet; an hourly GitHub workflow
+  greys out when the cron itself goes quiet; a scheduled GitHub workflow
   watches the watcher.
 - **Visits**: one beacon per browser per day, sent on the first human input
   and never from an automated browser (`lib/visit.ts`), counts the country
@@ -188,5 +189,9 @@ The site is live at `rozsoshnykh.no` (`www` and plain HTTP 301 at the edge;
 the `workers.dev` subdomain and preview URLs are off). DNSSEC is active, HSTS
 is on the browsers' preload list, TLS 1.3 only; mail to the domain has
 MTA-STS (`enforce`), TLS-RPT and DMARC `p=reject` (checked 2026-10-23). `robots: { index: false }` stays
-until the first posts are published — flip `robots.index` to `true` in
-`app/layout.tsx` and submit the sitemap in Google Search Console then.
+until the owner says launch — not with the first post (their call,
+2026-11-09). Launch flips three things in one PR, or CI or the deploy fails:
+`robots.index` in `app/layout.tsx`, the e2e test "pre-launch: every page
+tells search engines noindex" and the home check in `scripts/smoke.sh`
+(steps: `.claude/skills/new-post`). The owner then submits the sitemap in
+Google Search Console.
