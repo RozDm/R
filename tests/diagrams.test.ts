@@ -26,4 +26,9 @@ describe('diagrams', () => {
     expect(() => outlineText(svg('🙂'), 'test')).toThrow(/has no/)
     expect(() => outlineText(svg('a').replace('<text', '<text class="x"'), 'test')).toThrow(/not supported/)
   })
+
+  it('drops source comments, nested ones too, and refuses one that never closes', () => {
+    expect(outlineText('<svg><!<!-- a -->-- b --></svg>', 'test')).not.toMatch(/<!--|-->|\ba\b|\bb\b/)
+    expect(() => outlineText('<svg><!<!-- a -->--</svg>', 'test')).toThrow(/never closes/)
+  })
 })
