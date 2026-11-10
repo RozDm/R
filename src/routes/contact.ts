@@ -79,6 +79,14 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     if (!ok) return apiJson('{"error":"challenge failed"}', 403)
   }
 
+  // The D1 checks below fail open — a D1 hiccup must not close the form, and
+  // the burst cap and Turnstile above still stand — but never silently: an
+  // unlogged failure would switch the windows off with nothing to show for it.
+  const failOpen = (check: string) => (err: unknown) => {
+    console.error(`contact: D1 ${check} read failed, check skipped`, err)
+    return null
+  }
+
   // Cutoffs are ISO strings like `at` itself — see CONTACT_WINDOWS_MS for
   // why comparing against SQLite's datetime('now', …) was wrong.
   const now = Date.now()
@@ -86,11 +94,11 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     env.METRICS.prepare('SELECT COUNT(*) AS n FROM contact WHERE ip = ?1 AND at > ?2')
       .bind(sender, isoCutoff(now, CONTACT_WINDOWS_MS.perIp))
       .first<{ n: number }>()
-      .catch(() => null),
+      .catch(failOpen('per-sender window')),
     env.METRICS.prepare('SELECT COUNT(*) AS n FROM contact WHERE email = ?1 AND at > ?2')
       .bind(payload.email, isoCutoff(now, CONTACT_WINDOWS_MS.perEmail))
       .first<{ n: number }>()
-      .catch(() => null),
+      .catch(failOpen('per-address window')),
   ])
   if ((recentByIp?.n ?? 0) >= CONTACT_IP_LIMIT) return apiJson('{"error":"rate limited"}', 429)
   if ((recentByEmail?.n ?? 0) >= CONTACT_EMAIL_LIMIT) return apiJson('{"error":"rate limited"}', 429)
@@ -106,7 +114,7 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   )
     .bind(payload.email, payload.message, isoCutoff(now, CONTACT_WINDOWS_MS.duplicate))
     .first<{ n: number }>()
-    .catch(() => null)
+    .catch(failOpen('duplicate'))
   if (duplicate) return apiJson('{"ok":true}')
 
   const at = new Date(now).toISOString()

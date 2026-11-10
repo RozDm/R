@@ -25,7 +25,10 @@ export async function handleStatus(
   let body = '{"results":[],"history":[]}'
   try {
     body = (await env.STATUS.get(STATUS_KEY)) || body
-  } catch {}
+  } catch (err) {
+    // Logged, not thrown: the empty body reads as "no data yet" on the site.
+    console.error('status: KV read failed', err)
+  }
   // Only cache positive snapshots; an empty body comes from a KV error and
   // shouldn't pin the bad state at the edge for a minute.
   if (body !== '{"results":[],"history":[]}') {

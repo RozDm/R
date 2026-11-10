@@ -161,8 +161,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - Status alerts are flap-damped (`CONSECUTIVE_FAILS_TO_ALERT = 2`): «nede»
   on the second failed probe in a row, «oppe igjen» on the first success
   after an alerted outage. `isStale`/`STALE_AFTER_MS` (20 min) grey out the
-  banner and footer dot when the cron stops writing. `HISTORY_LIMIT = 149`
-  is intentional (1:4:9).
+  banner and footer dot when the cron stops writing. A failed KV read skips
+  the tick: read as "no snapshot yet", it wiped the history and the alert
+  state (a second «nede» for one outage). `HISTORY_LIMIT = 149` is
+  intentional (1:4:9).
 - Contact: a failed mail send deletes its D1 row (else the dedup would ack
   the retry without mailing it). Windows over `contact.at` are ISO cutoffs
   from `isoCutoff()` bound as parameters — NEVER `datetime('now', …)`, which
@@ -173,7 +175,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - Slash-less paths: `out/_redirects` 301s every page (generated at build);
   anything else gets `html_handling`'s 307. `/favicon.ico` is a build-time
   copy of `/icons/favicon.ico`.
-- Failures swallowed for availability (D1 upserts, mail sends, prune) still
+- Failures swallowed for availability (D1 upserts, mail sends, prune, the
+  contact form's D1 checks, which fail open, the KV reads) still
   `console.error` — Workers Logs is the only place they show. Traces stay
   off (`"traces": {}` enables nothing; owner's call): from 2026-12-01 logs
   and traces share Free's 0.5 GB/day.

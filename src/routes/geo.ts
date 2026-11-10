@@ -68,7 +68,7 @@ export async function handleGeo(
     })
   // A failed read is a 503 (never cached), not an empty map: an empty 200
   // read as "no visitors yet" on the site and as health to smoke.sh and the
-  // hourly watchdog, which probe D1 through this endpoint (docs/history.md).
+  // watchdog, which probe D1 through this endpoint (docs/history.md).
   if (!rows) return apiJson(JSON.stringify({ error: 'unavailable' }), 503)
   const body = JSON.stringify({ countries: countriesFromRows(rows.results ?? []) })
   return putCachedApiJson(ctx, cache.key, body, GEO_CACHE_TTL_S)

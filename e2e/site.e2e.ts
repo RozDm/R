@@ -215,6 +215,43 @@ test('a post fits the screen, and inline code breaks between words only', async 
   expect(split).toEqual([])
 })
 
+// Post tables (app/globals.css): a cell hyphenates before it breaks a word
+// just anywhere, and on a phone a table of up to three columns keeps every
+// column readable — auto layout once left the label column 7 characters and
+// «Internett» broke as «Interne/tt». A table is planted in the post's own
+// .post-body, so the check needs no post with one.
+test('post tables hyphenate, and a phone keeps every column readable', async ({ page }) => {
+  await page.goto(post.path)
+  const table = await page.locator('.post-body').evaluate((body) => {
+    const planted = document.createElement('table')
+    planted.id = 'planted-table'
+    planted.innerHTML =
+      '<thead><tr><th>Lag</th><th>Spørsmålet</th><th>Typiske feil</th></tr></thead><tbody>' +
+      '<tr><td>5 Applikasjon</td><td>Svarer tjenesten riktig?</td><td>DNS, TLS, HTTP og <code>curl -v</code></td></tr>' +
+      '<tr><td>3 Internett (IP)</td><td>Finnes det en vei dit?</td><td>Adresse, nettmaske, gateway, ruting</td></tr></tbody>'
+    body.append(planted)
+    return {
+      wider: planted.getBoundingClientRect().width - body.getBoundingClientRect().width,
+      code: getComputedStyle(planted.querySelector('code')!).hyphens,
+      cells: [...planted.querySelectorAll('th, td')].map((cell) => {
+        const style = getComputedStyle(cell)
+        return { hyphens: style.hyphens, floor: parseFloat(style.minWidth) || 0, width: cell.getBoundingClientRect().width }
+      }),
+    }
+  })
+  expect(new Set(table.cells.map((c) => c.hyphens))).toEqual(new Set(['auto']))
+  // Code keeps its characters: no hyphen that isn't in the command.
+  expect(table.code).toBe('manual')
+  expect(table.wider).toBeLessThanOrEqual(1)
+  const phone = page.viewportSize()!.width < 640
+  for (const cell of table.cells) {
+    // The floor is the phone's; a desktop column is as wide as its text needs.
+    if (phone) expect(cell.floor).toBeGreaterThan(60)
+    else expect(cell.floor).toBe(0)
+    expect(cell.width).toBeGreaterThanOrEqual(cell.floor - 0.5)
+  }
+})
+
 test.describe('contact form', () => {
   async function fill(page: import('@playwright/test').Page) {
     await page.goto('/kontakt/')
@@ -224,9 +261,17 @@ test.describe('contact form', () => {
     await page.getByRole('button', { name: 'Send melding' }).click()
   }
 
-  test('sends and thanks the visitor', async ({ page }) => {
+  // The form and its confirmation replace each other, so whatever had focus
+  // is unmounted: focus moves to the confirmation's heading (read out with
+  // the line under it), and back to the first field for the next message —
+  // it used to fall to <body>, the top of the page.
+  test('sends and thanks the visitor, and focus follows what replaced the form', async ({ page }) => {
     await fill(page)
-    await expect(page.getByText('Takk! Meldingen er sendt.')).toBeVisible()
+    const thanks = page.getByRole('heading', { name: 'Takk! Meldingen er sendt.' })
+    await expect(thanks).toBeFocused()
+    await expect(thanks).toHaveAccessibleDescription('Jeg svarer som regel innen en dag eller to.')
+    await page.getByRole('button', { name: /Send en til/ }).click()
+    await expect(page.getByLabel('Navn')).toBeFocused()
   })
 
   test('says so on a rate limit and keeps the typed text', async ({ page, pageProblems }) => {

@@ -3,15 +3,22 @@ name: Status watchdog
 # Watches the watcher. The Worker's 5-minute cron probes the monitored
 # services and mails on outages — but if the cron itself stops (or KV writes
 # start failing), nothing mails anyone: the site just greys out its status
-# card (isStale). This runs outside Cloudflare, hourly, and FAILS when the
-# snapshot is stale or the site is down; GitHub then e-mails the failure to
-# whoever last changed this schedule. Free: public-repo Actions minutes.
+# card (isStale). This runs outside Cloudflare and FAILS when the snapshot is
+# stale or the site is down; GitHub then e-mails the failure to whoever last
+# changed this schedule. Free: public-repo Actions minutes.
+#
+# Four slots an hour, because GitHub starts only some scheduled runs: with one
+# slot an hour (`17 * * * *`) about one in seven ran — 3.7 to 11 hours apart,
+# 6.5 on average (2026-11-03…10). None on the hour, which GitHub names as its
+# busiest time. A run takes seconds, and the concurrency group below lets a
+# late one give way to the next. While something is failing, every run that
+# does start mails: expect more mail than one slot an hour brought.
 #
 # Note: GitHub disables scheduled workflows after 60 days without repository
 # activity — re-enable it from the Actions tab if that ever happens.
 on:
   schedule:
-    - cron: '17 * * * *' # hourly, off the top of the hour
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
 
 # Read-only GITHUB_TOKEN: nothing here writes to the repo.

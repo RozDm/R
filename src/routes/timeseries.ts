@@ -81,7 +81,7 @@ export async function handleTimeseries(
     return putCachedApiJson(ctx, cache.key, JSON.stringify({ metric, range: rangeKey, points }), range.ttlSeconds)
   }
   // Degraded answer (missing secrets or AE failure): serve it, don't pin it.
-  // The chart reads it as empty; `degraded` is for the hourly watchdog
+  // The chart reads it as empty; `degraded` is for the watchdog
   // (status-watchdog.yml) — an expired or revoked AE token otherwise looks
   // exactly like a quiet week.
   return apiJson(JSON.stringify({ metric, range: rangeKey, points, degraded: true }))

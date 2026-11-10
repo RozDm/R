@@ -20,12 +20,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # No npm cache and no install scripts, as in deploy.yml's job with
+      # secrets: package code must not run next to the Cloudflare token, and
+      # a cache is something another job could have written.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: npm
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       - name: Create D1 database (idempotent)
         env:

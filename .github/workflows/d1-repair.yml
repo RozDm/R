@@ -56,9 +56,9 @@ jobs:
     # Secrets live in the `production` environment (deployable from main
     # only); without this line the job gets none.
     environment: production
+    # No token here: the install step below must not see one (deploy.yml's
+    # rule). Each wrangler step names its own.
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       DB: rozsoshnykh-metrics-v2
       MODE: ${{ inputs.mode }}
       RESTORE_TS: ${{ inputs.timestamp }}
@@ -68,16 +68,21 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # No npm cache and no install scripts, as in deploy.yml's job with
+      # secrets: package code must not run next to the Cloudflare token, and
+      # a cache is something another job could have written.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: npm
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       # Always runs, never fails the job: shows whether the control plane
       # (info/time-travel) responds and whether queries still error.
       - name: Probe current state
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           npx wrangler d1 info "$DB" || true
           npx wrangler d1 time-travel info "$DB" || true
@@ -85,6 +90,9 @@ jobs:
 
       - name: Time Travel restore
         if: env.MODE == 'restore'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$RESTORE_TS" ]; then
             echo "::error::restore mode needs the timestamp input"
@@ -96,6 +104,9 @@ jobs:
 
       - name: Run one-off SQL
         if: env.MODE == 'sql'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$SQL_CMD" ]; then
             echo "::error::sql mode needs the sql input"
@@ -105,6 +116,9 @@ jobs:
 
       - name: Create fresh database + schema (no existence check)
         if: env.MODE == 'create'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           NAME="${CREATE_NAME:-rozsoshnykh-metrics-v2}"
           npx wrangler d1 create "$NAME"
@@ -120,6 +134,9 @@ jobs:
 
       - name: Recreate database (DESTRUCTIVE)
         if: env.MODE == 'recreate'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ "$CONFIRM" != "RECREATE" ]; then
             echo "::error::recreate mode needs confirm=RECREATE"
