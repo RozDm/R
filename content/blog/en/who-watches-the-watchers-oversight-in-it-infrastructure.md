@@ -49,6 +49,8 @@ At the destination, seal what arrives with a signature or a hash chain, so that 
 
 A record is also only as honest as whatever writes it. If an attacker tampers with the code before it is deployed, the logs will faithfully record the actions of a malicious program. So trust has to reach back to the build: sign what you deploy, record how it was built, and verify the signature at deployment and, where you can, while it runs. A list of ingredients (an SBOM) is an inventory, not proof. And a signature shows where an artifact came from, not that it is harmless, so the builder and its signing keys are guards too, and fall under Layer 4.
 
+An agent adds one more twist: it can write its own story. For an agent, the record is what crossed its boundary, meaning requests, tool calls, arguments and approvals, captured where the agent cannot edit them. Its own account of why it acted is a claim, not evidence.
+
 ### Layer 2: the observer
 
 Moving the logs off the machine protects the past, but not the next ten minutes. An intruder with full rights does not need to erase old records if they can simply stop new ones from being made.
@@ -82,11 +84,11 @@ For the pulse to prove anything, it has to travel through the whole chain: trigg
 
 ### Layer 4: those with the keys
 
-Even with one-way logs and an external heartbeat, someone has to manage the log collector, the monitor, and the access rules, and today that someone is often not a person. Service accounts, tokens, pipelines and agents outnumber people many times over, and too many of them carry permanent, over-scoped credentials that nobody owns. If one account can change all of the layers at once, or an orphaned service account roams free, the four layers collapse back into a single point of failure.
+Even with one-way logs and an external heartbeat, someone has to manage the log collector, the monitor, and the access rules, and today that someone is often not a person. Service accounts, automation and agents outnumber people many times over, and too many of them carry permanent, over-scoped credentials that nobody owns. If one account can change all of the layers at once, or an orphaned service account roams free, the four layers collapse back into a single point of failure.
 
 The principles are the same for people and machines; the mechanisms differ. A machine cannot answer a second factor, so it has to prove its identity by what it is and where it runs, with short-lived credentials. Three boundaries keep top-level rights in check:
 
-- **Borrowed time.** Nobody holds permanent full access for daily work (zero standing privileges). High privileges are checked out just in time for a specific task, with a bounded scope and an expiry, and the act of borrowing them is recorded before the session starts. Service accounts and agents borrow the same way, and each has a named human owner who answers for its lifecycle and revocation. They are judged not only by whether the key is valid, but by whether their behaviour stays within the purpose they were granted.
+- **Borrowed time.** Nobody holds permanent full access for daily work (zero standing privileges). High privileges are checked out just in time for a declared task, with a bounded scope and an expiry, and the act of borrowing them is recorded before the session starts. Service accounts and agents borrow the same way, and each has a named human owner who answers for its lifecycle and revocation. They are judged not only by whether the key is valid, but by whether their behaviour stays within the purpose they were granted.
 - **Two pairs of eyes.** The person who proposes a change to critical infrastructure, or to the pipeline that deploys it, cannot be the one who approves it (separation of duties). And because an administrator might have the rights to turn off the two-person rule for ten seconds, any change to the approval rules themselves must trigger an immediate alert at Layer 2.
 - **A noisy spare key** (a break-glass account). Every system needs an emergency account for when normal login systems are down. It must not depend on those systems, which is the whole point of it. The key stays locked away, is never used for routine work, and sets off an immediate alarm through an independent channel the moment it is used. That alarm must never block the login or need the login systems that may be down, or the key is useless in the very outage it exists for, and engineers in a panic will learn to disable it. Its job is not to stop the login but to announce it at once: the emergency key was used at 03:15, by this person, from this place. Test the key on a schedule, because a key nobody has tried may not open anything, and review every use afterwards.
 
@@ -131,7 +133,7 @@ In a small environment, where one person runs both the servers and the security,
 
 1. **Evidence travels one way.** A machine can add to the record, but cannot edit or erase what it has already sent.
 2. **The watcher lives outside the watched.** The collector and the alarm do not share credentials, network fate, or hardware with the machines they guard.
-3. **Silence is a fault, not peace.** A quiet server, a silent monitor and an unresponsive agent all raise an alarm when their heartbeat stops.
+3. **Silence is a fault, not peace.** A quiet server, a silent monitor and an agent that stops answering all raise an alarm when their heartbeat stops.
 4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, scoped, logged, tied to a named owner, and, for emergency keys, loud by design.
 5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure two times with a stopwatch: how long until the outside receiver raises the alarm, and how long until a person acts on it. The first is the timeout you configured; the second is the one that actually protects you. Repeat it on a schedule: an alarm nobody has triggered on purpose is only a hope.
 6. **Test the anchor, not just the alarm.** An anchor is not watched by another guard; it is duplicated and tested. Restore a system from the immutable copy and time it from zero. Check that what came back is complete and that its artifacts still verify. A backup nobody has restored is only a theory.
