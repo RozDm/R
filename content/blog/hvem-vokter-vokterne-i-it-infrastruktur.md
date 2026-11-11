@@ -56,12 +56,15 @@ Observatøren på den andre siden av grensen må derfor passe på tre ting samti
 
 En stille vert er ikke uten videre en ødelagt vert, så stillhet trenger en rytme å bryte: hver kilde, enten det er en vert, en tjeneste eller en agent, sender et jevnt slag gjennom den samme kanalen, og observatøren varsler når et slag uteblir. Der slag ikke er mulig, send en testhendelse på fast tid og sjekk at den kommer fram. Utenfor mønsteret krever også et mønster: hold et normalbilde av hva hver identitet vanligvis gjør, og følg de privilegerte tettest.
 
+Et slag beviser at en kilde lever, ikke at den er ærlig. En dypt kompromittert vert kan fortsette å slå mens den skjuler hva den gjør, så behandle verten som ett vitne og kontroller den mot vitner den ikke styrer: nettverket, skyens kontrollplan eller hypervisoren, identitetsleverandøren. Når to vitner er uenige, tro på det verten ikke kan røre.
+
 | Hva observatøren ser | Hva det betyr | Se her |
 | --- | --- | --- |
 | Loggen ble tømt | Noen prøvde å utslette sporet | Verten, med en gang; anta full kompromittering |
 | Revisjonsregler endret | Noen blinder opptakeren før de handler | Nylig bruk av privilegier på verten |
 | En gyldig identitet handler utenfor mønsteret | En stjålet legitimasjon, eller en tjeneste eller agent som handler utenfor sitt erklærte område | Identitetens normalbilde, dens eier og eventuell godkjent endring |
 | Loggstrømmen stopper | Verten er nede, avskåret, eller avsenderen ble drept | Nettverksveien først, så loggprosessen |
+| To vitner er uenige | Verten skjuler noe, eller ett vitne er ødelagt | Vitnet verten ikke kan røre: nettverket, kontrollplanet, identitetsleverandøren |
 | Godkjenningsregler omgått | En privilegert bruker endret rekkverket for seg selv | Kontrollplanet og innstillingene i repoet, lag 4 |
 
 ### Lag 3: hvem overvåker overvåkeren?
@@ -72,7 +75,7 @@ Et alarmsystem som aldri ringer, forteller deg ingenting. Alt kan være i orden,
 
 Løsningen er å snu signalet. I stedet for å vente på en melding om at noe er ødelagt, venter en uavhengig tjeneste utenfor infrastrukturen din på en jevn puls som sier at overvåkeren lever og kan snakke.
 
-For at pulsen skal bevise noe, må den gå gjennom hele kjeden: utløst inne i overvåkingsmotoren, sendt gjennom varslingsruteren og levert utenfor. En puls fra et eget tidsskript beviser bare at skriptet virker. Når den ekte pulsen uteblir i noen minutter, slår den eksterne mottakeren alarm. Det er det eneste leddet som ikke deler skjebne med resten av oppsettet. Pulsen beviser at alarmveien lever. Den beviser ikke at overvåkeren fortsatt ser kildene sine; det er slagene i lag 2 til for. Sammen dekker de hele veien fra kilde til menneske.
+For at pulsen skal bevise noe, må den gå gjennom hele kjeden: utløst inne i overvåkingsmotoren, sendt gjennom varslingsruteren og levert utenfor. En puls fra et eget tidsskript beviser bare at skriptet virker. Når den ekte pulsen uteblir i noen minutter, slår den eksterne mottakeren alarm. Alarmen må så nå et menneske over en vei som ikke avhenger av infrastrukturen den overvåker: egen legitimasjon, eget nett, ikke firmaets e-post som kanskje er nede. Det er det eneste leddet som ikke deler skjebne med resten av oppsettet. Pulsen beviser at alarmveien lever. Den beviser ikke at overvåkeren fortsatt ser kildene sine; det er slagene i lag 2 til for. Sammen dekker de hele veien fra kilde til menneske.
 
 ### Lag 4: de som har nøklene
 
@@ -98,13 +101,27 @@ Med de fire lagene på plass treffer den samme stjålne laptopen en grense i hve
 - Hvis vedkommende går løs på sikkerhetskopiene, ligger de bak den samme typen enveisgrense: uforanderlige, i et eget miljø som den stjålne laptopen ikke når.
 - Hvis vedkommende strekker seg etter nødkontoen, utløses reservenøkkelalarmen ved innloggingen, før den første kommandoen er kjørt.
 
-Bruddet skjer fortsatt, men det kan ikke skjule seg.
+Bruddet skjer fortsatt, men det kan ikke skjule seg. Det er det ærlige målet: ikke usårbarhet, men et brudd som er synlig, dyrt og kort.
+
+## Samme form i internettets målestokk
+
+Ingenting av dette er nytt, og det virker i hele nettets målestokk. Sertifikatutstedere (CA-er) er voktere: de går god for hvem som eier et nettsted. Et innbrudd hos en av dem i 2011 førte til Certificate Transparency. I praksis blir hvert offentlig betrodd sertifikat nå publisert i åpne logger som bare kan utvides, og som hvem som helst kan kontrollere. Alle kan drive en overvåker som leter etter sertifikater de ikke ventet, og nettlesere som Chrome og Safari avviser et sertifikat som ikke står i en logg. Loggen er lag 1, overvåkerne er lag 2, og nettleserens avvisning er ankeret. Loggen hindrer ikke en CA i å utstede et dårlig sertifikat. Den sørger for at det dårlige sertifikatet ikke kan skjule seg.
+
+## Det som fortsatt svikter
+
+De fire lagene gjør et angrep dyrere og kortere. De gjør det ikke umulig, og hvert lag har sin egen måte å svikte på.
+
+- **Godkjenninger blir stemplet.** En andre person er bare en vokter så lenge vedkommende leser det de godkjenner. Slitne godkjennere stempler, og en angriper kan vente på en ekte administrators forespørsel og ta over økten etter at den er godkjent. Hold volumet lavt, vis godkjenneren hva, hvor og hvorfor, bind den hevede økten til enheten og oppgaven, og følg med på selve godkjenningene: en godkjenner som sier ja til alt på to sekunder, er et funn.
+- **Normalbilder kan læres opp.** En identitet som glir av sted i små steg, blir normal, og en detektor som er stilt for stramt, drukner folk i falske alarmer til de slutter å lese. Hold en kort liste over ting som aldri er normale for en identitet, uansett historikk, og hold alarmene så få at et menneske fortsatt leser hver av dem.
+- **Kompleksitet er en risiko.** Hvert lag er en ny del som kan svikte, og en ny ting noen må drifte. Foretrekk få, enkle deler, test hver av dem, og fjern et lag du ikke kan teste.
 
 ## Kjeden slutter et sted
 
 Hvert lag flytter tillit, ingen fjerner den. Du kan ikke bygge et uendelig tårn av voktere som vokter voktere. Ved enden av kjeden står noe du rett og slett velger å stole på: lagring som nekter overskriving og sletting i en fastsatt periode, selv overfor sine egne administratorer, en ekstern pulsmottaker, eller et menneske utenfor den daglige driften som leser sporet. Det er ikke en svakhet i designet, det er ankeret. Målet er å vite hvor ankeret sitter, og å sørge for at ingen enkeltfeil kan nå det.
 
-I et lite miljø, der én person driver både serverne og sikkerheten, kan du ikke fordele rollene mellom mennesker. Du kan likevel fordele dem over grenser: send loggene dit den daglige kontoen din ikke kan slette dem, legg pulsen utenfor, og sett en fast tid i kalenderen der noen andre leser sammendraget.
+Ingen vokter ankeret, og det er med vilje: en vokter over den siste vokteren flytter bare spørsmålet igjen. Du dupliserer ankeret i stedet. To pulsmottakere hos ulike leverandører gjør at ett avbrudd, eller én kapret konto, ikke kan gjøre deg blind, og beviset oppbevares i to adskilte miljøer, så ett tapt eksemplar ikke er slutten.
+
+I et lite miljø, der én person driver både serverne og sikkerheten, kan du ikke fordele rollene mellom mennesker. Du kan likevel fordele dem over grenser: send loggene dit den daglige kontoen din ikke kan slette dem, legg pulsen utenfor, og sett en fast tid i kalenderen der noen andre leser sammendraget. Vær ærlig om hva det gir. De to første virker av seg selv, enten noen ser på eller ikke. Kalenderplassen er bare en lindring: med en ukentlig gjennomgang er oppdagelsesvinduet en uke, ikke minutter.
 
 ## Prinsipper
 
@@ -113,6 +130,7 @@ I et lite miljø, der én person driver både serverne og sikkerheten, kan du ik
 3. **Stillhet er en feil, ikke fred.** En stille server, en taus overvåker og en agent som ikke svarer slår alle alarm når hjerteslaget uteblir.
 4. **Makt leies, eies aldri.** Rutinearbeid bruker minimale rettigheter. Full tilgang er midlertidig, avgrenset, logget og knyttet til en navngitt eier, og for nødnøkler høylytt med vilje.
 5. **Test alarmen, ikke konfigurasjonen.** Stopp loggstrømmen på en testmaskin, blokker overvåkerens puls, og ta tiden to ganger: hvor lenge til den eksterne mottakeren slår alarm, og hvor lenge til et menneske handler på den. Det første er tidsavbruddet du selv har satt, det andre er det som faktisk beskytter deg. Gjenta det på fast tid: en alarm ingen har utløst med vilje, er bare et håp.
-6. **Test ankeret, ikke bare alarmen.** Gjenopprett et system fra den uforanderlige kopien og ta tiden fra null. Sjekk at det som kom tilbake, er komplett, og at artefaktene fortsatt lar seg verifisere. En sikkerhetskopi ingen har gjenopprettet, er bare en teori.
+6. **Test ankeret, ikke bare alarmen.** Et anker blir ikke vokta av en ny vokter, det dupliseres og testes. Gjenopprett et system fra den uforanderlige kopien og ta tiden fra null. Sjekk at det som kom tilbake, er komplett, og at artefaktene fortsatt lar seg verifisere. En sikkerhetskopi ingen har gjenopprettet, er bare en teori.
+7. **Færre, enklere deler.** Hvert lag er en ny ting som kan svikte, og en ny ting noen må drifte. Et lag du ikke kan teste, er et lag du ikke kan stole på.
 
 Verktøy og plattformer skifter med noen års mellomrom. Tillitens geometri gjør ikke det.

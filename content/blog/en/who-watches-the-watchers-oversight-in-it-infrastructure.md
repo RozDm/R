@@ -57,12 +57,15 @@ The observer on the other side of the boundary must therefore watch for three th
 
 A quiet host is not automatically a broken one, so silence needs a rhythm to break: every source, whether a host, a service or an agent, emits a regular beat through the same pipe, and the observer alerts when a beat is missing. Where a beat is not possible, inject a test event on a schedule and check that it arrives. Out of pattern needs a pattern too: keep a baseline of what each identity normally does, and watch the privileged ones most closely.
 
+A beat proves a source is alive, not that it is honest. A deeply compromised host can keep beating while it hides what it does, so treat the host as one witness and check it against witnesses it does not control: the network, the cloud control plane or hypervisor, the identity provider. When two witnesses disagree, believe the one the host cannot touch.
+
 | What the observer sees | What it means | Look here |
 | --- | --- | --- |
 | The log was cleared | Someone tried to wipe the trail | The host, at once; assume full compromise |
 | Audit rules changed | Someone is blinding the recorder before acting | Recent privilege use on the host |
 | A valid identity acts out of pattern | A stolen credential, or a service or agent acting beyond its declared scope | The identity's baseline, its owner and any approved change |
 | The log stream stops | The host is down, cut off, or the sender was killed | The network path first, then the logging process |
+| Two witnesses disagree | The host is hiding something, or one witness is broken | The witness the host cannot touch: network, control plane, identity provider |
 | Approval rules bypassed | A privileged user changed the guardrails for themselves | Control plane and repository settings, Layer 4 |
 
 ### Layer 3: who monitors the monitor?
@@ -73,7 +76,7 @@ An alarm system that never rings tells you nothing. Everything might be fine, or
 
 The fix is to invert the signal. Instead of waiting for a message that says something is broken, an independent service outside your infrastructure waits for a steady pulse that says the monitor is alive and able to speak.
 
-For the pulse to prove anything, it has to travel through the whole chain: triggered inside the monitoring engine, passed through the notification router, and delivered outside. A pulse sent by a separate timer script only proves the script works. When the real pulse stops arriving for a few minutes, the outside receiver raises the alarm. It is the one link that does not share a fate with the rest of your setup. The pulse proves the alarm path is alive. It does not prove the monitor still sees its sources; that is what the beats in Layer 2 are for. Between them, the whole path from source to human is covered.
+For the pulse to prove anything, it has to travel through the whole chain: triggered inside the monitoring engine, passed through the notification router, and delivered outside. A pulse sent by a separate timer script only proves the script works. When the real pulse stops arriving for a few minutes, the outside receiver raises the alarm. The alarm must then reach a person by a path that does not depend on the infrastructure it watches: its own credentials, its own network, not the company mail that may be down. It is the one link that does not share a fate with the rest of your setup. The pulse proves the alarm path is alive. It does not prove the monitor still sees its sources; that is what the beats in Layer 2 are for. Between them, the whole path from source to human is covered.
 
 ### Layer 4: those with the keys
 
@@ -99,13 +102,27 @@ With the four layers in place, the same stolen laptop hits a boundary at every s
 - If they go for the backups, those sit behind the same kind of one-way boundary: immutable, in a separate environment the stolen laptop cannot reach.
 - If they reach for the emergency account, the spare-key alarm fires at sign-in, before they run their first command.
 
-The breach still happens, but it cannot hide.
+The breach still happens, but it cannot hide. That is the honest goal: not invulnerability, but a breach that is visible, costly and short.
+
+## The same shape at web scale
+
+None of this is new, and it works at the scale of the whole web. Certificate authorities are guards: they vouch for who owns a website. A breach at one of them in 2011 led to Certificate Transparency. In practice, every publicly trusted certificate is now published in open logs that can only be added to and that anyone can verify. Anyone can run a monitor that looks for certificates they did not expect, and browsers such as Chrome and Safari refuse a certificate that is not in a log. The log is Layer 1, the monitors are Layer 2, and the browsers' refusal is the anchor. The log does not stop a certificate authority from issuing a bad certificate. It makes sure the bad certificate cannot hide.
+
+## What still fails
+
+The four layers raise the cost of an attack and shorten its life. They do not make it impossible, and each layer has its own way to fail.
+
+- **Approvals get stamped.** A second person is only a guard while they read what they approve. Tired approvers rubber-stamp, and an attacker can wait for a real administrator's request and take over the session after it is approved. Keep the volume low, show the approver what, where and why, bind the elevated session to the device and the task, and watch the approvals themselves: a reviewer who approves everything in two seconds is a finding.
+- **Baselines can be taught.** An identity that drifts in small steps becomes normal, and a detector tuned too tight drowns people in false alarms until they stop reading. Keep a short list of things that are never normal for an identity, whatever its history, and keep alerts few enough that a person still reads each one.
+- **Complexity is a risk.** Every layer is another part that can fail and another thing someone must run. Prefer few, simple parts, test each one, and remove a layer you cannot test.
 
 ## The chain ends somewhere
 
 Every layer moves trust; none removes it. You cannot build an infinite tower of guards watching guards. At the end of the chain sits something you simply choose to rely on: storage that refuses overwrites and deletion for a set period, even from its own administrators, an outside pulse receiver, or a person outside daily operations who reads the trail. That is not a weakness in the design, it is the anchor. The goal is to know where that anchor sits, and to make sure no single failure can reach it.
 
-In a small environment, where one person runs both the servers and the security, you cannot split roles between people. You can still split them across boundaries: send the logs where your day-to-day account cannot delete them, put the heartbeat on the outside, and set a fixed slot in the calendar where someone else reads the summary.
+Nobody watches the anchor, and that is by design: a guard over the last guard only moves the question again. You duplicate the anchor instead. Two pulse receivers at different providers mean that one outage, or one captured account, cannot blind you, and the evidence is kept in two separate environments, so one lost copy is not the end.
+
+In a small environment, where one person runs both the servers and the security, you cannot split roles between people. You can still split them across boundaries: send the logs where your day-to-day account cannot delete them, put the heartbeat on the outside, and set a fixed slot in the calendar where someone else reads the summary. Be honest about what that buys. The first two work on their own, whether or not anyone is looking. The calendar slot is only a mitigation: with a weekly review, your detection window is a week, not minutes.
 
 ## Principles
 
@@ -114,6 +131,7 @@ In a small environment, where one person runs both the servers and the security,
 3. **Silence is a fault, not peace.** A quiet server, a silent monitor and an unresponsive agent all raise an alarm when their heartbeat stops.
 4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, scoped, logged, tied to a named owner, and, for emergency keys, loud by design.
 5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure two times with a stopwatch: how long until the outside receiver raises the alarm, and how long until a person acts on it. The first is the timeout you configured; the second is the one that actually protects you. Repeat it on a schedule: an alarm nobody has triggered on purpose is only a hope.
-6. **Test the anchor, not just the alarm.** Restore a system from the immutable copy and time it from zero. Check that what came back is complete and that its artifacts still verify. A backup nobody has restored is only a theory.
+6. **Test the anchor, not just the alarm.** An anchor is not watched by another guard; it is duplicated and tested. Restore a system from the immutable copy and time it from zero. Check that what came back is complete and that its artifacts still verify. A backup nobody has restored is only a theory.
+7. **Fewer, simpler parts.** Every layer is another thing that can fail and another thing someone must run. A layer you cannot test is a layer you cannot trust.
 
 Tools and platforms change every few years. The geometry of trust doesn't.
