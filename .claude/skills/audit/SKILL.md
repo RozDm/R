@@ -1,6 +1,7 @@
 ---
 name: audit
 description: Whole-project audit producing a prioritized improvement list (P0/P1/P2/P3) with risk and time estimates, scoped to this site's free-tier Cloudflare constraints. Use when the user asks to analyze/audit the project, find what can be improved, what's outdated, or what to do next.
+effort: high
 ---
 
 # Project audit

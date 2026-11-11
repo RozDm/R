@@ -121,7 +121,7 @@ docs/               history.md — incident history, the "why" behind CLAUDE.md'
                     hard rules; cloudflare-security.md — the zone's edge
                     security on the Free plan (agent docs: CLAUDE.md sitewide,
                     components/CLAUDE.md front end, src/CLAUDE.md worker,
-                    .github/CLAUDE.md workflows)
+                    .github/CLAUDE.md workflows, content/CLAUDE.md blog)
 lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts,
                     stars.ts, fonts.ts (the self-hosted body font), site.ts
                     (name/roles/titles/colours per language),
@@ -141,7 +141,8 @@ schema/             metrics.sql (views, geo, contact)
 scripts/            smoke.sh, build-world-svg.mjs, finalize-export.mjs
                     (postbuild), check-csp.mjs, check-waf.mjs, check-docs.mjs
                     (docs drift), serve-out.mjs (out/ for the browser tests),
-                    build-diagrams.mjs (post diagrams: npm run diagrams)
+                    build-diagrams.mjs (post diagrams: npm run diagrams),
+                    webhuset.mjs (the registrar's read-only tools, on demand)
 src/                Cloudflare Worker for /api/* + MTA-STS (index.ts, csp.ts, http.ts,
                     ip.ts, status.ts, metrics.ts, contact.ts, timeseries.ts,
                     routes/*)
@@ -158,9 +159,9 @@ wrangler.jsonc      Worker config (ASSETS, STATUS KV, METRICS D1, METRICS_AE,
 
 The details, and the rules behind them, live in the agent docs: `CLAUDE.md`
 (site-wide), `components/CLAUDE.md` (front-end internals), `src/CLAUDE.md`
-(the Worker and its API), `.github/CLAUDE.md` (CI/CD and the ops workflows)
-and `docs/cloudflare-security.md` (the zone) — kept in one place so they
-can't drift apart here.
+(the Worker and its API), `.github/CLAUDE.md` (CI/CD and the ops workflows),
+`content/CLAUDE.md` (the blog) and `docs/cloudflare-security.md` (the zone)
+— kept in one place so they can't drift apart here.
 
 - **Uptime**: a 5-minute cron probes the services in `monitors()`
   (`src/status.ts`), keeps a rolling snapshot in KV and mails flap-damped

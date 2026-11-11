@@ -1,6 +1,8 @@
 ---
 name: new-post
 description: Scaffold a new blog post in Norwegian and English (content/blog/<slug>.md + content/blog/en/<slug>.md, linked by translationOf) with the project's frontmatter conventions (title, description, ISO date, tags from data/tags.ts), and publish a draft when it is ready. Use when the user asks to create, start, draft, translate, add or publish a blog post / artikkel / blogginnlegg / статью.
+model: sonnet
+effort: high
 ---
 
 # New blog post
