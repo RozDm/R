@@ -637,3 +637,78 @@ test('below the public threshold no visit number shows', async ({ page }) => {
     expect(violations.map((v) => `${scheme} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([])
   }
 })
+
+// The feed was a <link rel="alternate"> only: nothing a reader could see.
+test('the blog index links its RSS feed, in both languages', async ({ page, request }) => {
+  for (const [index, feed] of [
+    ['/blogg/', '/feed.xml'],
+    ['/en/blog/', '/en/feed.xml'],
+  ]) {
+    await page.goto(index)
+    const link = page.locator('main a[type="application/rss+xml"]')
+    await expect(link).toBeVisible()
+    await expect(link).toHaveAttribute('href', feed)
+    expect(await (await request.get(feed)).text()).toContain('<rss')
+  }
+})
+
+// A reader who landed on the language they don't read gets one line under the
+// header, in the language it offers — a link, never a redirect. The tests'
+// browser speaks en-US, so the fixtures keep it closed everywhere else.
+test.describe('language hint', () => {
+  test.use({ langHintClosed: false })
+  const hint = (page: import('@playwright/test').Page) => page.getByRole('banner').locator('[lang]').filter({ has: page.getByRole('button') })
+
+  test('offers English on a Norwegian page, moves nothing, and stays closed once closed', async ({ page }) => {
+    await page.goto('/')
+    const bar = hint(page)
+    await expect(bar).toBeVisible()
+    await expect(bar).toHaveAttribute('lang', 'en')
+    await expect(bar.getByRole('link', { name: 'Read this site in English' })).toHaveAttribute('href', '/en/')
+    // It hangs below the header: the page under it is where it was.
+    const top = () => page.locator('main').evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
+    const withHint = await top()
+    await bar.getByRole('button', { name: 'Close' }).click()
+    await expect(bar).toHaveCount(0)
+    expect(await top()).toBe(withHint)
+    await page.reload()
+    await expect(page.getByRole('banner')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    await expect(bar).toHaveCount(0)
+  })
+
+  test('follows a post to its twin, and is not shown once followed', async ({ page }) => {
+    test.skip(!twin, 'no post with a translation in this build')
+    await page.goto(twin!.nb)
+    await hint(page).getByRole('link').click()
+    await expect(page).toHaveURL(endsWith(twin!.en))
+    await expect(page.getByRole('banner')).toBeVisible()
+    await page.goBack()
+    await page.waitForLoadState('networkidle')
+    await expect(hint(page)).toHaveCount(0)
+  })
+
+  test.describe('a Norwegian reader', () => {
+    test.use({ locale: 'nb-NO' })
+
+    test('gets no hint on Norwegian pages and a Norwegian one on English pages', async ({ page }) => {
+      await page.goto('/')
+      await page.waitForLoadState('networkidle')
+      await expect(hint(page)).toHaveCount(0)
+      await page.goto('/en/contact/')
+      const bar = hint(page)
+      await expect(bar).toHaveAttribute('lang', 'nb')
+      await expect(bar.getByRole('link', { name: 'Les nettstedet på norsk' })).toHaveAttribute('href', '/kontakt/')
+    })
+  })
+
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`no axe violations with the hint open (${scheme})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme })
+      await page.goto('/kontakt/')
+      await expect(hint(page)).toBeVisible()
+      const { violations } = await new AxeBuilder({ page }).include('header.sticky').analyze()
+      expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([])
+    })
+  }
+})

@@ -33,7 +33,7 @@ export default function PrivacyPage() {
           Privacy notice
         </h1>
         <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-4">
-          Last updated: 23 October 2026
+          Last updated: 11 November 2026
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-10 max-w-xl">
           This is a translation for convenience. The{' '}
@@ -113,7 +113,8 @@ export default function PrivacyPage() {
           <p>
             The website uses no cookies for tracking or marketing. The browser’s local storage is
             used for functional choices — the colour theme, whether the intro animation has been
-            shown and how many times the screensaver has appeared — and so that visits and reads are
+            shown, whether the language hint has been closed and how many times the screensaver has
+            appeared — and so that visits and reads are
             counted only once: the date your visit was last counted and which posts you have already
             read. These values stay in your browser and are not passed on.
           </p>

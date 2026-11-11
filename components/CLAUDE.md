@@ -68,6 +68,20 @@ incident background: `docs/history.md`.
   for its route-change reset. Page links set `aria-current` (`page` exact,
   `true` parent), styled via `[&[aria-current]]:`.
 
+- `layout/LangHint.tsx` (in the header): one closable line for a reader on
+  the language they probably don't read (`lib/lang-hint.ts`, from
+  `navigator.languages`: no Scandinavian language on a Norwegian page; a
+  Norwegian first language on an English one) — a link where the NO/EN
+  switch leads, never a redirect, written in the language it offers (so its
+  copy sits in the other language's dictionary, like `langSwitch`). Closed
+  or followed, it stays closed (localStorage `lang-hint`, named in both
+  privacy notices). It hangs below the header (`absolute`), so appearing
+  after hydration shifts nothing, and the intro's overlay covers it. The
+  e2e browser speaks en-US: `e2e/fixtures.ts` keeps the hint closed
+  (`langHintClosed`) except in its own tests.
+- The blog index shows its RSS feed as a plain `<a>` (`feedPath`): a file,
+  not a page, so no `<Link>`.
+
 ## Live widgets and counters
 
 - Every `/api/*` call is a Worker request. Shared fetches:
