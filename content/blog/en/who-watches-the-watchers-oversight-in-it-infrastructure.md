@@ -45,7 +45,7 @@ A log that stays on the machine it describes is only a diary. Anyone with full r
 
 For a record to count as evidence, it must leave the host the moment it is written, crossing a one-way boundary. The source machine may add new lines, but it must have no way to read back, alter, or delete what has already crossed. Even if the machine is completely taken over five seconds later, everything delivered before that moment is out of reach. Keep the window between writing and delivering as short as you can.
 
-At the destination, seal what arrives with a signature or a hash chain, so that a later change to a stored record is detectable, and keep the store in a separate environment from the systems it records. Give each source a quota, so that a compromised host cannot flood the store and push the evidence out. Keep the record rich enough and long enough to answer questions you did not see coming: alerts cover the ones you did, and intrusions are often found late. Logs about people are personal data, so decide what you collect, why, who may read it and how long it is kept, and tell the people it concerns.
+Accept records only over an authenticated channel, so that one host cannot write in another's name, and stamp each one with the collector's own clock, since a compromised host can lie about the time. Seal what arrives with a signature or a hash chain, and keep the key or the latest hash out of reach of the store's own administrators: a chain they can rebuild proves nothing. Keep the store in a separate environment from the systems it records. Give each source a quota, so that a compromised host cannot flood the store and push the evidence out, and treat a source that hits its quota as an alarm, not as noise. Keep the record rich enough and long enough to answer questions you did not see coming: alerts cover the ones you did, and intrusions are often found late. Logs about people are personal data, so decide what you collect, why, who may read it and how long it is kept, and tell the people it concerns.
 
 A record is also only as honest as whatever writes it. If an attacker tampers with the code before it is deployed, the logs will faithfully record the actions of a malicious program. So trust has to reach back to the build: sign what you deploy, record how it was built, and verify the signature at deployment and, where you can, while it runs. A list of ingredients (an SBOM) is an inventory, not proof. And a signature shows where an artifact came from, not that it is harmless, so the builder and its signing keys are guards too, and fall under Layer 4.
 
@@ -68,7 +68,7 @@ A beat proves a source is alive, not that it is honest. A deeply compromised hos
 | The log was cleared | Someone tried to wipe the trail | The host, at once; assume full compromise |
 | Audit rules changed | Someone is blinding the recorder before acting | Recent privilege use on the host |
 | A valid identity acts out of pattern | A stolen credential, or a service or agent acting beyond its declared scope | The identity's baseline, its owner and any approved change |
-| The log stream stops | The host is down, cut off, or the sender was killed | The network path first, then the logging process |
+| The log stream stops | The host is down, cut off, or the sender was killed | A witness the host does not control (network, hypervisor) first, then the logging process |
 | Two witnesses disagree | The host is hiding something, or one witness is broken | The witness the host cannot touch: network, control plane, identity provider |
 | Approval rules bypassed | A privileged user changed the guardrails for themselves | Control plane and repository settings, Layer 4 |
 
@@ -81,6 +81,8 @@ An alarm system that never rings tells you nothing. Everything might be fine, or
 The fix is to invert the signal, as in a dead man's switch. Instead of waiting for a message that says something is broken, an independent service outside your infrastructure waits for a steady pulse that says the monitor is alive and able to speak.
 
 For the pulse to prove anything, it has to travel through the whole chain: triggered inside the monitoring engine, passed through the notification router, and delivered outside. A pulse sent by a separate timer script only proves the script works. When the real pulse stops arriving for a few minutes, the outside receiver raises the alarm. It is the one link that does not share a fate with the rest of your setup, and the alarm it raises must reach a person by a path that does not depend on the infrastructure it watches: its own credentials, its own network, not the company mail that may be down. The pulse proves the alarm path is alive. It does not prove the monitor still sees its sources; that is what the beats in Layer 2 are for. Between them, the whole path from source to human is covered.
+
+Neither proves the rules are intact. An intruder who reaches the monitor would rather mute one alert, or add a silence, than kill the whole thing, and the pulse keeps coming. So every change to alert rules and silences is itself an event for Layer 2, and the monitor's configuration falls under Layer 4 like any other key.
 
 ### Layer 4: those with the keys
 
@@ -101,8 +103,8 @@ In a flat setup, the administrator holds permanent keys to both the servers and 
 With the four layers in place, the same stolen laptop hits a boundary at every step:
 
 - There are no permanent keys on the machine; elevating rights requires a fresh request that gets logged outside the host before access is granted, and for the highest rights a second person must approve it. A request at an odd hour reaches that person as a question, not a formality.
-- Even if the intruder gets onto a server and kills the log sender, everything delivered up to that second is already stored across a one-way boundary, and the sudden silence alerts the collector.
-- If they try to silence the monitor itself, the external pulse stops and the outside receiver pages the team.
+- Even if the intruder gets onto a server and kills the log sender, everything delivered up to that second is already stored across a one-way boundary, and the collector raises the alarm on the sudden silence.
+- If they try to silence the monitor itself, the external pulse stops and the outside receiver pages the team; if they mute a single alert instead, the change to the rules is an alert of its own.
 - If they go for the backups, those sit behind the same kind of one-way boundary: immutable, in a separate environment the stolen laptop cannot reach.
 - If they reach for the emergency account, the spare-key alarm fires at sign-in, before they run their first command.
 
@@ -133,8 +135,8 @@ In a small environment, where one person runs both the servers and the security,
 
 1. **Evidence travels one way.** A machine can add to the record, but cannot edit or erase what it has already sent.
 2. **The watcher lives outside the watched.** The collector and the alarm do not share credentials, network fate, or hardware with the machines they guard.
-3. **Silence is a fault, not peace.** A quiet server, a silent monitor and an agent that stops answering all raise an alarm when their heartbeat stops.
-4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, scoped, logged, tied to a named owner, and, for emergency keys, loud by design.
+3. **Silence is a fault, not peace.** A quiet server, a silent monitor and an agent that stops answering all trigger an alarm when their heartbeat stops.
+4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, scoped, logged and tied to a named owner. The one standing exception, the emergency key, is loud by design.
 5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure two times with a stopwatch: how long until the outside receiver raises the alarm, and how long until a person acts on it. The first should match the timeout you configured, and if it does not, that is already a finding. The second is the one that actually protects you. Repeat it on a schedule: an alarm nobody has triggered on purpose is only a hope.
 6. **Test the anchor, not just the alarm.** An anchor is not watched by another guard; it is duplicated and tested. Restore a system from the immutable copy and time it from zero. Check that what came back is complete and that its artifacts still verify. A backup nobody has restored is only a theory.
 7. **Fewer, simpler parts.** Every layer is another thing that can fail and another thing someone must run. A layer you cannot test is a layer you cannot trust.

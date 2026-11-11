@@ -44,7 +44,7 @@ En logg som blir liggende på maskinen den beskriver, er bare en dagbok. Alle me
 
 For at et spor skal telle som bevis, må det forlate verten i det øyeblikket det skrives, over en grense som bare virker én vei. Kildemaskinen kan legge til nye linjer, men den må ikke kunne lese tilbake, endre eller slette det som allerede har krysset grensen. Selv om maskinen blir helt overtatt fem sekunder senere, er alt som var levert før det øyeblikket utenfor rekkevidde. Hold vinduet mellom skriving og levering så kort du kan.
 
-Hos mottakeren forsegles det som kommer inn, med en signatur eller en hash-kjede, slik at en senere endring av et lagret spor kan oppdages, og lageret ligger i et eget miljø, adskilt fra systemene det registrerer. Gi hver kilde en kvote, slik at en kompromittert vert ikke kan oversvømme lageret og presse beviset ut. Hold sporet rikt nok og langt nok til å svare på spørsmål du ikke så komme: alarmene dekker dem du så komme, og innbrudd oppdages ofte sent. Logger om mennesker er personopplysninger, så bestem hva du samler, hvorfor, hvem som kan lese det og hvor lenge det lagres, og si fra til dem det gjelder.
+Ta bare imot spor over en autentisert kanal, slik at én vert ikke kan skrive i en annens navn, og stemple hvert spor med samlerens egen klokke, for en kompromittert vert kan lyve om tiden. Forsegl det som kommer inn, med en signatur eller en hash-kjede, og hold nøkkelen eller den siste hashen utenfor rekkevidden til lagerets egne administratorer: en kjede de kan bygge på nytt, beviser ingenting. Lageret ligger i et eget miljø, adskilt fra systemene det registrerer. Gi hver kilde en kvote, slik at en kompromittert vert ikke kan oversvømme lageret og presse beviset ut, og behandle en kilde som når kvoten, som en alarm, ikke som støy. Hold sporet rikt nok og langt nok til å svare på spørsmål du ikke så komme: alarmene dekker dem du så komme, og innbrudd oppdages ofte sent. Logger om mennesker er personopplysninger, så bestem hva du samler, hvorfor, hvem som kan lese det og hvor lenge det lagres, og si fra til dem det gjelder.
 
 Et spor er også bare så ærlig som det som skriver det. Hvis en angriper tukler med koden før den rulles ut, vil loggene trofast registrere hva et ondsinnet program gjør. Tilliten må derfor rekke tilbake til byggingen: signer det du ruller ut, registrer hvordan det ble bygget, og kontroller signaturen ved utrulling og, der du kan, mens det kjører. En liste over ingredienser (en SBOM) er en oversikt, ikke et bevis. Og en signatur viser hvor en artefakt kommer fra, ikke at den er harmløs, så byggesystemet og signeringsnøklene er også voktere, og hører inn under lag 4.
 
@@ -67,7 +67,7 @@ Et slag beviser at en kilde lever, ikke at den er ærlig. En dypt kompromittert 
 | Loggen ble tømt | Noen prøvde å utslette sporet | Verten, med en gang; anta full kompromittering |
 | Revisjonsregler endret | Noen blinder opptakeren før de handler | Nylig bruk av privilegier på verten |
 | En gyldig identitet handler utenfor mønsteret | En stjålet legitimasjon, eller en tjeneste eller agent som handler utenfor sitt erklærte område | Identitetens normalbilde, dens eier og eventuell godkjent endring |
-| Loggstrømmen stopper | Verten er nede, avskåret, eller avsenderen ble drept | Nettverksveien først, så loggprosessen |
+| Loggstrømmen stopper | Verten er nede, avskåret, eller avsenderen ble drept | Et vitne verten ikke styrer (nettverk, hypervisor) først, så loggprosessen |
 | To vitner er uenige | Verten skjuler noe, eller ett vitne er ødelagt | Vitnet verten ikke kan røre: nettverket, kontrollplanet, identitetsleverandøren |
 | Godkjenningsregler omgått | En privilegert bruker endret rekkverket for seg selv | Kontrollplanet og innstillingene i repoet, lag 4 |
 
@@ -80,6 +80,8 @@ Et alarmsystem som aldri ringer, forteller deg ingenting. Alt kan være i orden,
 Løsningen er å snu signalet, som i en «dead man's switch». I stedet for å vente på en melding om at noe er ødelagt, venter en uavhengig tjeneste utenfor infrastrukturen din på en jevn puls som sier at overvåkeren lever og kan snakke.
 
 For at pulsen skal bevise noe, må den gå gjennom hele kjeden: utløst inne i overvåkingsmotoren, sendt gjennom varslingsruteren og levert utenfor. En puls fra et eget tidsskript beviser bare at skriptet virker. Når den ekte pulsen uteblir i noen minutter, slår den eksterne mottakeren alarm. Det er det eneste leddet som ikke deler skjebne med resten av oppsettet, og alarmen det slår, må nå et menneske over en vei som ikke avhenger av infrastrukturen det overvåker: egen legitimasjon, eget nett, ikke firmaets e-post som kanskje er nede. Pulsen beviser at alarmveien lever. Den beviser ikke at overvåkeren fortsatt ser kildene sine; det er slagene i lag 2 til for. Sammen dekker de hele veien fra kilde til menneske.
+
+Ingen av dem beviser at reglene er intakte. En inntrenger som når overvåkeren, demper heller én alarm eller legger inn en pause enn å drepe det hele, og pulsen fortsetter å komme. Derfor er hver endring i alarmregler og pauser selv en hendelse for lag 2, og overvåkerens konfigurasjon hører inn under lag 4 som alle andre nøkler.
 
 ### Lag 4: de som har nøklene
 
@@ -100,8 +102,8 @@ I et flatt oppsett har administratoren permanente nøkler både til serverne og 
 Med de fire lagene på plass treffer den samme stjålne laptopen en grense i hvert trinn:
 
 - Det finnes ingen permanente nøkler på maskinen. Å heve rettighetene krever en ny forespørsel som logges utenfor verten før tilgangen gis, og for de høyeste rettighetene må en annen person godkjenne den. En forespørsel til en uvanlig tid når den personen som et spørsmål, ikke som en formalitet.
-- Selv om inntrengeren kommer seg inn på en server og dreper loggavsenderen, er alt som var levert fram til det sekundet allerede lagret på den andre siden av en enveisgrense, og den plutselige stillheten varsler samleren.
-- Hvis vedkommende prøver å stilne overvåkeren selv, stopper den eksterne pulsen, og mottakeren utenfor tilkaller teamet.
+- Selv om inntrengeren kommer seg inn på en server og dreper loggavsenderen, er alt som var levert fram til det sekundet allerede lagret på den andre siden av en enveisgrense, og samleren slår alarm på den plutselige stillheten.
+- Hvis vedkommende prøver å stilne overvåkeren selv, stopper den eksterne pulsen, og mottakeren utenfor tilkaller teamet; demper vedkommende i stedet én enkelt alarm, er endringen i reglene en alarm i seg selv.
 - Hvis vedkommende går løs på sikkerhetskopiene, ligger de bak den samme typen enveisgrense: uforanderlige, i et eget miljø som den stjålne laptopen ikke når.
 - Hvis vedkommende strekker seg etter nødkontoen, utløses reservenøkkelalarmen ved innloggingen, før den første kommandoen er kjørt.
 
@@ -132,8 +134,8 @@ I et lite miljø, der én person driver både serverne og sikkerheten, kan du ik
 
 1. **Bevis går én vei.** En maskin kan legge til i sporet, men ikke redigere eller slette det den allerede har sendt.
 2. **Vokteren bor utenfor den voktede.** Samleren og alarmen deler ikke legitimasjon, nettverksskjebne eller maskinvare med maskinene de vokter.
-3. **Stillhet er en feil, ikke fred.** En stille server, en taus overvåker og en agent som ikke svarer, slår alle alarm når hjerteslaget uteblir.
-4. **Makt leies, eies aldri.** Rutinearbeid bruker minimale rettigheter. Full tilgang er midlertidig, avgrenset, logget og knyttet til en navngitt eier, og for nødnøkler høylytt med vilje.
+3. **Stillhet er en feil, ikke fred.** En stille server, en taus overvåker og en agent som ikke svarer, utløser alle alarm når hjerteslaget uteblir.
+4. **Makt leies, eies aldri.** Rutinearbeid bruker minimale rettigheter. Full tilgang er midlertidig, avgrenset, logget og knyttet til en navngitt eier. Det ene stående unntaket, nødnøkkelen, er høylytt med vilje.
 5. **Test alarmen, ikke konfigurasjonen.** Stopp loggstrømmen på en testmaskin, blokker overvåkerens puls, og ta tiden to ganger: hvor lenge til den eksterne mottakeren slår alarm, og hvor lenge til et menneske handler på den. Det første bør stemme med tidsavbruddet du selv har satt, og gjør det ikke det, er det allerede et funn. Det andre er det som faktisk beskytter deg. Gjenta det på fast tid: en alarm ingen har utløst med vilje, er bare et håp.
 6. **Test ankeret, ikke bare alarmen.** Et anker blir ikke voktet av en ny vokter, det dupliseres og testes. Gjenopprett et system fra den uforanderlige kopien og ta tiden fra null. Sjekk at det som kom tilbake, er komplett, og at artefaktene fortsatt lar seg verifisere. En sikkerhetskopi ingen har gjenopprettet, er bare en teori.
 7. **Færre, enklere deler.** Hvert lag er en ny ting som kan svikte, og en ny ting noen må drifte. Et lag du ikke kan teste, er et lag du ikke kan stole på.
