@@ -3,10 +3,13 @@
 
 // Supported metrics: keep the surface small and explicit so a typo in the
 // query string can't fan out into an arbitrary SQL clause.
-export type SeriesMetric = 'view' | 'geo'
+// `mailfail` is not charted: one point per mail the Worker failed to send
+// (contact form or status alert), read by status-watchdog.yml — the mail path
+// can't report its own death by mail.
+export type SeriesMetric = 'view' | 'geo' | 'mailfail'
 
 export function parseMetric(value: string | null): SeriesMetric | null {
-  return value === 'view' || value === 'geo' ? value : null
+  return value === 'view' || value === 'geo' || value === 'mailfail' ? value : null
 }
 
 // Range options aligned to common dashboard windows. Each maps to a SQL

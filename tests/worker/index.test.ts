@@ -143,6 +143,48 @@ describe('5-minute health check', () => {
     expect(JSON.parse(store.get('status')!).history).toHaveLength(3)
     expect(fake.sent).toHaveLength(1)
   })
+
+  // "Already mailed" lives in the snapshot: a mail sent without it would
+  // repeat on every tick while KV refuses writes.
+  it('holds the alert when the KV write fails, and mails it once on the next stored tick', async () => {
+    const store = new Map<string, string>()
+    let readOnly = false
+    const fake = makeEnv({
+      STATUS: {
+        get: async (key: string) => store.get(key) ?? null,
+        put: async (key: string, value: string) => {
+          if (readOnly) throw new Error('KV write refused')
+          store.set(key, value)
+        },
+      },
+    })
+    vi.stubGlobal('fetch', answer(503))
+    await runCron(fake, HEALTH_CRON)
+
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    readOnly = true
+    await runCron(fake, HEALTH_CRON)
+    await runCron(fake, HEALTH_CRON)
+    expect(fake.sent).toHaveLength(0)
+    expect(error).toHaveBeenCalledWith('status: KV write failed, alerts held', expect.any(Error))
+
+    readOnly = false
+    await runCron(fake, HEALTH_CRON)
+    await runCron(fake, HEALTH_CRON)
+    expect(fake.sent).toHaveLength(1)
+    expect(fake.sent[0].raw).toContain('Subject: Status: Grafana er nede')
+  })
+
+  it('a failed alert mail leaves a point the watchdog can read', async () => {
+    vi.stubGlobal('fetch', answer(503))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const fake = makeEnv()
+    fake.failMail(true)
+    await runCron(fake, HEALTH_CRON)
+    await runCron(fake, HEALTH_CRON)
+    expect(fake.sent).toHaveLength(0)
+    expect(fake.aePoints).toEqual([{ indexes: ['mailfail'], blobs: ['mailfail', 'status'], doubles: [1] }])
+  })
 })
 
 describe('/api/status', () => {

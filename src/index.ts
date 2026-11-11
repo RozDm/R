@@ -95,7 +95,17 @@ async function runHealthChecks(env: Env): Promise<void> {
   const transitions = detectTransitions(previousHistory, results)
   const updatedAt = new Date().toISOString()
   const data = buildStatusData(raw, results, updatedAt)
-  await env.STATUS.put(STATUS_KEY, JSON.stringify(data))
+  // The alert mails below wait for this write: "already mailed" lives in the
+  // snapshot, so a mail without it would repeat on every tick until KV takes
+  // a write again. Held, the mail goes out on the first tick that is stored;
+  // an outage that starts and ends inside the KV failure is never mailed. The
+  // watchdog sees the snapshot go stale either way.
+  try {
+    await env.STATUS.put(STATUS_KEY, JSON.stringify(data))
+  } catch (err) {
+    console.error('status: KV write failed, alerts held', err)
+    return
+  }
 
   for (const t of transitions) {
     try {
@@ -106,6 +116,8 @@ async function runHealthChecks(env: Env): Promise<void> {
       // snapshot from being written or block subsequent transitions — but
       // it must show up in Workers Logs, or a dead alert path goes unnoticed.
       console.error('status: alert mail failed', t.name, err)
+      // What the watchdog reads (/api/timeseries?metric=mailfail).
+      env.METRICS_AE.writeDataPoint({ indexes: ['mailfail'], blobs: ['mailfail', 'status'], doubles: [1] })
     }
   }
 }

@@ -29,6 +29,9 @@ Out of scope:
 
 - volumetric denial of service, and exhausting the Cloudflare Free plan's
   daily Worker request quota (a known, accepted limit — pages keep working);
+- inflating the visit and view counters with scripted requests (a known,
+  accepted limit: the numbers are cosmetic, and counting people on the server
+  would mean keeping visitors' addresses);
 - reports from automated scanners without a demonstrated impact;
 - missing headers or settings that `docs/cloudflare-security.md` documents
   as deliberate;

@@ -91,3 +91,17 @@ jobs:
           done
           echo "::error::/api/timeseries is degraded — AE read failed (Workers Logs: 'timeseries: AE …'; check the AE_API_TOKEN secret)"
           exit 1
+
+      # The Worker mails the contact form's messages and the outage alerts; a
+      # failed send can't be reported by mail. Each one writes an AE point
+      # (blob1 = 'mailfail'). Last, so the checks above always run; 24 h, so a
+      # failure between two runs (hours apart) isn't missed — one failure
+      # keeps this red for a day. A degraded answer is the step above's to
+      # report, not this one's.
+      - name: No mail failed to send (last 24 h)
+        run: |
+          body=$(curl -sf --max-time 20 --retry 2 --retry-delay 10 -A 'status-watchdog/1.0 (+https://github.com/RozDm/R)' \
+            'https://rozsoshnykh.no/api/timeseries?metric=mailfail&range=24h') || body='{}'
+          failed=$(printf '%s' "$body" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(0 if d.get("degraded") else int(sum(p.get("value", 0) for p in d.get("points", []))))' 2>/dev/null || echo 0)
+          echo "mails that failed to send in 24 h: $failed"
+          [ "$failed" = 0 ] || { echo "::error::$failed mail(s) failed to send in the last 24 h — contact form or status alert (Workers Logs: 'mail send failed' / 'alert mail failed'; analytics-report.yml says which)"; exit 1; }
