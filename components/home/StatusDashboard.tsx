@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { DICT } from '@/data/i18n'
 import { INTL_LOCALE, type Lang } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
-import { HISTORY_LIMIT, isStale } from '@/src/status'
+import { failingSince, isStale, type HistoryEntry } from '@/src/status'
 import { serverNow } from '@/lib/server-clock'
 import { fetchStatus, type StatusSnapshot } from '@/lib/status-fetch'
 
@@ -17,6 +17,30 @@ const DOWN_REFRESH_MS = 30_000
 function formatTime(lang: Lang, iso?: string): string {
   if (!iso) return '—'
   return new Intl.DateTimeFormat(INTL_LOCALE[lang], { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
+}
+
+// Under each uptime bar. Quiet by default — «Siste 149 sjekker» — because a
+// count of old, single failed checks read as an alarm on a service that is
+// up (owner's call, 2026-11-11). Two additions:
+// - while the service is down, when that began — the one fact the red row
+//   doesn't already say;
+// - for screen readers only, how many checks failed: the bar is colour and
+//   mouse-only titles, hidden from them, and this is its text.
+function UptimeCaption({ lang, name, history, down }: { lang: Lang; name: string; history: HistoryEntry[]; down: boolean }) {
+  const t = DICT[lang].status
+  const failed = history.filter((h) => h.up?.[name] === false).length
+  const since = down ? failingSince(history, name) : null
+  return (
+    <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
+      {t.lastChecks(history.length)}
+      {failed > 0 && <span className="sr-only"> · {t.failedChecks(failed)}</span>}
+      {since && (
+        <span className="text-red-600 dark:text-red-400">
+          {' '}· {(since.whole ? t.downSinceBefore : t.downSince)(formatTime(lang, since.at))}
+        </span>
+      )}
+    </span>
+  )
 }
 
 export default function StatusDashboard() {
@@ -190,14 +214,7 @@ export default function StatusDashboard() {
                     )
                   })}
                 </div>
-                <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
-                  {t.lastChecks(history.length, history.filter((h) => h.up?.[r.name] === false).length)}
-                  {history.length === HISTORY_LIMIT && (
-                    <span title={t.monolith} className="text-gray-500 dark:text-gray-400">
-                      {' '}· 1:4:9
-                    </span>
-                  )}
-                </span>
+                <UptimeCaption lang={lang} name={r.name} history={history} down={!r.ok && !stale} />
               </div>
             )}
           </div>

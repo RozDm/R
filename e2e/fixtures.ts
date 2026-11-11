@@ -36,28 +36,23 @@ const FAKE_TURNSTILE = `(() => {
   if (window.onloadTurnstileCallback) window.onloadTurnstileCallback()
 })()`
 
-type Fixtures = { introSeen: boolean; langHintClosed: boolean; pageProblems: string[] }
+type Fixtures = { introSeen: boolean; pageProblems: string[] }
 
 export const test = base.extend<Fixtures>({
   introSeen: [true, { option: true }],
-  // The tests' browser speaks en-US, so every Norwegian page would open with
-  // the language hint (components/layout/LangHint.tsx) over its first lines.
-  // Closed unless a test is about it.
-  langHintClosed: [true, { option: true }],
   pageProblems: [
-    async ({ page, introSeen, langHintClosed, browserName }, use) => {
+    async ({ page, introSeen, browserName }, use) => {
       const problems: string[] = []
-      await page.addInitScript(([seen, closed]) => {
-        try {
-          if (seen) localStorage.setItem('intro-seen', '1')
-          // Only when unset: a test that closes the hint itself and reloads
-          // must find its own value, and one that opens it clears nothing.
-          if (closed && localStorage.getItem('lang-hint') === null) localStorage.setItem('lang-hint', '1')
-        } catch {}
+      await page.addInitScript((seen) => {
+        if (seen) {
+          try {
+            localStorage.setItem('intro-seen', '1')
+          } catch {}
+        }
         document.addEventListener('securitypolicyviolation', (e) =>
           console.error(`CSP violation: ${e.effectiveDirective} ${e.blockedURI}`),
         )
-      }, [introSeen, langHintClosed] as const)
+      }, introSeen)
       // Turnstile: a stand-in api.js that renders a fake widget (its theme in
       // data-fake-turnstile) and hands out a token. Only an export built with
       // a site key asks for it — CI's (ci.yml sets Cloudflare's test key).
