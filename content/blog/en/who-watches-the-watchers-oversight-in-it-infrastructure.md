@@ -7,19 +7,20 @@ translationOf: "hvem-vokter-vokterne-i-it-infrastruktur"
 draft: true
 ---
 
-"We added monitoring" is a comfort, not a guarantee. Every tool or administrator with the power to protect a system also has the power to blind it, break it, or hide what happened. Security is less about finding an infallible guard than about building a chain where no single guard has to be trusted alone.
+"We added monitoring" is a comfort, not a guarantee. Every tool, administrator or autonomous agent with the power to protect a system also has the power to blind it, break it, or hide what happened. Security is less about finding an infallible guard than about building a chain where no single guard has to be trusted alone.
 
 ## Moving the risk
 
-When you give an administrator full rights to fix servers, or install an agent to watch for intrusions, you solve one problem and create another. The guard becomes the most valuable target in the room. And the guard does not have to be a person: a service account, a deployment pipeline or an AI agent with broad rights is a guard too, and everything below applies to it in the same way.
+When you give an administrator full rights to fix servers, install an agent to watch for intrusions, or let an autonomous AI service manage infrastructure, you solve one problem and create another. The guard becomes the most valuable target in the room.
 
 Putting a second guard over the first only moves the question one step up. If you do not decide how the chain works, and where it stops, you end up with a pile of tools that all share the same weak spot.
 
-Before trusting any control, three questions pay off:
+Before trusting any control, four questions pay off:
 
-1. Can the person or system being watched erase the record of what they did?
+1. Can the person, machine or agent being watched erase the record of what they did?
 2. If the alarm system itself dies or gets cut off, what sound does it make?
-3. What happens when the account meant for emergencies is used on a quiet Tuesday?
+3. Does every non-human identity (service account, token, key, agent) have a named human owner and an expiry date?
+4. What happens when the account meant for emergencies is used on a quiet Tuesday?
 
 The answers decide whether you have real oversight or just another single point of failure.
 
@@ -29,10 +30,10 @@ Instead of stacking guards endlessly, split oversight into four jobs: writing th
 
 | Layer | The question | Typical failure | What guards it |
 | --- | --- | --- | --- |
-| 1 The record | Was the action written down? | Local logs are edited or deleted | One-way forwarding as soon as a line is written |
-| 2 The observer | Did anyone see the record? | Auditing is turned off, or the stream is killed | A separate collector that alerts on tampering and on silence |
-| 3 The alarm | Is the watcher still awake? | The monitor crashes, loses storage, or gets cut off | A continuous pulse sent to an outside receiver |
-| 4 The keys | Who can change layers 1–3? | One compromised superuser disables the whole chain | Temporary rights, two pairs of eyes, and a noisy spare key |
+| 1 The record | Was the action written down? | Local logs are edited, or the code that writes them is not the code you approved | One-way forwarding, sealed storage, signed builds |
+| 2 The observer | Did anyone see the record? | Auditing is turned off, the stream is killed, or a valid credential acts out of pattern | A separate collector that alerts on tampering, silence and out-of-pattern behaviour |
+| 3 The alarm | Is the watcher still awake? | The monitor or its notification path crashes, loses storage, or gets cut off | A continuous pulse sent to an outside receiver |
+| 4 The keys | Who can change layers 1–3? | Permanent, ownerless machine keys, or one compromised superuser who disables the whole chain | Temporary scope, named owners, two-person approval, and a noisy spare key |
 
 What makes the layers hold is separation of fate, or in engineering terms, independent failure domains. If the system that collects logs shares passwords, hardware, or network paths with the servers it watches, a single fault takes both down together.
 
@@ -44,38 +45,43 @@ For a record to count as evidence, it must leave the host the moment it is writt
 
 At the destination, seal what arrives with a signature or a hash chain, so that a later change to a stored record is detectable, and keep the store in a separate environment from the systems it records.
 
+A record is also only as honest as whatever writes it. If an attacker tampers with the code before it is deployed, the logs will faithfully record the actions of a malicious program. So trust has to reach back to the build: sign what you deploy, record how it was built, and verify the signature at deployment and, where you can, while it runs. A list of ingredients (an SBOM) is an inventory, not proof. And a signature shows where an artifact came from, not that it is harmless, so the builder and its signing keys are guards too, and fall under Layer 4.
+
 ### Layer 2: the observer
 
 Moving the logs off the machine protects the past, but not the next ten minutes. An intruder with full rights does not need to erase old records if they can simply stop new ones from being made.
 
-Clearing a log leaves an obvious mark, so a careful attacker will rather change the audit rules to ignore certain actions, or kill the process that sends the logs away. That leaves no error message at the destination, only a gap.
+Clearing a log leaves an obvious mark, so a careful attacker will rather change the audit rules to ignore certain actions, or kill the process that sends the logs away. That leaves no error message at the destination, only a gap. The quietest intruder changes nothing at all: they use a valid credential, and the only trace is behaviour out of pattern. The same goes for a service or an agent that acts beyond its declared purpose.
 
-The observer on the other side of the boundary must therefore watch for two things at once: explicit signs that auditing was touched, and a host that suddenly goes quiet.
+The observer on the other side of the boundary must therefore watch for three things at once: explicit signs that auditing was touched, a source that suddenly goes quiet, and a valid identity acting out of pattern.
 
-A quiet host is not automatically a broken one, so silence needs a baseline: every source emits a regular beat through the same pipe, and the observer alerts when a beat is missing. Where a beat is not possible, inject a test event on a schedule and check that it arrives.
+A quiet host is not automatically a broken one, so silence needs a rhythm to break: every source, whether a host, a service or an agent, emits a regular beat through the same pipe, and the observer alerts when a beat is missing. Where a beat is not possible, inject a test event on a schedule and check that it arrives. Out of pattern needs a pattern too: keep a baseline of what each identity normally does, and watch the privileged ones most closely.
 
 | What the observer sees | What it means | Look here |
 | --- | --- | --- |
 | The log was cleared | Someone tried to wipe the trail | The host, at once; assume full compromise |
 | Audit rules changed | Someone is blinding the recorder before acting | Recent privilege use on the host |
+| A valid identity acts out of pattern | A stolen credential, or a service or agent acting beyond its declared scope | The identity's baseline, its owner and any approved change |
 | The log stream stops | The host is down, cut off, or the sender was killed | The network path first, then the logging process |
 | Approval rules bypassed | A privileged user changed the guardrails for themselves | Control plane and repository settings, Layer 4 |
 
 ### Layer 3: who monitors the monitor?
 
-Layer 2 watches the hosts: that they do not go quiet and do not blind the record. Layer 3 watches the collecting centre itself. The log stream is now protected from the host, but what protects the system that collects those logs, and the alarms built on it, from a full disk, a dead database or a cut link?
+Layer 2 watches the sources: that they do not go quiet and do not blind the record. Layer 3 watches the collecting centre itself. The log stream is now protected from the host, but what protects the system that collects those logs, and the alarms built on it, from a full disk, a dead database or a cut link?
 
 An alarm system that never rings tells you nothing. Everything might be fine, or the monitor might have crashed, filled its disk, or been blocked at a firewall three days ago.
 
 The fix is to invert the signal. Instead of waiting for a message that says something is broken, an independent service outside your infrastructure waits for a steady pulse that says the monitor is alive and able to speak.
 
-For the pulse to prove anything, it has to travel through the whole chain: triggered inside the monitoring engine, passed through the notification router, and delivered outside. A pulse sent by a separate timer script only proves the script works. When the real pulse stops arriving for a few minutes, the outside receiver raises the alarm. It is the one link that does not share a fate with the rest of your setup. The pulse proves the alarm path is alive. It does not prove the monitor still sees the hosts; that is what the beats in Layer 2 are for. Between them, the whole path from host to human is covered.
+For the pulse to prove anything, it has to travel through the whole chain: triggered inside the monitoring engine, passed through the notification router, and delivered outside. A pulse sent by a separate timer script only proves the script works. When the real pulse stops arriving for a few minutes, the outside receiver raises the alarm. It is the one link that does not share a fate with the rest of your setup. The pulse proves the alarm path is alive. It does not prove the monitor still sees its sources; that is what the beats in Layer 2 are for. Between them, the whole path from source to human is covered.
 
 ### Layer 4: those with the keys
 
-Even with one-way logs and an external heartbeat, someone has to manage the log collector, the monitor, and the access rules. If one account can change all of them at once, the four layers collapse back into a single point of failure. Three boundaries keep top-level rights in check:
+Even with one-way logs and an external heartbeat, someone has to manage the log collector, the monitor, and the access rules, and today that someone is often not a person. Service accounts, tokens, pipelines and agents outnumber people many times over, and too many of them carry permanent, over-scoped credentials that nobody owns. If one account can change all of the layers at once, or an orphaned service account roams free, the four layers collapse back into a single point of failure.
 
-- **Borrowed time.** Nobody holds permanent full access for daily work (zero standing privileges). High privileges are checked out just in time for a specific task and expire on their own, and the act of borrowing them is recorded before the session starts.
+The principles are the same for people and machines; the mechanisms differ. A machine cannot answer a second factor, so it has to prove its identity by what it is and where it runs, with short-lived credentials. Three boundaries keep top-level rights in check:
+
+- **Borrowed time.** Nobody holds permanent full access for daily work (zero standing privileges). High privileges are checked out just in time for a specific task, with a bounded scope and an expiry, and the act of borrowing them is recorded before the session starts. Service accounts and agents borrow the same way, and each has a named human owner who answers for its lifecycle and revocation. They are judged not only by whether the key is valid, but by whether their behaviour stays within the purpose they were granted.
 - **Two pairs of eyes.** The person who proposes a change to critical infrastructure, or to the pipeline that deploys it, cannot be the one who approves it (separation of duties). And because an administrator might have the rights to turn off the two-person rule for ten seconds, any change to the approval rules themselves must trigger an immediate alert at Layer 2.
 - **A noisy spare key** (a break-glass account). Every system needs an emergency account for when normal login systems are down. It must not depend on those systems, which is the whole point of it. The key stays locked away, is never used for routine work, and sets off an immediate alarm through an independent channel the moment it is used. That alarm must never block the login or need the login systems that may be down, or the key is useless in the very outage it exists for, and engineers in a panic will learn to disable it. Its job is not to stop the login but to announce it at once: the emergency key was used at 03:15, by this person, from this place. Test the key on a schedule, because a key nobody has tried may not open anything, and review every use afterwards.
 
@@ -90,6 +96,7 @@ With the four layers in place, the same stolen laptop hits a boundary at every s
 - There are no permanent keys on the machine; elevating rights requires a fresh request that gets logged outside the host before access is granted, and for the highest rights a second person must approve it. A request at an odd hour reaches that person as a question, not a formality.
 - Even if the intruder gets onto a server and kills the log sender, everything delivered up to that second is already stored across a one-way boundary, and the sudden silence alerts the collector.
 - If they try to silence the monitor itself, the external pulse stops and the outside receiver pages the team.
+- If they go for the backups, those sit behind the same kind of one-way boundary: immutable, in a separate environment the stolen laptop cannot reach.
 - If they reach for the emergency account, the spare-key alarm fires at sign-in, before they run their first command.
 
 The breach still happens, but it cannot hide.
@@ -104,8 +111,9 @@ In a small environment, where one person runs both the servers and the security,
 
 1. **Evidence travels one way.** A machine can add to the record, but cannot edit or erase what it has already sent.
 2. **The watcher lives outside the watched.** The collector and the alarm do not share credentials, network fate, or hardware with the machines they guard.
-3. **Silence is a fault, not peace.** Both a quiet server and a quiet monitor raise an alarm when their pulse stops.
-4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, logged, and, for emergency keys, loud by design.
-5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure two times with a stopwatch: how long until the outside receiver raises the alarm, and how long until a person acts on it. The first is the timeout you configured; the second is the one that actually protects you. Repeat it on a schedule: an alarm nobody has triggered on purpose is like a backup nobody has restored.
+3. **Silence is a fault, not peace.** A quiet server, a silent monitor and an unresponsive agent all raise an alarm when their heartbeat stops.
+4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, scoped, logged, tied to a named owner, and, for emergency keys, loud by design.
+5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure two times with a stopwatch: how long until the outside receiver raises the alarm, and how long until a person acts on it. The first is the timeout you configured; the second is the one that actually protects you. Repeat it on a schedule: an alarm nobody has triggered on purpose is only a hope.
+6. **Test the anchor, not just the alarm.** Restore a system from the immutable copy and time it from zero. Check that what came back is complete and that its artifacts still verify. A backup nobody has restored is only a theory.
 
 Tools and platforms change every few years. The geometry of trust doesn't.

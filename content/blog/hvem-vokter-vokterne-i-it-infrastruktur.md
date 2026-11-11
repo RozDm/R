@@ -6,19 +6,20 @@ tags: ["Sikkerhet", "SOC"]
 draft: true
 ---
 
-«Vi har satt opp overvåking» er en trøst, ikke en garanti. Hvert verktøy og hver administrator som har makt til å beskytte et system, har også makt til å blinde det, ødelegge det eller skjule hva som skjedde. Sikkerhet handler mindre om å finne en ufeilbarlig vokter enn om å bygge en kjede der ingen enkelt vokter må stoles på alene.
+«Vi har satt opp overvåking» er en trøst, ikke en garanti. Hvert verktøy, hver administrator og hver autonom agent som har makt til å beskytte et system, har også makt til å blinde det, ødelegge det eller skjule hva som skjedde. Sikkerhet handler mindre om å finne en ufeilbarlig vokter enn om å bygge en kjede der ingen enkelt vokter må stoles på alene.
 
 ## Å flytte risikoen
 
-Når du gir en administrator full tilgang til å reparere servere, eller installerer en agent som skal oppdage inntrengere, løser du ett problem og skaper et annet. Vokteren blir det mest verdifulle målet i rommet. Og vokteren trenger ikke være et menneske: en tjenestekonto, en pipeline som ruller ut endringer eller en KI-agent med brede rettigheter er også en vokter, og alt som står under, gjelder for den på samme måte.
+Når du gir en administrator full tilgang til å reparere servere, installerer en agent som skal oppdage inntrengere, eller lar en autonom KI-tjeneste styre infrastrukturen, løser du ett problem og skaper et annet. Vokteren blir det mest verdifulle målet i rommet.
 
 En ny vokter over den første flytter bare spørsmålet ett trinn opp. Hvis du ikke bestemmer hvordan kjeden fungerer, og hvor den slutter, ender du med en haug verktøy som alle har den samme svake siden.
 
-Tre spørsmål er verdt å stille før du stoler på en kontroll:
+Fire spørsmål er verdt å stille før du stoler på en kontroll:
 
-1. Kan den som blir overvåket, slette sporet etter det vedkommende gjorde?
+1. Kan den som blir overvåket, enten det er et menneske, en maskin eller en agent, slette sporet etter sine egne handlinger?
 2. Hvis selve alarmsystemet dør eller kuttes av, hvilken lyd lager det da?
-3. Hva skjer når kontoen som er ment for nødsituasjoner, brukes en rolig tirsdag?
+3. Har hver ikke-menneskelig identitet (tjenestekonto, token, nøkkel, agent) en navngitt menneskelig eier og en utløpsdato?
+4. Hva skjer når kontoen som er ment for nødsituasjoner, brukes en rolig tirsdag?
 
 Svarene avgjør om du har ekte tilsyn eller bare nok et enkelt feilpunkt.
 
@@ -28,10 +29,10 @@ I stedet for å stable voktere i det uendelige deler du tilsynet i fire oppgaver
 
 | Lag | Spørsmålet | Typisk svikt | Det som vokter det |
 | --- | --- | --- | --- |
-| 1 Sporet | Ble handlingen skrevet ned? | Lokale logger redigeres eller slettes | Videresending én vei, med en gang linjen er skrevet |
-| 2 Observatøren | Så noen sporet? | Revisjon slås av, eller strømmen drepes | En egen samler som varsler om tukling og om stillhet |
-| 3 Alarmen | Er vokteren fortsatt våken? | Overvåkeren krasjer, mister lagring eller blir avskåret | Kontinuerlig puls til en ekstern mottaker |
-| 4 Nøklene | Hvem kan endre lag 1–3? | Én kompromittert superbruker slår av hele kjeden | Midlertidige rettigheter, to par øyne og en bråkete reservenøkkel |
+| 1 Sporet | Ble handlingen skrevet ned? | Lokale logger redigeres, eller koden som skriver dem, er ikke den du godkjente | Videresending én vei, forseglet lagring og signerte bygg |
+| 2 Observatøren | Så noen sporet? | Revisjon slås av, strømmen drepes, eller en gyldig legitimasjon opptrer utenfor mønsteret | En egen samler som varsler om tukling, stillhet og atferd utenfor mønsteret |
+| 3 Alarmen | Er vokteren fortsatt våken? | Overvåkeren eller varslingsveien krasjer, mister lagring eller blir avskåret | Kontinuerlig puls til en ekstern mottaker |
+| 4 Nøklene | Hvem kan endre lag 1–3? | Permanente nøkler uten eier, eller én kompromittert superbruker som slår av hele kjeden | Midlertidig omfang, navngitte eiere, tomannsgodkjenning og en bråkete reservenøkkel |
 
 Det som får lagene til å holde, er skilte skjebner, eller med ingeniørord uavhengige feildomener. Hvis systemet som samler loggene deler passord, maskinvare eller nettverksveier med serverne det overvåker, tar én feil ned begge samtidig.
 
@@ -43,38 +44,43 @@ For at et spor skal telle som bevis, må det forlate verten i det øyeblikket de
 
 Hos mottakeren forsegles det som kommer inn, med en signatur eller en hash-kjede, slik at en senere endring av et lagret spor kan oppdages, og lageret ligger i et eget miljø, adskilt fra systemene det registrerer.
 
+Et spor er også bare så ærlig som det som skriver det. Hvis en angriper tukler med koden før den rulles ut, vil loggene trofast registrere hva et ondsinnet program gjør. Tilliten må derfor rekke tilbake til byggingen: signer det du ruller ut, registrer hvordan det ble bygget, og kontroller signaturen ved utrulling og, der du kan, mens det kjører. En liste over ingredienser (en SBOM) er en oversikt, ikke et bevis. Og en signatur viser hvor en artefakt kommer fra, ikke at den er harmløs, så byggesystemet og signeringsnøklene er også voktere, og hører inn under lag 4.
+
 ### Lag 2: observatøren
 
 Å flytte loggene bort fra maskinen beskytter fortiden, men ikke de neste ti minuttene. En inntrenger med full tilgang trenger ikke slette gamle spor hvis vedkommende bare kan stoppe at nye blir laget.
 
-Å tømme en logg setter et tydelig merke, så en forsiktig angriper endrer heller revisjonsreglene slik at visse handlinger overses, eller dreper prosessen som sender loggene bort. Da kommer det ingen feilmelding hos mottakeren, bare et hull.
+Å tømme en logg setter et tydelig merke, så en forsiktig angriper endrer heller revisjonsreglene slik at visse handlinger overses, eller dreper prosessen som sender loggene bort. Da kommer det ingen feilmelding hos mottakeren, bare et hull. Den stilleste inntrengeren endrer ingenting i det hele tatt: vedkommende bruker en gyldig legitimasjon, og det eneste sporet er atferd utenfor mønsteret. Det samme gjelder en tjeneste eller en agent som handler utenfor sitt erklærte formål.
 
-Observatøren på den andre siden av grensen må derfor passe på to ting samtidig: åpenbare tegn på at revisjonen er rørt, og en vert som plutselig blir stille.
+Observatøren på den andre siden av grensen må derfor passe på tre ting samtidig: åpenbare tegn på at revisjonen er rørt, en kilde som plutselig blir stille, og en gyldig identitet som handler utenfor mønsteret.
 
-En stille vert er ikke uten videre en ødelagt vert, så stillhet trenger et utgangspunkt: hver kilde sender et jevnt slag gjennom den samme kanalen, og observatøren varsler når et slag uteblir. Der slag ikke er mulig, send en testhendelse på fast tid og sjekk at den kommer fram.
+En stille vert er ikke uten videre en ødelagt vert, så stillhet trenger en rytme å bryte: hver kilde, enten det er en vert, en tjeneste eller en agent, sender et jevnt slag gjennom den samme kanalen, og observatøren varsler når et slag uteblir. Der slag ikke er mulig, send en testhendelse på fast tid og sjekk at den kommer fram. Utenfor mønsteret krever også et mønster: hold et normalbilde av hva hver identitet vanligvis gjør, og følg de privilegerte tettest.
 
 | Hva observatøren ser | Hva det betyr | Se her |
 | --- | --- | --- |
 | Loggen ble tømt | Noen prøvde å utslette sporet | Verten, med en gang; anta full kompromittering |
 | Revisjonsregler endret | Noen blinder opptakeren før de handler | Nylig bruk av privilegier på verten |
+| En gyldig identitet handler utenfor mønsteret | En stjålet legitimasjon, eller en tjeneste eller agent som handler utenfor sitt erklærte område | Identitetens normalbilde, dens eier og eventuell godkjent endring |
 | Loggstrømmen stopper | Verten er nede, avskåret, eller avsenderen ble drept | Nettverksveien først, så loggprosessen |
 | Godkjenningsregler omgått | En privilegert bruker endret rekkverket for seg selv | Kontrollplanet og innstillingene i repoet, lag 4 |
 
 ### Lag 3: hvem overvåker overvåkeren?
 
-Lag 2 passer på vertene: at de ikke blir stille og ikke blinder sporet. Lag 3 passer på selve samlesentralen. Loggstrømmen er nå beskyttet mot verten, men hva beskytter systemet som samler loggene, og alarmene som bygger på det, mot full disk, død database eller brutt forbindelse?
+Lag 2 passer på kildene: at de ikke blir stille og ikke blinder sporet. Lag 3 passer på selve samlesentralen. Loggstrømmen er nå beskyttet mot verten, men hva beskytter systemet som samler loggene, og alarmene som bygger på det, mot full disk, død database eller brutt forbindelse?
 
 Et alarmsystem som aldri ringer, forteller deg ingenting. Alt kan være i orden, eller overvåkeren kan ha krasjet, fylt disken eller blitt stengt ute av en brannmur for tre dager siden.
 
 Løsningen er å snu signalet. I stedet for å vente på en melding om at noe er ødelagt, venter en uavhengig tjeneste utenfor infrastrukturen din på en jevn puls som sier at overvåkeren lever og kan snakke.
 
-For at pulsen skal bevise noe, må den gå gjennom hele kjeden: utløst inne i overvåkingsmotoren, sendt gjennom varslingsruteren og levert utenfor. En puls fra et eget tidsskript beviser bare at skriptet virker. Når den ekte pulsen uteblir i noen minutter, slår den eksterne mottakeren alarm. Det er det eneste leddet som ikke deler skjebne med resten av oppsettet. Pulsen beviser at alarmveien lever. Den beviser ikke at overvåkeren fortsatt ser vertene; det er slagene i lag 2 til for. Sammen dekker de hele veien fra vert til menneske.
+For at pulsen skal bevise noe, må den gå gjennom hele kjeden: utløst inne i overvåkingsmotoren, sendt gjennom varslingsruteren og levert utenfor. En puls fra et eget tidsskript beviser bare at skriptet virker. Når den ekte pulsen uteblir i noen minutter, slår den eksterne mottakeren alarm. Det er det eneste leddet som ikke deler skjebne med resten av oppsettet. Pulsen beviser at alarmveien lever. Den beviser ikke at overvåkeren fortsatt ser kildene sine; det er slagene i lag 2 til for. Sammen dekker de hele veien fra kilde til menneske.
 
 ### Lag 4: de som har nøklene
 
-Selv med logger som går én vei og en ekstern puls må noen administrere samleren, overvåkeren og tilgangsreglene. Hvis én konto kan endre alt på en gang, faller de fire lagene sammen til ett enkelt feilpunkt. Tre grenser holder rettigheter på toppnivå i sjakk:
+Selv med logger som går én vei og en ekstern puls må noen administrere samleren, overvåkeren og tilgangsreglene, og i dag er det ofte ikke et menneske. Tjenestekontoer, tokens, pipelines og agenter er mange ganger flere enn menneskene, og for mange av dem har permanent legitimasjon med for vid tilgang som ingen eier. Hvis én konto kan endre alle lagene på en gang, eller en foreldreløs tjenestekonto går løs, faller de fire lagene sammen til ett enkelt feilpunkt.
 
-- **Lånt tid.** Ingen har permanent full tilgang til daglig arbeid (ingen stående privilegier). Høye rettigheter sjekkes ut akkurat i tide til en bestemt oppgave og utløper av seg selv, og selve lånet registreres før økten starter.
+Prinsippene er de samme for mennesker og maskiner, mekanismene er ikke det. En maskin kan ikke svare på en andre faktor, så den må bevise identiteten sin med hva den er og hvor den kjører, med kortlevd legitimasjon. Tre grenser holder rettigheter på toppnivå i sjakk:
+
+- **Lånt tid.** Ingen har permanent full tilgang til daglig arbeid (ingen stående privilegier). Høye rettigheter sjekkes ut akkurat i tide til en bestemt oppgave, med avgrenset omfang og utløpsdato, og selve lånet registreres før økten starter. Tjenestekontoer og agenter låner på samme måte, og hver har en navngitt menneskelig eier som svarer for livssyklusen og for at tilgangen trekkes tilbake. De vurderes ikke bare etter om nøkkelen er gyldig, men etter om atferden holder seg innenfor formålet de fikk.
 - **To par øyne.** Den som foreslår en endring i kritisk infrastruktur, eller i pipelinen som ruller den ut, kan ikke være den som godkjenner den (fireøyeprinsippet). Og fordi en administrator kan ha rett til å slå av tomannsregelen i ti sekunder, må enhver endring i godkjenningsreglene selv utløse et umiddelbart varsel i lag 2.
 - **En bråkete reservenøkkel** (break-glass-konto). Ethvert system trenger en nødkonto for når vanlige innloggingssystemer er nede. Den må ikke avhenge av de systemene, og det er hele poenget. Nøkkelen holdes innelåst, brukes aldri til rutinearbeid og utløser en øyeblikkelig alarm over en uavhengig kanal i det den brukes. Alarmen må aldri blokkere innloggingen eller trenge innloggingssystemer som kan være nede, ellers er nøkkelen ubrukelig i akkurat det avbruddet den finnes for, og ingeniører i panikk lærer seg å slå den av. Oppgaven er ikke å stoppe innloggingen, men å melde fra med en gang: nødnøkkelen ble brukt klokken 03:15, av denne personen, fra dette stedet. Test nøkkelen på fast tid, for en nøkkel ingen har prøvd, åpner kanskje ingenting, og gå gjennom hver bruk i etterkant.
 
@@ -89,6 +95,7 @@ Med de fire lagene på plass treffer den samme stjålne laptopen en grense i hve
 - Det finnes ingen permanente nøkler på maskinen. Å heve rettighetene krever en ny forespørsel som logges utenfor verten før tilgangen gis, og for de høyeste rettighetene må en annen person godkjenne den. En forespørsel til en uvanlig tid når den personen som et spørsmål, ikke som en formalitet.
 - Selv om inntrengeren kommer seg inn på en server og dreper logg-avsenderen, er alt som var levert fram til det sekundet allerede lagret på den andre siden av en enveisgrense, og den plutselige stillheten varsler samleren.
 - Hvis vedkommende prøver å tie overvåkeren selv, stopper den eksterne pulsen, og mottakeren utenfor tilkaller teamet.
+- Hvis vedkommende går løs på sikkerhetskopiene, ligger de bak den samme typen enveisgrense: uforanderlige, i et eget miljø som den stjålne laptopen ikke når.
 - Hvis vedkommende strekker seg etter nødkontoen, utløses reservenøkkelalarmen ved innloggingen, før den første kommandoen er kjørt.
 
 Bruddet skjer fortsatt, men det kan ikke skjule seg.
@@ -103,8 +110,9 @@ I et lite miljø, der én person driver både serverne og sikkerheten, kan du ik
 
 1. **Bevis går én vei.** En maskin kan legge til i sporet, men ikke redigere eller slette det den allerede har sendt.
 2. **Vokteren bor utenfor den voktede.** Samleren og alarmen deler ikke legitimasjon, nettverksskjebne eller maskinvare med maskinene de vokter.
-3. **Stillhet er en feil, ikke fred.** Både en stille server og en stille overvåker slår alarm når pulsen deres uteblir.
-4. **Makt leies, eies aldri.** Rutinearbeid bruker minimale rettigheter. Full tilgang er midlertidig og logget, og for nødnøkler høylytt med vilje.
-5. **Test alarmen, ikke konfigurasjonen.** Stopp loggstrømmen på en testmaskin, blokker overvåkerens puls, og ta tiden to ganger: hvor lenge til den eksterne mottakeren slår alarm, og hvor lenge til et menneske handler på den. Det første er tidsavbruddet du selv har satt, det andre er det som faktisk beskytter deg. Gjenta det på fast tid: en alarm ingen har utløst med vilje, er som en sikkerhetskopi ingen har gjenopprettet.
+3. **Stillhet er en feil, ikke fred.** En stille server, en taus overvåker og en agent som ikke svarer slår alle alarm når hjerteslaget uteblir.
+4. **Makt leies, eies aldri.** Rutinearbeid bruker minimale rettigheter. Full tilgang er midlertidig, avgrenset, logget og knyttet til en navngitt eier, og for nødnøkler høylytt med vilje.
+5. **Test alarmen, ikke konfigurasjonen.** Stopp loggstrømmen på en testmaskin, blokker overvåkerens puls, og ta tiden to ganger: hvor lenge til den eksterne mottakeren slår alarm, og hvor lenge til et menneske handler på den. Det første er tidsavbruddet du selv har satt, det andre er det som faktisk beskytter deg. Gjenta det på fast tid: en alarm ingen har utløst med vilje, er bare et håp.
+6. **Test ankeret, ikke bare alarmen.** Gjenopprett et system fra den uforanderlige kopien og ta tiden fra null. Sjekk at det som kom tilbake, er komplett, og at artefaktene fortsatt lar seg verifisere. En sikkerhetskopi ingen har gjenopprettet, er bare en teori.
 
 Verktøy og plattformer skifter med noen års mellomrom. Tillitens geometri gjør ikke det.
