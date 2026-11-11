@@ -3,9 +3,15 @@ import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Eyebrow from '@/components/layout/Eyebrow'
+import { DICT } from '@/data/i18n'
 import { pageMetadata } from '@/lib/metadata'
 import { CONTACT_ADDRESS } from '@/src/contact'
 
+// The notice is a document, not UI copy: its text lives here, not in
+// data/i18n.ts — that dictionary ships with every page, and a page of legal
+// text has no business in it (root CLAUDE.md, Languages). Only the labels it
+// shares with the rest of the site come from DICT.
+//
 // Utility page, like /kontakt: keep it out of search results (and out of
 // the sitemap — a sitemap must not list noindex URLs).
 export const metadata: Metadata = pageMetadata({
@@ -24,10 +30,10 @@ export default function PersonvernPage() {
           href="/"
           className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mb-8"
         >
-          &larr; Tilbake til forsiden
+          &larr; {DICT.nb.backHome}
         </Link>
 
-        <Eyebrow>Personvern</Eyebrow>
+        <Eyebrow>{DICT.nb.footer.privacy}</Eyebrow>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
           {/* Soft hyphens (here and in «Behandlingsansvarlig»): at 320px
               the word is wider than the screen, so it breaks as

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Eyebrow from '@/components/layout/Eyebrow'
+import { DICT } from '@/data/i18n'
 import { pageMetadata } from '@/lib/metadata'
 import { CONTACT_ADDRESS } from '@/src/contact'
 
@@ -25,10 +26,10 @@ export default function PrivacyPage() {
           href="/en/"
           className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mb-8"
         >
-          &larr; Back to the home page
+          &larr; {DICT.en.backHome}
         </Link>
 
-        <Eyebrow>Privacy</Eyebrow>
+        <Eyebrow>{DICT.en.footer.privacy}</Eyebrow>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Privacy notice
         </h1>

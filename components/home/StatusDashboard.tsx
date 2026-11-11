@@ -40,7 +40,10 @@ export default function StatusDashboard() {
 
     const schedule = (ms: number) => {
       clearTimeout(timer)
-      timer = setTimeout(() => (watched() ? tick() : (due = true)), ms)
+      timer = setTimeout(() => {
+        if (watched()) void tick()
+        else due = true
+      }, ms)
     }
 
     const tick = async () => {
@@ -62,10 +65,10 @@ export default function StatusDashboard() {
       }
     }
     const resume = () => {
-      if (due && watched()) tick()
+      if (due && watched()) void tick()
     }
 
-    tick()
+    void tick()
     const section = document.getElementById('status')
     const observer = section
       ? new IntersectionObserver(
