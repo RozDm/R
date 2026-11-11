@@ -21,9 +21,10 @@ describe('METRICS_EPOCH', () => {
 })
 
 describe('parseMetric', () => {
-  it('accepts the two supported metrics', () => {
+  it('accepts the supported metrics', () => {
     expect(parseMetric('view')).toBe('view')
     expect(parseMetric('geo')).toBe('geo')
+    expect(parseMetric('mailfail')).toBe('mailfail')
   })
 
   it('rejects everything else, including null', () => {

@@ -40,10 +40,12 @@ export function apiStub(url: URL, method: string, now = Date.now()): StubAnswer 
   if (path === '/api/geo') return json({ countries: STUB_COUNTRIES })
   if (path === '/api/timeseries') {
     const metric = url.searchParams.get('metric')
-    if (metric !== 'geo' && metric !== 'view') return json({ error: 'bad metric' }, 400)
+    if (metric !== 'geo' && metric !== 'view' && metric !== 'mailfail') return json({ error: 'bad metric' }, 400)
     const asked = url.searchParams.get('range') ?? ''
     const range = RANGES.includes(asked) ? asked : '7d'
-    const points = [30, 5, 2].map((h, i) => ({ ts: hourKey(now - h * 3_600_000), value: i + 1 }))
+    // No mail has failed in the stub's world.
+    const points =
+      metric === 'mailfail' ? [] : [30, 5, 2].map((h, i) => ({ ts: hourKey(now - h * 3_600_000), value: i + 1 }))
     return json({ metric, range, points })
   }
   if (/^\/api\/views\/[^/]+$/.test(path)) return json({ views: method === 'POST' ? 4 : 3 })

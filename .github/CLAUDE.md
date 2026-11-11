@@ -37,7 +37,11 @@ incident background: `docs/history.md`; the zone: `docs/cloudflare-security.md`.
   wrangler (not `cloudflare/wrangler-action`: Node 20) → `scripts/smoke.sh`
   (also `check-csp.mjs --live` on the front pages, the sample posts and
   `/kontakt/`; it takes its sample posts from the deployed build's feeds,
-  never by name, so posts can come and go). A failed smoke runs
+  never by name, so posts can come and go; and it POSTs one valid contact
+  message without a Turnstile token, which must come back 403 `challenge
+  required` — a lost `TURNSTILE_SECRET` would otherwise leave the form open
+  with a green deploy; were it lost, that message reaches the owner's
+  inbox). A failed smoke runs
   `wrangler rollback` to the previous version — code and pages; D1/KV
   untouched — and the run stays red. A failure the zone causes fails the old
   version too: fix it, then re-run Deploy (workflow_dispatch).
@@ -49,16 +53,18 @@ incident background: `docs/history.md`; the zone: `docs/cloudflare-security.md`.
   declined, owner's call: don't re-propose). Fails (GitHub
   e-mails the owner) when the site is down, `/api/status` is older than
   25 min (the failure the Worker can't report itself), `/api/geo` isn't a
-  200 (a 503 is a failed D1 read — the only regular D1 probe), or
-  `/api/timeseries` is `degraded` three runs in a row (typically
-  `AE_API_TOKEN` expired). A `403` here or in `smoke.sh` whose page says
+  200 (a 503 is a failed D1 read — the only regular D1 probe),
+  `/api/timeseries` is `degraded` three tries in a row (typically
+  `AE_API_TOKEN` expired), or a mail failed to send in the last 24 h
+  (`metric=mailfail`: the contact form's or an outage alert's — red for a
+  day after one failure; `analytics-report.yml` says which). A `403` here or in `smoke.sh` whose page says
   `X-Frame-Options: SAMEORIGIN` is Cloudflare, not the site (e.g. Bot Fight
   Mode, which challenges GitHub runners — off for that reason); a `429` is
   the zone's rate limit (60/10 s per IP). GitHub disables schedules after
   60 days without repo activity: re-enable from the Actions tab.
 - `analytics-report.yml` — manual, `days` 1–90, read-only: AE breakdowns
-  (Besøk by ASN/operator and country, browser CSP violations) in the run
-  summary, also teed to the job log for `get_job_logs`.
+  (Besøk by ASN/operator and country, browser CSP violations, mails the
+  Worker failed to send) in the run summary, also teed to the job log for `get_job_logs`.
 - `reset-metrics.yml` — manual, type `RESET`: wipes the D1 `views` + `geo`
   counters (before/after counts). AE is append-only: bump `METRICS_EPOCH`
   in `src/timeseries.ts` after every run (6-hour UTC boundary, rounded

@@ -67,6 +67,10 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   // The per-IP window counts a whole IPv6 /64 as one sender (src/ip.ts) — and
   // that prefix, not the full address, is what the row keeps.
   const sender = clientKey(ip)
+  // The address the limits and the stored row use: `A@x.no` and `a@x.no` are
+  // one mailbox, and as two strings each got its own window. The mail's
+  // Reply-To keeps what was typed. Dots and +tags stay: providers differ.
+  const emailKey = payload.email.toLowerCase()
 
   // Turnstile is enforced only when the secret is set, so deploying the code
   // never breaks the form on its own — the dashboard setup activates it.
@@ -96,7 +100,7 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
       .first<{ n: number }>()
       .catch(failOpen('per-sender window')),
     env.METRICS.prepare('SELECT COUNT(*) AS n FROM contact WHERE email = ?1 AND at > ?2')
-      .bind(payload.email, isoCutoff(now, CONTACT_WINDOWS_MS.perEmail))
+      .bind(emailKey, isoCutoff(now, CONTACT_WINDOWS_MS.perEmail))
       .first<{ n: number }>()
       .catch(failOpen('per-address window')),
   ])
@@ -112,7 +116,7 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   const duplicate = await env.METRICS.prepare(
     'SELECT 1 AS n FROM contact WHERE email = ?1 AND message = ?2 AND at > ?3 LIMIT 1',
   )
-    .bind(payload.email, payload.message, isoCutoff(now, CONTACT_WINDOWS_MS.duplicate))
+    .bind(emailKey, payload.message, isoCutoff(now, CONTACT_WINDOWS_MS.duplicate))
     .first<{ n: number }>()
     .catch(failOpen('duplicate'))
   if (duplicate) return apiJson('{"ok":true}')
@@ -121,7 +125,7 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
   const row = await env.METRICS.prepare(
     'INSERT INTO contact (at, ip, name, email, message) VALUES (?1, ?2, ?3, ?4, ?5) RETURNING id',
   )
-    .bind(at, sender, payload.name, payload.email, payload.message)
+    .bind(at, sender, payload.name, emailKey, payload.message)
     .first<{ id: number }>()
     .catch((err) => {
       console.error('contact: D1 insert failed', err)
@@ -135,6 +139,9 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     // No address or message in the log line — the visitor's data stays out
     // of Workers Logs; the error itself is what needs noticing.
     console.error('contact: mail send failed', err)
+    // …and Workers Logs is a place nobody watches: the AE point is what the
+    // watchdog reads (/api/timeseries?metric=mailfail). No visitor data in it.
+    env.METRICS_AE.writeDataPoint({ indexes: ['mailfail'], blobs: ['mailfail', 'contact'], doubles: [1] })
     // Un-store the row: a stored-but-unsent row would make the visitor's retry
     // look like a duplicate (the dedup above would ack it with ok:true and never
     // mail it) and would eat into their rate limit. The form keeps its text on

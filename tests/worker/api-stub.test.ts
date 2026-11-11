@@ -85,6 +85,15 @@ describe('e2e API stubs answer like the Worker', () => {
       expectSameContract(real, fakeAnswer)
       expect((fakeAnswer.body as { range: string }).range).toBe((real.body as { range: string }).range)
     }
+    // The watchdog's metric: no failed mail, an empty series.
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ data: [] })))
+    const quiet = '/api/timeseries?metric=mailfail&range=24h'
+    const real = await handleTimeseries(
+      new URL(`${ORIGIN}${quiet}`),
+      makeEnv({ CF_ACCOUNT_ID: 'acct', AE_API_TOKEN: 'token' }).env,
+      makeCtx().ctx,
+    )
+    expect(await answer(real)).toEqual(stub(quiet))
     expectSameContract(
       await answer(await handleTimeseries(new URL(`${ORIGIN}/api/timeseries?metric=nope`), makeEnv().env, makeCtx().ctx)),
       stub('/api/timeseries?metric=nope'),

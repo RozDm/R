@@ -79,4 +79,6 @@ jobs:
             "SELECT blob3 AS asn, blob4 AS operator, blob2 AS country, SUM(_sample_interval) AS visits FROM rozsoshnykh_metrics WHERE blob1 = 'bot' AND $W GROUP BY asn, operator, country ORDER BY visits DESC LIMIT 40"
           q "CSP violations reported by browsers" \
             "SELECT blob2 AS directive, blob3 AS blocked, blob4 AS page, SUM(_sample_interval) AS reports FROM rozsoshnykh_metrics WHERE blob1 = 'csp' AND $W GROUP BY directive, blocked, page ORDER BY reports DESC LIMIT 40"
+          q "Mails the Worker failed to send (contact form / status alert)" \
+            "SELECT blob2 AS source, SUM(_sample_interval) AS failures FROM rozsoshnykh_metrics WHERE blob1 = 'mailfail' AND $W GROUP BY source ORDER BY failures DESC LIMIT 10"
           echo "Report written to the run summary."

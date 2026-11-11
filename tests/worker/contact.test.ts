@@ -103,8 +103,11 @@ describe('POST /api/contact', () => {
   it('a failed mail send leaves no row, so the retry is mailed (not deduped)', async () => {
     const fake = makeEnv()
     fake.failMail(true)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(await send(fake)).toEqual({ status: 502, body: { error: 'send failed' } })
     expect(rows(fake)).toBe(0)
+    // The failure the watchdog can read: one AE point, nothing of the visitor's.
+    expect(fake.aePoints).toEqual([{ indexes: ['mailfail'], blobs: ['mailfail', 'contact'], doubles: [1] }])
 
     fake.failMail(false)
     expect(await send(fake)).toEqual({ status: 200, body: { ok: true } })
@@ -167,6 +170,23 @@ describe('POST /api/contact', () => {
     seed(later, 120, { ip: '198.51.100.1', message: 'første melding her' })
     seed(later, 180, { ip: '198.51.100.2', message: 'andre melding her' })
     expect((await send(later)).status).toBe(200)
+  })
+
+  // As plain strings, `Kari@Example.no` and `kari@example.no` each had their
+  // own window and their own dedup.
+  it('counts one address whatever its letter case, and mails it as typed', async () => {
+    const fake = makeEnv()
+    seed(fake, 20, { ip: '198.51.100.1', message: 'første melding her' })
+    seed(fake, 40, { ip: '198.51.100.2', message: 'andre melding her' })
+    expect((await send(fake, { ...FORM, email: 'Kari@Example.NO' })).status).toBe(429)
+
+    const fresh = makeEnv()
+    expect((await send(fresh, { ...FORM, email: 'Kari@Example.NO' })).status).toBe(200)
+    expect(fresh.sent[0].raw).toContain('Reply-To: <Kari@Example.NO>')
+    expect((fresh.db.prepare('SELECT email FROM contact').get() as { email: string }).email).toBe('kari@example.no')
+    // The same message from the same mailbox, typed in lower case: a duplicate.
+    expect(await send(fresh)).toEqual({ status: 200, body: { ok: true } })
+    expect(fresh.sent).toHaveLength(1)
   })
 
   // The windows and the dedup are D1 reads that fail open (the burst cap and

@@ -49,7 +49,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - AE `rozsoshnykh_metrics` (`METRICS_AE`), channel in `blob1`: `geo` (every
   `recordGeo`; `blob2` country, `blob3` `AS<asn>`, `blob4` network org — a
   bot diagnostic, no IP), `view` (`/api/views` POSTs, not graphed), `csp`
-  (one point per report POST). Reads need `CF_ACCOUNT_ID` + `AE_API_TOKEN`
+  (one point per report POST), `mailfail` (one point per mail the Worker
+  failed to send; `blob2` `contact` or `status`, nothing of the visitor's —
+  the watchdog reads it, since a dead mail path can't mail). Reads need `CF_ACCOUNT_ID` + `AE_API_TOKEN`
   (`Account Analytics:Read`); missing either, or AE slower than 8 s → empty
   series. Quote AE SQL `INTERVAL` literals (`INTERVAL '6' HOUR`; bare 422s).
 - `METRICS_EPOCH` hides pre-relaunch AE points (AE is append-only). It must
@@ -60,7 +62,12 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `/api/views` POST (falls back to a read), `/api/csp-report` (silent 204),
   `/api/contact` (429, a burst cap ahead of Turnstile — its D1 windows fail
   open). It fails open. The header gates are spoofable; this is what stops a
-  POST loop burning D1's write quota.
+  POST loop burning D1's write quota. It does not stop inflated counters:
+  "one person, once" is the browser's doing (localStorage), so a script can
+  add ~29k visits or views a day per address. Accepted (owner's call,
+  2026-11-10; `.github/SECURITY.md`): the numbers are cosmetic and hidden
+  below their thresholds, and a server-side cap per address would break the
+  privacy notice's «ingen IP-adresser lagres i statistikken».
 - Runtime secrets (`TURNSTILE_SECRET`, `CF_ACCOUNT_ID`, `AE_API_TOKEN`,
   `NETBOX_URL`) aren't in `wrangler.jsonc`: typed in `src/env.d.ts`, synced
   by `deploy.yml`. (`CF_ACCOUNT_ID` → `vars` was declined: no gain.)
@@ -79,8 +86,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `/api/visit` — POST, the Besøk beacon: `recordGeo` writes the D1 `geo`
   row and the AE point (datacenter ASNs only to AE, as `bot`). GET is a
   harmless self-diagnostic (caller's country + whether it counts).
-- `/api/timeseries?metric=view|geo&range=24h|7d|30d|all` — GET, edge-cached
-  per metric+range (`all` ≈ 90 days at 6 h). No AE secrets or a failed AE
+- `/api/timeseries?metric=view|geo|mailfail&range=24h|7d|30d|all` — GET,
+  edge-cached per metric+range (`all` ≈ 90 days at 6 h; `mailfail` is the
+  watchdog's, never charted). No AE secrets or a failed AE
   read → 200, empty `points`, `degraded: true`, never cached; the watchdog
   fails on `degraded`.
 - `/api/contact` — POST: a 32 KB body cap (413, by Content-Length and while
@@ -89,7 +97,10 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `hostname` must be the request's), an e-mail pattern without
   `<>,;"()[]\:` (it lands in `Reply-To`), D1 limits per sender (`contact.ip`
   holds `clientKey(ip)`) and per address, and a 2-minute dedup (same address
-  + message → ack'd, no second mail).
+  + message → ack'd, no second mail). The address is compared and stored
+  lower-cased (`Reply-To` keeps it as typed); dots and `+tags` are left
+  alone — providers differ. Anyone can spend an address's window for an
+  hour: that is the limit's price, accepted.
 - `/api/csp-report` — POST → always 204, AE only (anyone can POST): body via
   `readCapped` (64 KB); `parseCspReports` keeps own-origin reports (origin +
   path only) and a POST writes at most one point. GET → 405 (smoke-checked).
@@ -163,7 +174,11 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   after an alerted outage. `isStale`/`STALE_AFTER_MS` (20 min) grey out the
   banner and footer dot when the cron stops writing. A failed KV read skips
   the tick: read as "no snapshot yet", it wiped the history and the alert
-  state (a second «nede» for one outage). `HISTORY_LIMIT = 149` is
+  state (a second «nede» for one outage). A failed KV write holds the alert
+  mails: "already mailed" lives in the snapshot, so a mail without it would
+  repeat every tick. The mail goes out on the first stored tick; an outage
+  that starts and ends while KV refuses writes is never mailed — the
+  watchdog sees the stale snapshot. `HISTORY_LIMIT = 149` is
   intentional (1:4:9).
 - Contact: a failed mail send deletes its D1 row (else the dedup would ack
   the retry without mailing it). Windows over `contact.at` are ISO cutoffs
@@ -176,8 +191,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   anything else gets `html_handling`'s 307. `/favicon.ico` is a build-time
   copy of `/icons/favicon.ico`.
 - Failures swallowed for availability (D1 upserts, mail sends, prune, the
-  contact form's D1 checks, which fail open, the KV reads) still
-  `console.error` — Workers Logs is the only place they show. Traces stay
+  contact form's D1 checks, which fail open, the KV reads and writes) still
+  `console.error` — Workers Logs is the only place they show, except a
+  failed mail send, which also writes the `mailfail` AE point. Traces stay
   off (`"traces": {}` enables nothing; owner's call): from 2026-12-01 logs
   and traces share Free's 0.5 GB/day.
 
