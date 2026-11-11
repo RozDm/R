@@ -5,6 +5,7 @@ import { DICT } from '@/data/i18n'
 import { INTL_LOCALE, type Lang } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
 import { HISTORY_LIMIT, isStale } from '@/src/status'
+import { serverNow } from '@/lib/server-clock'
 import { fetchStatus, type StatusSnapshot } from '@/lib/status-fetch'
 
 // The cron writes every 5 min, so polling that often is plenty when all is
@@ -49,7 +50,7 @@ export default function StatusDashboard() {
         const d = await fetchStatus()
         if (cancelled) return
         setData(d)
-        setStale(!!d.updatedAt && isStale(d.updatedAt, Date.now()))
+        setStale(!!d.updatedAt && isStale(d.updatedAt, serverNow()))
         setState('ok')
         const anyDown = (d.results ?? []).some((r) => !r.ok)
         schedule(anyDown ? DOWN_REFRESH_MS : OK_REFRESH_MS)

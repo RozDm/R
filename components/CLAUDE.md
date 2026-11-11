@@ -79,7 +79,13 @@ incident background: `docs/history.md`.
   polls only while `#status` is on screen; its live region is the state
   text alone. An uptime bar is colour and mouse-only titles, so it is
   `aria-hidden` and the caption under it says the same in words: the
-  checks and how many failed.
+  checks and how many failed. "Now" is the server's (`lib/server-clock.ts`):
+  `fetchStatus` and the Trends fetch note each answer's `Date` header
+  (stamped by the edge on cached answers too), and the stale check and the
+  chart's bucket grid use `serverNow()` — on a visitor's clock that is days
+  off, a fresh snapshot read as dead and the dots fell off the grid. A gap
+  under two minutes counts as none. `VisitBeacon` keeps the visitor's own
+  clock: its day is theirs.
 - `effects/VisitBeacon.tsx` (mounted by `app/layout.tsx`): one
   `POST /api/visit` per browser per local day (localStorage `visit-day`),
   sent on the first trusted human input (`lib/visit.ts`: pointer move/press,

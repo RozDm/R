@@ -97,6 +97,46 @@ test('the uptime caption counts the failed checks', async ({ page }) => {
   await expect(status.locator('[title*="nede"]').first().locator('..')).toHaveAttribute('aria-hidden', 'true')
 })
 
+// A visitor's clock can be days off. The stale banner and the Trends grid
+// both hang on "now", so they take it from the answer's Date header
+// (lib/server-clock.ts): on the local clock a fresh snapshot read as dead and
+// the chart's dots fell off its grid.
+test('a wrong clock on the visitor\'s machine greys out nothing', async ({ page }) => {
+  const now = Date.now()
+  const date = new Date(now).toUTCString()
+  const hour = (h: number) => new Date(Math.floor((now - h * 3_600_000) / 3_600_000) * 3_600_000)
+  const key = (d: Date) => d.toISOString().slice(0, 19).replace('T', ' ')
+  await page.clock.install({ time: now + 2 * 86_400_000 })
+  await page.route('**/api/status', (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { date },
+      body: JSON.stringify({
+        updatedAt: new Date(now - 60_000).toISOString(),
+        results: [{ name: 'Grafana', ok: true, status: 200, ms: 120 }],
+        history: [{ at: new Date(now - 60_000).toISOString(), up: { Grafana: true } }],
+      }),
+    }),
+  )
+  await page.route('**/api/timeseries**', (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { date },
+      body: JSON.stringify({ metric: 'geo', range: '7d', points: [5, 2].map((h, i) => ({ ts: key(hour(h)), value: i + 1 })) }),
+    }),
+  )
+  await page.goto('/')
+  const status = page.locator('#status')
+  await status.scrollIntoViewIfNeeded()
+  await expect(status.getByText('Alle systemer operative').first()).toBeVisible()
+  await expect(status.getByText('Statusdata er utdatert')).toHaveCount(0)
+  const trends = page.locator('#trender')
+  await trends.scrollIntoViewIfNeeded()
+  await expect(trends.locator('svg[role="img"] circle')).toHaveCount(2)
+})
+
 // The footer is a phone's last stop. Its links read 16–20 px tall, but the
 // finger gets 40 px or more (padding that moves nothing).
 test('footer links are finger-sized', async ({ page }) => {

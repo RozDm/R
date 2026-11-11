@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { isStale } from '@/src/status'
+import { serverNow } from '@/lib/server-clock'
 import { fetchStatus } from '@/lib/status-fetch'
 import { DICT } from '@/data/i18n'
 import { useLang } from '@/lib/use-lang'
@@ -30,7 +31,7 @@ export default function StatusDot() {
         const results = d.results || []
         if (cancelled || results.length === 0) return
         // A frozen snapshot can't vouch for anything — stay gray.
-        if (!d.updatedAt || isStale(d.updatedAt, Date.now())) return
+        if (!d.updatedAt || isStale(d.updatedAt, serverNow())) return
         setState(results.every((r) => r.ok) ? 'up' : 'down')
       })
       .catch(() => {})

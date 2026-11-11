@@ -133,6 +133,8 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     post-frontmatter.ts (a post's frontmatter, checked on read),
                     inline-code.ts (inline code breaks between words only),
                     status-fetch.ts (one shared /api/status fetch),
+                    server-clock.ts (the widgets' "now", from the API's Date
+                    header, not the visitor's clock),
                     use-near-viewport.ts (below-the-fold widgets load on
                     approach), timeseries-fill.ts, trends-axis.ts, visit.ts
 schema/             metrics.sql (views, geo, contact)

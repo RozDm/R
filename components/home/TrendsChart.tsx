@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dropRepeatedDays, xTicksFor, yTicksFor } from '@/lib/trends-axis'
 import { ALL_MAX_DAYS, fillBuckets, isAllRangeCapped } from '@/lib/timeseries-fill'
 import { MIN_PUBLIC_VISITS, fetchGeoCountries, showVisitCounts } from '@/lib/geo'
+import { noteServerDate, serverNow } from '@/lib/server-clock'
 import { DICT } from '@/data/i18n'
 import { INTL_LOCALE, type Lang } from '@/lib/i18n'
 import { useLang } from '@/lib/use-lang'
@@ -145,7 +146,11 @@ export default function TrendsChart() {
       signal: controller.signal,
       cache: 'no-store',
     })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+      .then((r) => {
+        // The grid below is laid out back from the server's "now".
+        noteServerDate(r)
+        return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))
+      })
       .then((d: Series) => setResult({ range, series: d, failed: false }))
       .catch((err) => {
         if ((err as Error).name !== 'AbortError') setResult({ range, series: null, failed: true })
@@ -172,7 +177,10 @@ export default function TrendsChart() {
     // Zero-fill so the x-axis spans the whole window and quiet stretches read
     // as real gaps. We plot a point per bucket that actually had visits; empty
     // buckets contribute no dot (just a gap).
-    const filled = fillBuckets(series?.points ?? [], range)
+    // By the server's clock (lib/server-clock.ts): on a visitor's wrong one
+    // the grid ended at another hour and the buckets' dots fell off it.
+    const now = serverNow()
+    const filled = fillBuckets(series?.points ?? [], range, now)
     const max = niceCeil(Math.max(1, ...filled.map((p) => p.value)))
     const n = filled.length
     const coords: Dot[] = filled.map((p, i) => ({
@@ -193,7 +201,7 @@ export default function TrendsChart() {
       // headline switches to the exact D1 total.
       waveTotal: filled.reduce((sum, p) => sum + p.value, 0),
       tickLabels: range === '24h' ? ticks : dropRepeatedDays(ticks),
-      allCapped: range === 'all' && isAllRangeCapped(),
+      allCapped: range === 'all' && isAllRangeCapped(now),
     }
   }, [series, range, lang, PLOT_W, PLOT_H, BASELINE])
 
