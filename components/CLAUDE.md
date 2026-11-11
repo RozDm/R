@@ -68,17 +68,6 @@ incident background: `docs/history.md`.
   for its route-change reset. Page links set `aria-current` (`page` exact,
   `true` parent), styled via `[&[aria-current]]:`.
 
-- `layout/LangHint.tsx` (in the header): one closable line for a reader on
-  the language they probably don't read (`lib/lang-hint.ts`, from
-  `navigator.languages`: no Scandinavian language on a Norwegian page; a
-  Norwegian first language on an English one) — a link where the NO/EN
-  switch leads, never a redirect, written in the language it offers (so its
-  copy sits in the other language's dictionary, like `langSwitch`). Closed
-  or followed, it stays closed (localStorage `lang-hint`, named in both
-  privacy notices). It hangs below the header (`absolute`), so appearing
-  after hydration shifts nothing, and the intro's overlay covers it. The
-  e2e browser speaks en-US: `e2e/fixtures.ts` keeps the hint closed
-  (`langHintClosed`) except in its own tests.
 - The blog index shows its RSS feed as a plain `<a>` (`feedPath`): a file,
   not a page, so no `<Link>`.
 
@@ -92,8 +81,12 @@ incident background: `docs/history.md`.
   each `Lazy*.tsx` placeholder keeps the final height). `StatusDashboard`
   polls only while `#status` is on screen; its live region is the state
   text alone. An uptime bar is colour and mouse-only titles, so it is
-  `aria-hidden` and the caption under it says the same in words: the
-  checks and how many failed. "Now" is the server's (`lib/server-clock.ts`):
+  `aria-hidden`. Its caption is quiet — «Siste 149 sjekker» — on the owner's
+  call (2026-11-11): a visible count of old single failures («4 feilet»)
+  read as an alarm on a service that was up, and the «1:4:9» aside went
+  with it (`HISTORY_LIMIT` stays 149). The count stays for screen readers
+  (`sr-only`: it is the hidden bar's text), and while a service is down the
+  caption adds since when (`failingSince`, `src/status.ts`). "Now" is the server's (`lib/server-clock.ts`):
   `fetchStatus` and the Trends fetch note each answer's `Date` header
   (stamped by the edge on cached answers too), and the stale check and the
   chart's bucket grid use `serverNow()` — on a visitor's clock that is days

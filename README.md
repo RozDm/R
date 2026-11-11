@@ -135,7 +135,6 @@ lib/                blog.ts, tags.ts, markdown.ts, reading-time.ts, clipboard.ts
                     status-fetch.ts (one shared /api/status fetch),
                     server-clock.ts (the widgets' "now", from the API's Date
                     header, not the visitor's clock),
-                    lang-hint.ts (who is offered the other language),
                     use-near-viewport.ts (below-the-fold widgets load on
                     approach), timeseries-fill.ts, trends-axis.ts, visit.ts
 schema/             metrics.sql (views, geo, contact)

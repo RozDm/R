@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { HISTORY_LIMIT, STALE_AFTER_MS, buildStatusData, detectTransitions, isStale, monitors, parseHistory } from '@/src/status'
+import { HISTORY_LIMIT, STALE_AFTER_MS, buildStatusData, detectTransitions, failingSince, isStale, monitors, parseHistory } from '@/src/status'
 import type { HistoryEntry, MonitorResult } from '@/src/status'
 
 const result = (name: string, ok: boolean): MonitorResult => ({
@@ -86,6 +86,24 @@ describe('isStale', () => {
 
   it('treats an unparseable timestamp as stale', () => {
     expect(isStale('not a date', t0)).toBe(true)
+  })
+})
+
+describe('failingSince', () => {
+  const h = (...up: boolean[]): HistoryEntry[] => up.map((ok, i) => ({ at: `2026-11-11T10:0${i}:00.000Z`, up: { A: ok } }))
+
+  it('is the first check of the unbroken run of failures up to now', () => {
+    expect(failingSince(h(true, false, true, false, false), 'A')).toEqual({ at: '2026-11-11T10:03:00.000Z', whole: false })
+  })
+
+  it('is null when the latest check passed, or there is no history', () => {
+    expect(failingSince(h(false, false, true), 'A')).toBeNull()
+    expect(failingSince([], 'A')).toBeNull()
+    expect(failingSince(h(false), 'B')).toBeNull()
+  })
+
+  it('flags an outage older than the whole history', () => {
+    expect(failingSince(h(false, false), 'A')).toEqual({ at: '2026-11-11T10:00:00.000Z', whole: true })
   })
 })
 

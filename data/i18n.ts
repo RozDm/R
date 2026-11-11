@@ -29,9 +29,6 @@ const nb = {
   },
   // The switch shows the OTHER language: its label is written in that language.
   langSwitch: { label: 'EN', title: 'English version' },
-  // Like the switch above: written in the language it offers, for a reader
-  // who doesn't read this one (components/layout/LangHint.tsx).
-  langHint: { text: 'Read this site in English', close: 'Close' },
   theme: { toDark: 'Bytt til mørkt tema', toLight: 'Bytt til lyst tema' },
   hero: {
     intro:
@@ -57,9 +54,12 @@ const nb = {
     lastKnown: (ok: boolean) => `Sist kjent: ${ok ? 'operativ' : 'nede'}`,
     bar: (when: string, up: boolean | undefined) =>
       `${when} — ${up === undefined ? 'ingen data' : up ? 'oppe' : 'nede'}`,
-    lastChecks: (n: number, failed: number) =>
-      `Siste ${n} sjekker · ${failed === 0 ? 'ingen feil' : `${failed} feilet`}`,
-    monolith: 'Monolittens proporsjoner: 1² : 2² : 3²',
+    lastChecks: (n: number) => `Siste ${n} sjekker`,
+    // Screen readers only: the bar's colours in words.
+    failedChecks: (n: number) => `${n} feilet`,
+    downSince: (when: string) => `nede siden ${when}`,
+    // Every check in the history failed: the outage is older than it.
+    downSinceBefore: (when: string) => `nede siden før ${when}`,
   },
   visitors: {
     eyebrow: 'Besøk',
@@ -200,7 +200,6 @@ const en: Dict = {
     closeMenu: 'Close menu',
   },
   langSwitch: { label: 'NO', title: 'Norsk versjon' },
-  langHint: { text: 'Les nettstedet på norsk', close: 'Lukk' },
   theme: { toDark: 'Switch to dark theme', toLight: 'Switch to light theme' },
   hero: {
     intro:
@@ -225,8 +224,10 @@ const en: Dict = {
     down: 'Down',
     lastKnown: (ok) => `Last known: ${ok ? 'operational' : 'down'}`,
     bar: (when, up) => `${when} — ${up === undefined ? 'no data' : up ? 'up' : 'down'}`,
-    lastChecks: (n, failed) => `Last ${n} checks · ${failed === 0 ? 'no failures' : `${failed} failed`}`,
-    monolith: 'The monolith’s proportions: 1² : 2² : 3²',
+    lastChecks: (n) => `Last ${n} checks`,
+    failedChecks: (n) => `${n} failed`,
+    downSince: (when) => `down since ${when}`,
+    downSinceBefore: (when) => `down since before ${when}`,
   },
   visitors: {
     eyebrow: 'Visits',

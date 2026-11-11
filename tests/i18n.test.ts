@@ -86,13 +86,15 @@ describe('dictionary', () => {
     expect(from).toContain('@/data/i18n-error')
   })
 
-  // The words under the uptime bar (StatusDashboard): the bar itself is
-  // colour only, so the caption carries the count of failed checks.
-  it('captions the uptime bar with the checks and how many failed', () => {
-    expect(DICT.nb.status.lastChecks(149, 0)).toBe('Siste 149 sjekker · ingen feil')
-    expect(DICT.nb.status.lastChecks(149, 2)).toBe('Siste 149 sjekker · 2 feilet')
-    expect(DICT.en.status.lastChecks(149, 0)).toBe('Last 149 checks · no failures')
-    expect(DICT.en.status.lastChecks(3, 1)).toBe('Last 3 checks · 1 failed')
+  // The words under the uptime bar (StatusDashboard): quiet by default, the
+  // failed count for screen readers, and when an outage began while it lasts.
+  it('captions the uptime bar', () => {
+    expect(DICT.nb.status.lastChecks(149)).toBe('Siste 149 sjekker')
+    expect(DICT.en.status.lastChecks(149)).toBe('Last 149 checks')
+    expect(DICT.nb.status.failedChecks(2)).toBe('2 feilet')
+    expect(DICT.en.status.failedChecks(1)).toBe('1 failed')
+    expect(DICT.nb.status.downSince('11.11., 14:35')).toBe('nede siden 11.11., 14:35')
+    expect(DICT.en.status.downSinceBefore('11/11, 14:35')).toBe('down since before 11/11, 14:35')
   })
 
   it('picks a localized value or passes a neutral one through', () => {

@@ -46,6 +46,17 @@ export interface HistoryEntry {
   up: Record<string, boolean>
 }
 
+// When a monitor's current outage began, as far as the history shows: the
+// time of the first check in its unbroken run of failures up to now, or null
+// when its latest check passed (or there is none). `whole`: every check the
+// history holds failed, so the outage is older than the window.
+export function failingSince(history: HistoryEntry[], name: string): { at: string; whole: boolean } | null {
+  let first = history.length
+  while (first > 0 && history[first - 1].up?.[name] === false) first--
+  if (first === history.length) return null
+  return { at: history[first].at, whole: first === 0 }
+}
+
 // What the public snapshot (KV → /api/status → dashboard) carries per
 // monitor: no URL. The monitored hosts include an admin panel (NetBox), and
 // publishing its address on the front page only hands it to password

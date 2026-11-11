@@ -72,28 +72,42 @@ test('the dashboard loads and polls only while it is on screen', async ({ page }
   await expect.poll(() => calls).toBe(2)
 })
 
-// The uptime bar is 149 coloured slivers with mouse-only titles. The caption
-// under it says the same in words — how many checks, how many of them failed —
-// and the slivers themselves are hidden from assistive tech.
-test('the uptime caption counts the failed checks', async ({ page }) => {
+// The caption under an uptime bar is quiet — «Siste N sjekker» — whatever old
+// single failures the bar shows: counted out loud, they read as an alarm on a
+// service that is up. The count stays for screen readers (the bar is colour
+// and mouse-only titles, hidden from them), and while a service is down the
+// caption says since when.
+test('the uptime caption is quiet, and says since when a service is down', async ({ page }) => {
   const now = Date.now()
-  const up = (i: number) => ({ NetBox: i !== 2 && i !== 1, Grafana: true })
+  const at = (i: number) => new Date(now - i * 300_000).toISOString()
+  // Grafana: one old failed check, up now. NetBox: down for the last two.
+  const up = (i: number) => ({ Grafana: i !== 3, NetBox: i > 1 })
   await page.route('**/api/status', (r) =>
     r.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         updatedAt: new Date(now - 60_000).toISOString(),
-        results: ['NetBox', 'Grafana'].map((name) => ({ name, ok: true, status: 200, ms: 120 })),
-        history: [3, 2, 1, 0].map((i) => ({ at: new Date(now - i * 300_000).toISOString(), up: up(i) })),
+        results: [
+          { name: 'NetBox', ok: false, status: 503, ms: 120 },
+          { name: 'Grafana', ok: true, status: 200, ms: 120 },
+        ],
+        history: [4, 3, 2, 1, 0].map((i) => ({ at: at(i), up: up(i) })),
       }),
     }),
   )
   await page.goto('/')
   const status = page.locator('#status')
   await status.scrollIntoViewIfNeeded()
-  await expect(status.getByText('Siste 4 sjekker · 2 feilet')).toBeVisible()
-  await expect(status.getByText('Siste 4 sjekker · ingen feil')).toBeVisible()
+  const caption = (name: string) =>
+    status.locator('div.rounded-xl').filter({ hasText: name }).locator('span').filter({ hasText: 'Siste 5 sjekker' }).first()
+  await expect(caption('Grafana')).toBeVisible()
+  await expect(caption('Grafana')).not.toContainText('nede siden')
+  await expect(caption('Grafana').locator('.sr-only')).toHaveText('· 1 feilet')
+  await expect(caption('NetBox')).toContainText('nede siden')
+  await expect(caption('NetBox').locator('.sr-only')).toHaveText('· 2 feilet')
+  await expect(status.getByText('1:4:9')).toHaveCount(0)
+  await expect(status.getByText('ingen feil')).toHaveCount(0)
   await expect(status.locator('[title*="nede"]').first().locator('..')).toHaveAttribute('aria-hidden', 'true')
 })
 
@@ -649,66 +663,5 @@ test('the blog index links its RSS feed, in both languages', async ({ page, requ
     await expect(link).toBeVisible()
     await expect(link).toHaveAttribute('href', feed)
     expect(await (await request.get(feed)).text()).toContain('<rss')
-  }
-})
-
-// A reader who landed on the language they don't read gets one line under the
-// header, in the language it offers — a link, never a redirect. The tests'
-// browser speaks en-US, so the fixtures keep it closed everywhere else.
-test.describe('language hint', () => {
-  test.use({ langHintClosed: false })
-  const hint = (page: import('@playwright/test').Page) => page.getByRole('banner').locator('[lang]').filter({ has: page.getByRole('button') })
-
-  test('offers English on a Norwegian page, moves nothing, and stays closed once closed', async ({ page }) => {
-    await page.goto('/')
-    const bar = hint(page)
-    await expect(bar).toBeVisible()
-    await expect(bar).toHaveAttribute('lang', 'en')
-    await expect(bar.getByRole('link', { name: 'Read this site in English' })).toHaveAttribute('href', '/en/')
-    // It hangs below the header: the page under it is where it was.
-    const top = () => page.locator('main').evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
-    const withHint = await top()
-    await bar.getByRole('button', { name: 'Close' }).click()
-    await expect(bar).toHaveCount(0)
-    expect(await top()).toBe(withHint)
-    await page.reload()
-    await expect(page.getByRole('banner')).toBeVisible()
-    await page.waitForLoadState('networkidle')
-    await expect(bar).toHaveCount(0)
-  })
-
-  test('follows a post to its twin, and is not shown once followed', async ({ page }) => {
-    test.skip(!twin, 'no post with a translation in this build')
-    await page.goto(twin!.nb)
-    await hint(page).getByRole('link').click()
-    await expect(page).toHaveURL(endsWith(twin!.en))
-    await expect(page.getByRole('banner')).toBeVisible()
-    await page.goBack()
-    await page.waitForLoadState('networkidle')
-    await expect(hint(page)).toHaveCount(0)
-  })
-
-  test.describe('a Norwegian reader', () => {
-    test.use({ locale: 'nb-NO' })
-
-    test('gets no hint on Norwegian pages and a Norwegian one on English pages', async ({ page }) => {
-      await page.goto('/')
-      await page.waitForLoadState('networkidle')
-      await expect(hint(page)).toHaveCount(0)
-      await page.goto('/en/contact/')
-      const bar = hint(page)
-      await expect(bar).toHaveAttribute('lang', 'nb')
-      await expect(bar.getByRole('link', { name: 'Les nettstedet på norsk' })).toHaveAttribute('href', '/kontakt/')
-    })
-  })
-
-  for (const scheme of ['light', 'dark'] as const) {
-    test(`no axe violations with the hint open (${scheme})`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme: scheme })
-      await page.goto('/kontakt/')
-      await expect(hint(page)).toBeVisible()
-      const { violations } = await new AxeBuilder({ page }).include('header.sticky').analyze()
-      expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([])
-    })
   }
 })
