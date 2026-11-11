@@ -59,6 +59,8 @@ The observer on the other side of the boundary must therefore watch for two thin
 
 ### Layer 3: who monitors the monitor?
 
+Layer 2 watches the hosts: that they do not go quiet and do not blind the record. Layer 3 watches the collecting centre itself. The log stream is now protected from the host, but what protects the system that collects those logs, and the alarms built on it, from a full disk, a dead database or a cut link?
+
 An alarm system that never rings tells you nothing. Everything might be fine, or the monitor might have crashed, filled its disk, or been blocked at a firewall three days ago.
 
 The fix is to invert the signal. Instead of waiting for a message that says something is broken, an independent service outside your infrastructure waits for a steady pulse that says the monitor is alive and able to speak.
@@ -71,7 +73,7 @@ Even with one-way logs and an external heartbeat, someone has to manage the log 
 
 - **Borrowed time.** Nobody holds permanent full access for daily work. High privileges are checked out for a specific task and expire on their own, and the act of borrowing them is recorded before the session starts.
 - **Two pairs of eyes.** The person who proposes a change to critical infrastructure, or to the pipeline that deploys it, cannot be the one who approves it. And because an administrator might have the rights to turn off the two-person rule for ten seconds, any change to the approval rules themselves must trigger an immediate alert at Layer 2.
-- **A noisy spare key.** Every system needs an emergency account for when normal login systems are down. That key stays locked away, is never used for routine work, and sets off an immediate alarm through an independent channel the moment it is touched.
+- **A noisy spare key.** Every system needs an emergency account for when normal login systems are down. That key stays locked away, is never used for routine work, and sets off an immediate alarm through an independent channel the moment it is touched. That alarm must never block the login or depend on the login systems that may be down, or the key is useless in the very outage it exists for, and engineers in a panic will learn to disable it. Its job is to be loud afterwards, so the team knows: the emergency key was used at 03:15, by this person, from this place.
 
 ## Same breach, two designs
 
@@ -100,6 +102,6 @@ In a small environment, where one person runs both the servers and the security,
 2. **The watcher lives outside the watched.** The collector and the alarm do not share credentials, network fate, or hardware with the machines they guard.
 3. **Silence is a fault, not peace.** Both a quiet server and a quiet monitor raise an alarm when their pulse stops.
 4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, logged, and, for emergency keys, loud by design.
-5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure with a stopwatch how long it takes before someone notices.
+5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure two times with a stopwatch: how long until the outside receiver raises the alarm, and how long until a person acts on it. The first is the timeout you configured; the second is the one that actually protects you.
 
 Tools and platforms change every few years. The geometry of trust doesn't.

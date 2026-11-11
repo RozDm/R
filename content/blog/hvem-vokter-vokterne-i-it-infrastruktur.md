@@ -58,6 +58,8 @@ Observatøren på den andre siden av grensen må derfor passe på to ting samtid
 
 ### Lag 3: hvem overvåker overvåkeren?
 
+Lag 2 passer på vertene: at de ikke blir stille og ikke blinder sporet. Lag 3 passer på selve samlesentralen. Loggstrømmen er nå beskyttet mot verten, men hva beskytter systemet som samler loggene, og alarmene som bygger på det, mot full disk, død database eller brutt forbindelse?
+
 Et alarmsystem som aldri ringer, forteller deg ingenting. Alt kan være i orden, eller overvåkeren kan ha krasjet, fylt disken eller blitt stengt ute av en brannmur for tre dager siden.
 
 Løsningen er å snu signalet. I stedet for å vente på en melding om at noe er ødelagt, venter en uavhengig tjeneste utenfor infrastrukturen din på en jevn puls som sier at overvåkeren lever og kan snakke.
@@ -70,7 +72,7 @@ Selv med logger som går én vei og en ekstern puls må noen administrere samler
 
 - **Lånt tid.** Ingen har permanent full tilgang til daglig arbeid. Høye rettigheter sjekkes ut til en bestemt oppgave og utløper av seg selv, og selve lånet registreres før økten starter.
 - **To par øyne.** Den som foreslår en endring i kritisk infrastruktur, eller i pipelinen som ruller den ut, kan ikke være den som godkjenner den. Og fordi en administrator kan ha rett til å slå av tomannsregelen i ti sekunder, må enhver endring i godkjenningsreglene selv utløse et umiddelbart varsel i lag 2.
-- **En bråkete reservenøkkel.** Ethvert system trenger en nødkonto for når vanlige innloggingssystemer er nede. Den nøkkelen holdes innelåst, brukes aldri til rutinearbeid og utløser en øyeblikkelig alarm over en uavhengig kanal i det den berøres.
+- **En bråkete reservenøkkel.** Ethvert system trenger en nødkonto for når vanlige innloggingssystemer er nede. Den nøkkelen holdes innelåst, brukes aldri til rutinearbeid og utløser en øyeblikkelig alarm over en uavhengig kanal i det den berøres. Alarmen må aldri blokkere innloggingen eller være avhengig av innloggingssystemer som kan være nede, ellers er nøkkelen ubrukelig i akkurat det avbruddet den finnes for, og ingeniører i panikk lærer seg å slå den av. Oppgaven er å bråke i etterkant, så teamet vet at nødnøkkelen ble brukt klokken 03:15, av denne personen, fra dette stedet.
 
 ## Samme brudd, to oppsett
 
@@ -99,6 +101,6 @@ I et lite miljø, der én person driver både serverne og sikkerheten, kan du ik
 2. **Vokteren bor utenfor den voktede.** Samleren og alarmen deler ikke legitimasjon, nettverksskjebne eller maskinvare med maskinene de vokter.
 3. **Stillhet er en feil, ikke fred.** Både en stille server og en stille overvåker slår alarm når pulsen deres uteblir.
 4. **Makt leies, eies aldri.** Rutinearbeid bruker minimale rettigheter. Full tilgang er midlertidig og logget, og for nødnøkler høylytt med vilje.
-5. **Test alarmen, ikke konfigurasjonen.** Stopp loggstrømmen på en testmaskin, blokker overvåkerens puls, og mål med stoppeklokke hvor lang tid det går før noen merker det.
+5. **Test alarmen, ikke konfigurasjonen.** Stopp loggstrømmen på en testmaskin, blokker overvåkerens puls, og ta tiden to ganger: hvor lenge til den eksterne mottakeren slår alarm, og hvor lenge til et menneske handler på den. Det første er tidsavbruddet du selv har satt, det andre er det som faktisk beskytter deg.
 
 Verktøy og plattformer skifter med noen års mellomrom. Tillitens geometri gjør ikke det.
