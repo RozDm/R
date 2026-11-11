@@ -1,6 +1,6 @@
 ---
 title: "Who watches the watchers? Oversight in IT infrastructure"
-description: "Every guard that can protect a system can also blind it. Four layers of oversight, so that no single guard has to be trusted alone."
+description: "Anything that can protect a system can also blind it: admins, agents, monitoring tools. Four layers of oversight, from one-way logs to a dead man's switch."
 date: "2026-11-11"
 tags: ["Sikkerhet", "SOC"]
 translationOf: "hvem-vokter-vokterne-i-it-infrastruktur"
@@ -78,7 +78,7 @@ Layer 2 watches the sources: that they do not go quiet and do not blind the reco
 
 An alarm system that never rings tells you nothing. Everything might be fine, or the monitor might have crashed, filled its disk, or been blocked at a firewall three days ago.
 
-The fix is to invert the signal. Instead of waiting for a message that says something is broken, an independent service outside your infrastructure waits for a steady pulse that says the monitor is alive and able to speak.
+The fix is to invert the signal, as in a dead man's switch. Instead of waiting for a message that says something is broken, an independent service outside your infrastructure waits for a steady pulse that says the monitor is alive and able to speak.
 
 For the pulse to prove anything, it has to travel through the whole chain: triggered inside the monitoring engine, passed through the notification router, and delivered outside. A pulse sent by a separate timer script only proves the script works. When the real pulse stops arriving for a few minutes, the outside receiver raises the alarm. It is the one link that does not share a fate with the rest of your setup, and the alarm it raises must reach a person by a path that does not depend on the infrastructure it watches: its own credentials, its own network, not the company mail that may be down. The pulse proves the alarm path is alive. It does not prove the monitor still sees its sources; that is what the beats in Layer 2 are for. Between them, the whole path from source to human is covered.
 

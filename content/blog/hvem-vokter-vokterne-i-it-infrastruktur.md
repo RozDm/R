@@ -1,6 +1,6 @@
 ---
 title: "Hvem vokter vokterne? Tilsyn i IT-infrastruktur"
-description: "Alt som kan beskytte et system, kan også blinde det. Fire lag med tilsyn, slik at ingen vokter må stoles på alene."
+description: "Alt som kan beskytte et system, kan også blinde det: administratorer, agenter, overvåkingsverktøy. Fire lag med tilsyn, fra enveislogger til ekstern puls."
 date: "2026-11-11"
 tags: ["Sikkerhet", "SOC"]
 draft: true
@@ -77,7 +77,7 @@ Lag 2 passer på kildene: at de ikke blir stille og ikke blinder sporet. Lag 3 p
 
 Et alarmsystem som aldri ringer, forteller deg ingenting. Alt kan være i orden, eller overvåkeren kan ha krasjet, fylt disken eller blitt stengt ute av en brannmur for tre dager siden.
 
-Løsningen er å snu signalet. I stedet for å vente på en melding om at noe er ødelagt, venter en uavhengig tjeneste utenfor infrastrukturen din på en jevn puls som sier at overvåkeren lever og kan snakke.
+Løsningen er å snu signalet, som i en «dead man's switch». I stedet for å vente på en melding om at noe er ødelagt, venter en uavhengig tjeneste utenfor infrastrukturen din på en jevn puls som sier at overvåkeren lever og kan snakke.
 
 For at pulsen skal bevise noe, må den gå gjennom hele kjeden: utløst inne i overvåkingsmotoren, sendt gjennom varslingsruteren og levert utenfor. En puls fra et eget tidsskript beviser bare at skriptet virker. Når den ekte pulsen uteblir i noen minutter, slår den eksterne mottakeren alarm. Det er det eneste leddet som ikke deler skjebne med resten av oppsettet, og alarmen det slår, må nå et menneske over en vei som ikke avhenger av infrastrukturen den overvåker: egen legitimasjon, eget nett, ikke firmaets e-post som kanskje er nede. Pulsen beviser at alarmveien lever. Den beviser ikke at overvåkeren fortsatt ser kildene sine; det er slagene i lag 2 til for. Sammen dekker de hele veien fra kilde til menneske.
 
