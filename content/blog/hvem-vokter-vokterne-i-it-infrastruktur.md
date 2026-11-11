@@ -10,7 +10,7 @@ draft: true
 
 ## Å flytte risikoen
 
-Når du gir en administrator full tilgang til å reparere servere, eller installerer en agent som skal oppdage inntrengere, løser du ett problem og skaper et annet. Vokteren blir det mest verdifulle målet i rommet.
+Når du gir en administrator full tilgang til å reparere servere, eller installerer en agent som skal oppdage inntrengere, løser du ett problem og skaper et annet. Vokteren blir det mest verdifulle målet i rommet. Og vokteren trenger ikke være et menneske: en tjenestekonto, en pipeline som ruller ut endringer eller en KI-agent med brede rettigheter er også en vokter, og alt som står under, gjelder for den på samme måte.
 
 En ny vokter over den første flytter bare spørsmålet ett trinn opp. Hvis du ikke bestemmer hvordan kjeden fungerer, og hvor den slutter, ender du med en haug verktøy som alle har den samme svake siden.
 

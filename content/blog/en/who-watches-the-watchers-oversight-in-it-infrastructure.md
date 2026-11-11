@@ -11,7 +11,7 @@ draft: true
 
 ## Moving the risk
 
-When you give an administrator full rights to fix servers, or install an agent to watch for intrusions, you solve one problem and create another. The guard becomes the most valuable target in the room.
+When you give an administrator full rights to fix servers, or install an agent to watch for intrusions, you solve one problem and create another. The guard becomes the most valuable target in the room. And the guard does not have to be a person: a service account, a deployment pipeline or an AI agent with broad rights is a guard too, and everything below applies to it in the same way.
 
 Putting a second guard over the first only moves the question one step up. If you do not decide how the chain works, and where it stops, you end up with a pile of tools that all share the same weak spot.
 
