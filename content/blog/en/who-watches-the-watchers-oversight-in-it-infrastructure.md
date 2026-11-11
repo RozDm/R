@@ -28,12 +28,14 @@ The answers decide whether you have real oversight or just another single point 
 
 Instead of stacking guards endlessly, split oversight into four jobs: writing the record, watching the record, watching the alarm, and holding the keys. Four, because there are four distinct ways to defeat oversight: destroy the evidence, blind the reader, silence the alarm, or take the keys. A fifth guard would add nothing unless it closed a fifth way to fail. Layers 2 and 3 each watch the one before them, across a boundary the watched side cannot cross back. Layer 1 produces the evidence, and Layer 4 is different: it decides who may change the other three.
 
-| Layer | The question | Typical failure | What guards it |
-| --- | --- | --- | --- |
-| 1 The record | Was the action written down? | Local logs are edited, or the code that writes them is not the code you approved | One-way forwarding, sealed storage, signed builds |
-| 2 The observer | Did anyone see the record? | Auditing is turned off, the stream is killed, or a valid credential acts out of pattern | A separate collector that alerts on tampering, silence and out-of-pattern behaviour |
-| 3 The alarm | Is the watcher still awake? | The monitor or its notification path crashes, loses storage, or gets cut off | A continuous pulse sent to an outside receiver |
-| 4 The keys | Who can change layers 1–3? | Permanent, ownerless machine keys, or one compromised superuser who disables the whole chain | Temporary scope, named owners, two-person approval, and a noisy spare key |
+![The chain of oversight, top to bottom. Servers, cloud and identity (layer 1, the record) are assumed to be taken over. Their records and beats cross a one-way boundary to a separate collector (layer 2, the observer). A steady pulse goes from there to two outside receivers at different providers (layer 3, the alarm), which raise the alarm to a person on its own channel. Underneath, layer 4, the keys, decides who may change layers 1 to 3: borrowed time, two pairs of eyes and a noisy spare key.](/images/hvem-vokter-vokterne-i-it-infrastruktur/oversight-chain.svg)
+
+| Layer and its question | Typical failure | What guards it |
+| --- | --- | --- |
+| 1 The record: was the action written down? | Local logs are edited, or the code that writes them is not the code you approved | One-way forwarding, sealed storage, signed builds |
+| 2 The observer: did anyone see the record? | Auditing is turned off, the stream is killed, or a valid credential acts out of pattern | A separate collector that alerts on tampering, silence and out-of-pattern behaviour |
+| 3 The alarm: is the watcher still awake? | The monitor or its notification path crashes, loses storage, or gets cut off | A continuous pulse sent to an outside receiver |
+| 4 The keys: who can change layers 1–3? | Permanent, ownerless machine keys, or one compromised superuser who disables the whole chain | Temporary scope, named owners, two-person approval, and a noisy spare key |
 
 What makes the layers hold is separation of fate, or in engineering terms, independent failure domains. If the system that collects logs shares passwords, hardware, or network paths with the servers it watches, a single fault takes both down together.
 

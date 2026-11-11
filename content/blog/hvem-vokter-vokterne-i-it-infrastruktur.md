@@ -27,12 +27,14 @@ Svarene avgjør om du har ekte tilsyn eller bare nok et enkelt feilpunkt.
 
 I stedet for å stable voktere i det uendelige deler du tilsynet i fire oppgaver: å skrive sporet, å se på sporet, å se på alarmen og å holde nøklene. Fire, fordi det finnes fire forskjellige måter å sette tilsynet ut av spill på: ødelegge beviset, blinde leseren, stilne alarmen eller ta nøklene. En femte vokter ville ikke tilføre noe med mindre den lukket en femte måte å svikte på. Lag 2 og 3 passer hvert på laget før seg, over en grense den voktede siden ikke kan krysse tilbake. Lag 1 produserer beviset, og lag 4 er annerledes: det avgjør hvem som får endre de tre andre.
 
-| Lag | Spørsmålet | Typisk svikt | Det som vokter det |
-| --- | --- | --- | --- |
-| 1 Sporet | Ble handlingen skrevet ned? | Lokale logger redigeres, eller koden som skriver dem, er ikke den du godkjente | Videresending én vei, forseglet lagring og signerte bygg |
-| 2 Observatøren | Så noen sporet? | Revisjon slås av, strømmen drepes, eller en gyldig legitimasjon opptrer utenfor mønsteret | En egen samler som varsler om tukling, stillhet og atferd utenfor mønsteret |
-| 3 Alarmen | Er vokteren fortsatt våken? | Overvåkeren eller varslingsveien krasjer, mister lagring eller blir avskåret | Kontinuerlig puls til en ekstern mottaker |
-| 4 Nøklene | Hvem kan endre lag 1–3? | Permanente nøkler uten eier, eller én kompromittert superbruker som slår av hele kjeden | Midlertidig omfang, navngitte eiere, tomannsgodkjenning og en bråkete reservenøkkel |
+![Tilsynskjeden, ovenfra og ned. Servere, sky og identitet (lag 1, sporet) antas å kunne bli overtatt. Sporene og slagene deres krysser en enveisgrense til en egen samler (lag 2, observatøren). Derfra går en jevn puls til to eksterne mottakere hos ulike leverandører (lag 3, alarmen), som varsler et menneske på egen kanal. Nederst avgjør lag 4, nøklene, hvem som får endre lag 1 til 3: lånt tid, to par øyne og en bråkete reservenøkkel.](/images/hvem-vokter-vokterne-i-it-infrastruktur/tilsynskjeden.svg)
+
+| Lag og spørsmålet | Typisk svikt | Det som vokter det |
+| --- | --- | --- |
+| 1 Sporet: ble handlingen skrevet ned? | Lokale logger redigeres, eller koden som skriver dem, er ikke den du godkjente | Videresending én vei, forseglet lagring og signerte bygg |
+| 2 Observatøren: så noen sporet? | Revisjon slås av, strømmen drepes, eller en gyldig legitimasjon opptrer utenfor mønsteret | En egen samler som varsler om tukling, stillhet og atferd utenfor mønsteret |
+| 3 Alarmen: er vokteren fortsatt våken? | Overvåkeren eller varslingsveien krasjer, mister lagring eller blir avskåret | Kontinuerlig puls til en ekstern mottaker |
+| 4 Nøklene: hvem kan endre lag 1–3? | Permanente nøkler uten eier, eller én kompromittert superbruker som slår av hele kjeden | Midlertidig omfang, navngitte eiere, tomannsgodkjenning og en bråkete reservenøkkel |
 
 Det som får lagene til å holde, er skilte skjebner, eller med ingeniørord uavhengige feildomener. Hvis systemet som samler loggene deler passord, maskinvare eller nettverksveier med serverne det overvåker, tar én feil ned begge samtidig.
 
