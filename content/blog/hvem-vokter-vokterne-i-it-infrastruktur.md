@@ -1,126 +1,104 @@
 ---
 title: "Hvem vokter vokterne? Tilsyn i IT-infrastruktur"
-description: "Admin, logg, SIEM og revisjon: hvert lag kontrollerer det forrige, men ingen kontrollerer seg selv. Hvor kjeden brytes, og hva du gjør med det."
+description: "Alt som kan beskytte et system, kan også blinde det. Fire lag med tilsyn, slik at ingen vokter må stoles på alene."
 date: "2026-11-11"
 tags: ["Sikkerhet", "SOC"]
 draft: true
 ---
 
-«Quis custodiet ipsos custodes?», hvem vokter vokterne? Spørsmålet er over to tusen år gammelt, og i IT er det helt konkret. Administratoren ser alt i systemet. Loggen ser administratoren. Overvåkingen ser loggen. Men hvem ser overvåkingen, og hvem ser den som eier den?
+«Vi har satt opp overvåking» er en trøst, ikke en garanti. Hvert verktøy og hver administrator som har makt til å beskytte et system, har også makt til å blinde det, ødelegge det eller skjule hva som skjedde. Sikkerhet handler mindre om å finne en ufeilbarlig vokter enn om å bygge en kjede der ingen enkelt vokter må stoles på alene.
 
-Svaret er ikke ett verktøy, men to regler: ingen vokter seg selv, og stillhet er en alarm. Under står det hvordan de ser ut lag for lag, og hvor kjeden likevel tar slutt.
+## Å flytte risikoen
 
-## Problemet: vokteren har nøkkelen
+Når du gir en administrator full tilgang til å reparere servere, eller installerer en agent som skal oppdage inntrengere, løser du ett problem og skaper et annet. Vokteren blir det mest verdifulle målet i rommet.
 
-Den som har root, har også skrivetilgang til loggen som beskriver hva vedkommende gjør. En angriper med root, eller en administrator med en dårlig dag, rydder som regel først her:
+En ny vokter over den første flytter bare spørsmålet ett trinn opp. Hvis du ikke bestemmer hvordan kjeden fungerer, og hvor den slutter, ender du med en haug verktøy som alle har den samme svake siden.
 
-```bash
-# what an intruder with root does first
-history -c
-journalctl --rotate && journalctl --vacuum-time=1s
-: > /var/log/auth.log
-```
+Tre spørsmål er verdt å stille før du stoler på en kontroll:
 
-På Windows heter det samme `wevtutil cl Security`. Hendelse 1102 sier at loggen ble tømt, men den hendelsen ligger i loggen som ble tømt. En lokal logg er et vitne som overlever bare så lenge ingen kommer til det.
+1. Kan den som blir overvåket, slette sporet etter det vedkommende gjorde?
+2. Hvis selve alarmsystemet dør eller kuttes av, hvilken lyd lager det da?
+3. Hva skjer når kontoen som er ment for nødsituasjoner, brukes en rolig tirsdag?
 
-Første regel følger av det: loggen må forlate maskinen før noen rekker å røre den.
+Svarene avgjør om du har ekte tilsyn eller bare nok et enkelt feilpunkt.
 
-## Lag 1: loggen forlater maskinen
+## Fire lag med tilsyn
 
-To ting må på plass på hver server: en revisjonsregel som sier hva som skal logges, og videresending til en maskin administratoren ikke har skrivetilgang til.
+I stedet for å stable voktere i det uendelige deler du tilsynet i fire oppgaver: å skrive sporet, å se på sporet, å se på alarmen og å holde nøklene. Hvert lag kontrollerer det under seg over en grense som bare virker én vei.
 
-```bash
-# /etc/audit/rules.d/watchers.rules
--w /etc/sudoers   -p wa -k sudo_changes
--w /etc/sudoers.d -p wa -k sudo_changes
--a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root_exec
-# last line: rules become immutable until reboot, so stopping the watcher
-# needs a reboot, and a reboot is itself an event somebody sees
--e 2
-```
+| Lag | Spørsmålet | Typisk svikt | Det som vokter det |
+| --- | --- | --- | --- |
+| 1 Sporet | Ble handlingen skrevet ned? | Lokale logger redigeres eller slettes | Videresending én vei, med en gang linjen er skrevet |
+| 2 Observatøren | Så noen sporet? | Revisjon slås av, eller strømmen drepes | En ekstern samler som varsler om tukling og om stillhet |
+| 3 Alarmen | Er vokteren fortsatt våken? | Overvåkeren krasjer, mister lagring eller blir avskåret | Kontinuerlig puls til en ekstern mottaker |
+| 4 Nøklene | Hvem kan endre lagene over? | Én kompromittert superbruker slår av hele kjeden | Midlertidige rettigheter, to par øyne og en bråkete reservenøkkel |
 
-```bash
-# /etc/rsyslog.d/50-forward.conf
-# auditd must reach syslog first: active = yes in /etc/audit/plugins.d/syslog.conf
-global(
-  DefaultNetstreamDriver="gtls"
-  DefaultNetstreamDriverCAFile="/etc/ssl/certs/log-ca.pem"
-)
-action(type="omfwd" target="logs.example.net" port="6514" protocol="tcp"
-       StreamDriver="gtls" StreamDriverMode="1"
-       StreamDriverAuthMode="x509/name" StreamDriverPermittedPeers="logs.example.net"
-       queue.type="LinkedList" queue.filename="fwd" action.resumeRetryCount="-1")
-```
+Det som får lagene til å holde, er skilte skjebner. Hvis systemet som samler loggene deler passord, maskinvare eller nettverksveier med serverne det overvåker, tar én feil ned begge samtidig.
 
-Køen med `resumeRetryCount="-1"` gjør at meldingene ikke går tapt hvis samleserveren er nede. På Windows gjør Windows Event Forwarding eller en agent (Wazuh, for eksempel) den samme jobben.
+### Lag 1: sporet
 
-## Lag 2: en annen rolle leser loggen
+En logg som blir liggende på maskinen den beskriver, er bare en dagbok. Alle med full tilgang på maskinen kan skrive den om eller slette den i etterkant.
 
-En samleserver hjelper bare hvis den som drifter serverne ikke også eier den. Ellers har du flyttet nøkkelen, ikke fjernet den. Skillet mellom roller gjør jobben:
+For at et spor skal telle som bevis, må det forlate verten i det øyeblikket det skrives, over en grense som bare virker én vei. Kildemaskinen kan legge til nye linjer, men den må ikke kunne lese tilbake, endre eller slette det som allerede har krysset grensen. Selv om maskinen blir helt overtatt fem sekunder senere, er sporet fram til da utenfor rekkevidde.
 
-- infrastrukturadministratoren skriver til serverne, men kan ikke slette fra SIEM-en;
-- SOC leser og varsler, men kan ikke endre serverne;
-- den som administrerer SIEM-en, er ikke en av dem som blir overvåket.
+### Lag 2: observatøren
 
-Noen få varsler dekker mesteparten av det som betyr noe: logg tømt, revisjonstjenesten stoppet, ny administratorbruker, endring i `sudoers`, pålogging utenfor vanlig mønster. Sjekken for den første finnes også lokalt:
+Å flytte loggene bort fra maskinen beskytter fortiden, men ikke de neste ti minuttene. En inntrenger med full tilgang trenger ikke slette gamle spor hvis vedkommende bare kan stoppe at nye blir laget.
 
-```powershell
-# Windows, PowerShell 7: the same check locally, but the alert belongs in the SIEM
-Get-WinEvent -FilterHashtable @{ LogName = 'Security'; Id = 1102 } -MaxEvents 5
-```
+Å tømme en logg setter et tydelig merke, så en forsiktig angriper endrer heller revisjonsreglene slik at visse handlinger overses, eller dreper prosessen som sender loggene bort. Da kommer det ingen feilmelding hos mottakeren, bare et hull.
 
-## Lag 3: hvem overvåker overvåkeren?
+Observatøren på den andre siden av grensen må derfor passe på to ting samtidig: åpenbare tegn på at revisjonen er rørt, og en vert som plutselig blir stille.
 
-Når Prometheus eller Zabbix selv går ned, kommer det ingen alarm, bare stillhet. Løsningen er en alarm som alltid er aktiv (en «Watchdog», eller dead man's switch), sendt til en tjeneste utenfor din egen infrastruktur. Hvis meldingene slutter å komme, er det den eksterne tjenesten som varsler.
+| Hva observatøren ser | Hva det betyr | Se her |
+| --- | --- | --- |
+| Loggen ble tømt | Noen prøvde å utslette sporet | Verten, med en gang; anta full kompromittering |
+| Revisjonsregler endret | Noen blinder opptakeren før de handler | Nylig bruk av privilegier på verten |
+| Loggstrømmen stopper | Verten er nede, avskåret, eller avsenderen ble drept | Nettverksveien først, så loggprosessen |
+| Godkjenningsregler omgått | En privilegert bruker endret rekkverket for seg selv | Kontrollplanet og innstillingene i repoet, lag 4 |
 
-```yaml
-# Prometheus rule: always firing on purpose
-groups:
-  - name: meta
-    rules:
-      - alert: Watchdog
-        expr: vector(1)
-        labels: { severity: none }
-        annotations:
-          summary: "Always firing; silence means the alert pipeline is down"
-```
+### Lag 3: hvem overvåker overvåkeren?
 
-```yaml
-# Alertmanager: route it to an external heartbeat, not to the team
-route:
-  receiver: team
-  routes:
-    - matchers: [alertname="Watchdog"]
-      receiver: heartbeat
-      group_interval: 1m
-      repeat_interval: 1m
-receivers:
-  - name: heartbeat
-    webhook_configs:
-      - url: https://heartbeat.example.net/ping/<token>
-        send_resolved: false
-```
+Et alarmsystem som aldri ringer, forteller deg ingenting. Alt kan være i orden, eller overvåkeren kan ha krasjet, fylt disken eller blitt stengt ute av en brannmur for tre dager siden.
 
-Tjenesten er satt til å varsle etter for eksempel fem minutter uten ping. Det er den eneste delen som ikke deler skjebne med resten av kjeden.
+Løsningen er å snu signalet. I stedet for å vente på en melding om at noe er ødelagt, venter en uavhengig tjeneste utenfor infrastrukturen din på en jevn puls som sier at overvåkeren lever og kan snakke.
 
-## Lag 4: de som har privilegier
+For at pulsen skal bevise noe, må den gå gjennom hele kjeden: utløst inne i overvåkingsmotoren, sendt gjennom varslingsruteren og levert utenfor. En puls fra et eget tidsskript beviser bare at skriptet virker. Når den ekte pulsen uteblir i noen minutter, slår den eksterne mottakeren alarm. Det er det eneste leddet som ikke deler skjebne med resten av oppsettet.
 
-Selv med logg og SIEM finnes det kontoer som kan alt. Tre ting gjør dem mindre farlige:
+### Lag 4: de som har nøklene
 
-- **Tilgang etter behov.** Hemmeligheter og rotpålogging hentes midlertidig (Vault, PAM) i stedet for å ligge permanent hos personen. Alt som utstedes, logges av systemet som utsteder.
-- **Break-glass.** Én nødkonto med lang, oppbevart passord, og en alarm som går av ved enhver bruk. Den skal være bråkete med vilje.
-- **Fire øyne på endringer.** Når infrastruktur settes opp som kode, er pull request med godkjenning og beskyttet gren den andre personen. Da blir pipelinen selv en privilegert aktør som må vokte og voktes: hvem kan endre den, og hvor ligger tokenet?
+Selv med logger som går én vei og en ekstern puls må noen administrere samleren, overvåkeren og tilgangsreglene. Hvis én konto kan endre alt på en gang, faller de fire lagene sammen til ett enkelt feilpunkt. Tre grenser holder rettigheter på toppnivå i sjakk:
+
+- **Lånt tid.** Ingen har permanent full tilgang til daglig arbeid. Høye rettigheter sjekkes ut til en bestemt oppgave og utløper av seg selv, og selve lånet registreres før økten starter.
+- **To par øyne.** Den som foreslår en endring i kritisk infrastruktur, eller i pipelinen som ruller den ut, kan ikke være den som godkjenner den. Og fordi en administrator kan ha rett til å slå av tomannsregelen i ti sekunder, må enhver endring i godkjenningsreglene selv utløse et umiddelbart varsel i lag 2.
+- **En bråkete reservenøkkel.** Ethvert system trenger en nødkonto for når vanlige innloggingssystemer er nede. Den nøkkelen holdes innelåst, brukes aldri til rutinearbeid og utløser en øyeblikkelig alarm over en uavhengig kanal i det den berøres.
+
+## Samme brudd, to oppsett
+
+Anta at en administrators laptop blir kompromittert en tirsdagskveld, slik at inntrengeren får samme rekkevidde som administratoren.
+
+I et flatt oppsett har administratoren permanente nøkler både til serverne og til overvåkingssystemet, av bekvemmelighet. Inntrengeren logger inn, setter varslene på pause, kjører nyttelasten sin, sletter de lokale loggene og tømmer sikkerhetskopiene. Onsdag morgen er alle dashbord fortsatt grønne.
+
+Med de fire lagene på plass treffer den samme stjålne laptopen en grense i hvert trinn:
+
+- Det finnes ingen permanente nøkler på maskinen. Å heve rettighetene krever en ny forespørsel som logges utenfor verten før tilgangen gis.
+- Selv om inntrengeren kommer seg inn på en server og dreper logg-avsenderen, er alt fram til det sekundet allerede lagret på den andre siden av en enveisgrense, og den plutselige stillheten varsler samleren.
+- Hvis vedkommende prøver å tie overvåkeren selv, stopper den eksterne pulsen, og mottakeren utenfor tilkaller teamet.
+- Hvis vedkommende strekker seg etter nødkontoen, utløses reservenøkkelalarmen før den første kommandoen er kjørt.
+
+Bruddet skjer fortsatt, men det kan ikke skjule seg.
 
 ## Kjeden slutter et sted
 
-Hvert lag flytter tilliten, det fjerner den ikke. Til slutt står du igjen med noe du må stole på: en uavhengig revisjon, en kopi av loggene på lagring som ikke kan overskrives, et menneske utenfor teamet som ser på resultatene. Det er ikke en svakhet, men det er verdt å vite hvor det stoppet.
+Hvert lag flytter tillit, ingen fjerner den. Du kan ikke bygge et uendelig tårn av voktere som vokter voktere. Ved enden av kjeden står noe du rett og slett velger å stole på: lagring som fysisk nekter overskriving i en fastsatt periode, en ekstern pulsmottaker, eller et menneske utenfor den daglige driften som leser sporet. Det er ikke en svakhet i designet, det er ankeret. Målet er å vite hvor ankeret sitter, og å sørge for at ingen enkeltfeil kan nå det.
 
-I et lite miljø, der én person er både administrator og SOC, får du ikke full rollefordeling. Det du kan gjøre, er å legge siste ledd utenfor deg selv: logger sendt til en tredjepart, en ekstern heartbeat og en fast tid i kalenderen der noen andre leser sammendraget.
+I et lite miljø, der én person driver både serverne og sikkerheten, kan du ikke fordele rollene mellom mennesker. Du kan likevel fordele dem over grenser: send loggene dit den daglige kontoen din ikke kan slette dem, legg pulsen utenfor, og sett en fast tid i kalenderen der noen andre leser sammendraget.
 
-## Sjekkliste
+## Prinsipper
 
-1. Loggen forlater maskinen i sanntid, og administratoren kan ikke slette den andre enden.
-2. Den som vokter, er en annen enn den som blir voktet.
-3. Stillhet utløser alarm: en alltid-aktiv melding sjekkes utenfra.
-4. Privilegert bruk støyer med vilje, og break-glass varsler hver gang.
-5. Det er testet: tøm loggen på en testmaskin og mål hvor lang tid det går før noen merker det.
+1. **Bevis går én vei.** En maskin kan legge til i sporet, men ikke redigere eller slette det den allerede har sendt.
+2. **Vokteren bor utenfor den voktede.** Samleren og alarmen deler ikke legitimasjon, nettverksskjebne eller maskinvare med maskinene de vokter.
+3. **Stillhet er en feil, ikke fred.** Både en stille server og en stille overvåker slår alarm når pulsen deres uteblir.
+4. **Makt leies, eies aldri.** Rutinearbeid bruker minimale rettigheter. Full tilgang er midlertidig og logget, og for nødnøkler høylytt med vilje.
+5. **Test alarmen, ikke konfigurasjonen.** Stopp loggstrømmen på en testmaskin, blokker overvåkerens puls, og mål med stoppeklokke hvor lang tid det går før noen merker det.
+
+Verktøy og plattformer skifter med noen års mellomrom. Tillitens geometri gjør ikke det.

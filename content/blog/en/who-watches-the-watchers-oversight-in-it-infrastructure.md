@@ -1,127 +1,105 @@
 ---
 title: "Who watches the watchers? Oversight in IT infrastructure"
-description: "Admin, log, SIEM and audit: each layer checks the one before, but none checks itself. Where the chain breaks, and what to do about it."
+description: "Every guard that can protect a system can also blind it. Four layers of oversight, so that no single guard has to be trusted alone."
 date: "2026-11-11"
 tags: ["Sikkerhet", "SOC"]
 translationOf: "hvem-vokter-vokterne-i-it-infrastruktur"
 draft: true
 ---
 
-"Quis custodiet ipsos custodes?", who guards the guards? The question is over two thousand years old, and in IT it is entirely concrete. The administrator sees everything in the system. The log sees the administrator. Monitoring sees the log. But who sees the monitoring, and who sees the person who owns it?
+"We added monitoring" is a comfort, not a guarantee. Every tool or administrator with the power to protect a system also has the power to blind it, break it, or hide what happened. Security is less about finding an infallible guard than about building a chain where no single guard has to be trusted alone.
 
-The answer is not one tool but two rules: nobody watches themselves, and silence is an alarm. Below is what they look like layer by layer, and where the chain ends anyway.
+## Moving the risk
 
-## The problem: the guard holds the key
+When you give an administrator full rights to fix servers, or install an agent to watch for intrusions, you solve one problem and create another. The guard becomes the most valuable target in the room.
 
-Whoever has root also has write access to the log that describes what they do. An intruder with root, or an administrator having a bad day, usually tidies up here first:
+Putting a second guard over the first only moves the question one step up. If you do not decide how the chain works, and where it stops, you end up with a pile of tools that all share the same weak spot.
 
-```bash
-# what an intruder with root does first
-history -c
-journalctl --rotate && journalctl --vacuum-time=1s
-: > /var/log/auth.log
-```
+Before trusting any control, three questions pay off:
 
-On Windows the same thing is `wevtutil cl Security`. Event 1102 says the log was cleared, but that event lives in the log that was just cleared. A local log is a witness that survives only as long as nobody gets to it.
+1. Can the person or system being watched erase the record of what they did?
+2. If the alarm system itself dies or gets cut off, what sound does it make?
+3. What happens when the account meant for emergencies is used on a quiet Tuesday?
 
-The first rule follows: the log must leave the machine before anyone can touch it.
+The answers decide whether you have real oversight or just another single point of failure.
 
-## Layer 1: the log leaves the machine
+## Four layers of oversight
 
-Two things belong on every server: an audit rule saying what to record, and forwarding to a machine the administrator cannot write to.
+Instead of stacking guards endlessly, split oversight into four jobs: writing the record, watching the record, watching the alarm, and holding the keys. Each layer checks the one below it across a boundary that only works one way.
 
-```bash
-# /etc/audit/rules.d/watchers.rules
--w /etc/sudoers   -p wa -k sudo_changes
--w /etc/sudoers.d -p wa -k sudo_changes
--a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root_exec
-# last line: rules become immutable until reboot, so stopping the watcher
-# needs a reboot, and a reboot is itself an event somebody sees
--e 2
-```
+| Layer | The question | Typical failure | What guards it |
+| --- | --- | --- | --- |
+| 1 The record | Was the action written down? | Local logs are edited or deleted | One-way forwarding as soon as a line is written |
+| 2 The observer | Did anyone see the record? | Auditing is turned off, or the stream is killed | An outside collector that alerts on tampering and on silence |
+| 3 The alarm | Is the watcher still awake? | The monitor crashes, loses storage, or gets cut off | A continuous pulse sent to an outside receiver |
+| 4 The keys | Who can change the layers above? | One compromised superuser disables the whole chain | Temporary rights, two pairs of eyes, and a noisy spare key |
 
-```bash
-# /etc/rsyslog.d/50-forward.conf
-# auditd must reach syslog first: active = yes in /etc/audit/plugins.d/syslog.conf
-global(
-  DefaultNetstreamDriver="gtls"
-  DefaultNetstreamDriverCAFile="/etc/ssl/certs/log-ca.pem"
-)
-action(type="omfwd" target="logs.example.net" port="6514" protocol="tcp"
-       StreamDriver="gtls" StreamDriverMode="1"
-       StreamDriverAuthMode="x509/name" StreamDriverPermittedPeers="logs.example.net"
-       queue.type="LinkedList" queue.filename="fwd" action.resumeRetryCount="-1")
-```
+What makes the layers hold is separation of fate. If the system that collects logs shares passwords, hardware, or network paths with the servers it watches, a single fault takes both down together.
 
-The queue with `resumeRetryCount="-1"` keeps messages from being lost when the collector is down. On Windows, Windows Event Forwarding or an agent (Wazuh, for example) does the same job.
+### Layer 1: the record
 
-## Layer 2: a different role reads the log
+A log that stays on the machine it describes is only a diary. Anyone with full rights on that machine can rewrite it or delete it after the fact.
 
-A collector helps only if the person who runs the servers does not also own it. Otherwise you have moved the key, not removed it. Separating roles does the work:
+For a record to count as evidence, it must leave the host the moment it is written, crossing a one-way boundary. The source machine may add new lines, but it must have no way to read back, alter, or delete what has already crossed. Even if the machine is completely taken over five seconds later, the trail up to that moment is out of reach.
 
-- the infrastructure administrator writes to the servers but cannot delete from the SIEM;
-- the SOC reads and raises alerts but cannot change the servers;
-- whoever administers the SIEM is not among those being watched.
+### Layer 2: the observer
 
-A handful of alerts covers most of what matters: log cleared, audit service stopped, new administrator account, a change to `sudoers`, a login outside the usual pattern. The check for the first one exists locally too:
+Moving the logs off the machine protects the past, but not the next ten minutes. An intruder with full rights does not need to erase old records if they can simply stop new ones from being made.
 
-```powershell
-# Windows, PowerShell 7: the same check locally, but the alert belongs in the SIEM
-Get-WinEvent -FilterHashtable @{ LogName = 'Security'; Id = 1102 } -MaxEvents 5
-```
+Clearing a log leaves an obvious mark, so a careful attacker will rather change the audit rules to ignore certain actions, or kill the process that sends the logs away. That leaves no error message at the destination, only a gap.
 
-## Layer 3: who monitors the monitor?
+The observer on the other side of the boundary must therefore watch for two things at once: explicit signs that auditing was touched, and a host that suddenly goes quiet.
 
-When Prometheus or Zabbix itself goes down, no alarm arrives, only silence. The fix is an alert that is always firing (a "Watchdog", or dead man's switch), sent to a service outside your own infrastructure. If the messages stop arriving, the external service raises the alarm.
+| What the observer sees | What it means | Look here |
+| --- | --- | --- |
+| The log was cleared | Someone tried to wipe the trail | The host, at once; assume full compromise |
+| Audit rules changed | Someone is blinding the recorder before acting | Recent privilege use on the host |
+| The log stream stops | The host is down, cut off, or the sender was killed | The network path first, then the logging process |
+| Approval rules bypassed | A privileged user changed the guardrails for themselves | Control plane and repository settings, Layer 4 |
 
-```yaml
-# Prometheus rule: always firing on purpose
-groups:
-  - name: meta
-    rules:
-      - alert: Watchdog
-        expr: vector(1)
-        labels: { severity: none }
-        annotations:
-          summary: "Always firing; silence means the alert pipeline is down"
-```
+### Layer 3: who monitors the monitor?
 
-```yaml
-# Alertmanager: route it to an external heartbeat, not to the team
-route:
-  receiver: team
-  routes:
-    - matchers: [alertname="Watchdog"]
-      receiver: heartbeat
-      group_interval: 1m
-      repeat_interval: 1m
-receivers:
-  - name: heartbeat
-    webhook_configs:
-      - url: https://heartbeat.example.net/ping/<token>
-        send_resolved: false
-```
+An alarm system that never rings tells you nothing. Everything might be fine, or the monitor might have crashed, filled its disk, or been blocked at a firewall three days ago.
 
-The service is set to alert after, say, five minutes without a ping. It is the only part that does not share a fate with the rest of the chain.
+The fix is to invert the signal. Instead of waiting for a message that says something is broken, an independent service outside your infrastructure waits for a steady pulse that says the monitor is alive and able to speak.
 
-## Layer 4: those with privileges
+For the pulse to prove anything, it has to travel through the whole chain: triggered inside the monitoring engine, passed through the notification router, and delivered outside. A pulse sent by a separate timer script only proves the script works. When the real pulse stops arriving for a few minutes, the outside receiver raises the alarm. It is the one link that does not share a fate with the rest of your setup.
 
-Even with logging and a SIEM there are accounts that can do everything. Three things make them less dangerous:
+### Layer 4: those with the keys
 
-- **Access on demand.** Secrets and root logins are fetched temporarily (Vault, PAM) rather than sitting permanently with a person. Everything issued is logged by the system that issues it.
-- **Break-glass.** One emergency account with a long, stored password, and an alarm that fires on any use. It should be noisy by design.
-- **Four eyes on changes.** When infrastructure is defined as code, a pull request with approval and a protected branch is the second person. The pipeline then becomes a privileged actor that must guard and be guarded: who can change it, and where does its token live?
+Even with one-way logs and an external heartbeat, someone has to manage the log collector, the monitor, and the access rules. If one account can change all of them at once, the four layers collapse back into a single point of failure. Three boundaries keep top-level rights in check:
+
+- **Borrowed time.** Nobody holds permanent full access for daily work. High privileges are checked out for a specific task and expire on their own, and the act of borrowing them is recorded before the session starts.
+- **Two pairs of eyes.** The person who proposes a change to critical infrastructure, or to the pipeline that deploys it, cannot be the one who approves it. And because an administrator might have the rights to turn off the two-person rule for ten seconds, any change to the approval rules themselves must trigger an immediate alert at Layer 2.
+- **A noisy spare key.** Every system needs an emergency account for when normal login systems are down. That key stays locked away, is never used for routine work, and sets off an immediate alarm through an independent channel the moment it is touched.
+
+## Same breach, two designs
+
+Suppose an administrator's laptop is compromised on a Tuesday evening, giving an intruder the same reach the administrator has.
+
+In a flat setup, the administrator holds permanent keys to both the servers and the monitoring system for convenience. The intruder logs in, pauses the alerts, runs their payload, deletes the local logs, and wipes the backups. On Wednesday morning every dashboard is still green.
+
+With the four layers in place, the same stolen laptop hits a boundary at every step:
+
+- There are no permanent keys on the machine; elevating rights requires a fresh request that gets logged outside the host before access is granted.
+- Even if the intruder gets onto a server and kills the log sender, everything up to that second is already stored across a one-way boundary, and the sudden silence alerts the collector.
+- If they try to silence the monitor itself, the external pulse stops and the outside receiver pages the team.
+- If they reach for the emergency account, the spare-key alarm fires before they run their first command.
+
+The breach still happens, but it cannot hide.
 
 ## The chain ends somewhere
 
-Every layer moves the trust, it does not remove it. In the end you are left with something you have to trust: an independent audit, a copy of the logs on storage that cannot be overwritten, a person outside the team who reads the results. That is not a weakness, but it is worth knowing where it stops.
+Every layer moves trust; none removes it. You cannot build an infinite tower of guards watching guards. At the end of the chain sits something you simply choose to rely on: storage that physically refuses overwrites for a set period, an outside pulse receiver, or a person outside daily operations who reads the trail. That is not a weakness in the design, it is the anchor. The goal is to know where that anchor sits, and to make sure no single failure can reach it.
 
-In a small environment, where one person is both administrator and SOC, you do not get full separation of roles. What you can do is put the last link outside yourself: logs sent to a third party, an external heartbeat, and a fixed slot in the calendar where someone else reads the summary.
+In a small environment, where one person runs both the servers and the security, you cannot split roles between people. You can still split them across boundaries: send the logs where your day-to-day account cannot delete them, put the heartbeat on the outside, and set a fixed slot in the calendar where someone else reads the summary.
 
-## Checklist
+## Principles
 
-1. The log leaves the machine in real time, and the administrator cannot delete the other end.
-2. The one who watches is not the one being watched.
-3. Silence raises an alarm: an always-firing message is checked from outside.
-4. Privileged use is noisy by design, and break-glass alerts every time.
-5. It has been tested: clear the log on a test machine and measure how long it takes before anyone notices.
+1. **Evidence travels one way.** A machine can add to the record, but cannot edit or erase what it has already sent.
+2. **The watcher lives outside the watched.** The collector and the alarm do not share credentials, network fate, or hardware with the machines they guard.
+3. **Silence is a fault, not peace.** Both a quiet server and a quiet monitor raise an alarm when their pulse stops.
+4. **Power is rented, never owned.** Routine work uses minimal rights; full access is temporary, logged, and, for emergency keys, loud by design.
+5. **Test the alarm, not the configuration.** Stop the log stream on a test machine, block the monitor's pulse, and measure with a stopwatch how long it takes before someone notices.
+
+Tools and platforms change every few years. The geometry of trust doesn't.
