@@ -55,11 +55,17 @@ answered; keep output and replies short.
 - After opening a PR, don't arm `send_later`: green `check` auto-merges in
   minutes and the subscription wakes the session on anything red. After the
   merge look at the deploy run once — its smoke step is the real gate.
-- Model and effort are the owner's pick when a session starts. Two skills pin
-  theirs for the turn in frontmatter: `new-post` (Sonnet, `high`) and `audit`
-  (`high`). An effort change keeps the prompt cache; a model switch re-reads
-  the whole conversation once without it — cheapest as a session's first
-  prompt.
+- Model and effort. When the owner opens a session with a task, the reply
+  opens with one line naming what it needs: Sonnet `high` — posts,
+  translations, dependency bumps, copy, docs, small UI changes; Opus `high` —
+  the Worker, CSP, WAF, counters, the deploy pipeline, `/audit`; Fable — a
+  hard bug with no known cause (`max` only on the owner's word). A cloud
+  session reads its own pick with `get_session`: when it differs, stop after
+  that line so the owner can switch before the work is paid for; when it
+  matches, or the session can't tell, go on. `new-post` (Sonnet, `high`) and
+  `audit` (`high`) pin theirs for the turn in frontmatter. An effort change
+  keeps the prompt cache; a model switch re-reads the whole conversation once
+  without it — cheapest as a session's first prompt.
 - Commit messages: subject + a few lines. PR bodies: short bullets, what and
   why. Replies to the owner (writes Russian): outcome first, then only what
   needs their decision; no recap of the diff.
