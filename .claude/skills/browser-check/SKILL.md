@@ -9,11 +9,11 @@ For a regression that should stay caught, add a test to the suite instead
 (`e2e/site.e2e.ts`, `npm run test:e2e` after a build — CI runs it); this
 recipe is for a one-off look.
 
-The sandbox's Chromium (`/opt/pw-browsers/chromium`) is not the build the
-pinned Playwright expects, so point the suite at it:
-`PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test
---project=desktop --project=mobile`. The `iphone` project is WebKit, which
-sandboxes don't preinstall (CI runs it). To run it here too, put
+In a cloud sandbox the suite runs as is: `playwright.config.ts` takes the
+sandbox's Chromium (`/opt/pw-browsers/chromium`, not the build the pinned
+Playwright expects; `PW_CHROMIUM_PATH` names another) and leaves out the
+`iphone` project — WebKit, which sandboxes don't preinstall (CI runs it), so
+a green run here says nothing about Safari. To run it here too, put
 WebKit in the scratchpad: `PLAYWRIGHT_BROWSERS_PATH=<dir> npx playwright
 install webkit`, `npx playwright install-deps webkit`, symlink
 `/opt/pw-browsers/chromium*-<rev>` into `<dir>`, and run with that

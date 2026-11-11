@@ -15,6 +15,8 @@ Each file loads only when a task touches its area:
 - `src/CLAUDE.md` — the Worker: modules, bindings, the `/api/*` surface,
   serving and CSP rules, worker tests;
 - `.github/CLAUDE.md` — CI/deploy and the ops workflows;
+- `content/CLAUDE.md` — the blog: posts, frontmatter, tags, code blocks,
+  images, diagrams, drafts;
 - `.claude/skills/browser-check` — Playwright recipe for a built page;
 - `docs/cloudflare-security.md` — the zone's edge security (WAF, rate
   limiting, bots, owner's dashboard to-do): read before touching zone
@@ -47,10 +49,17 @@ answered; keep output and replies short.
 - GitHub MCP: one thing per call. PR CI → `pull_request_read`
   `get_check_runs`; the deploy → `actions_list` `list_workflow_runs`,
   `resource_id: deploy.yml`, `perPage: 1` (unpaged listings repeat every
-  squashed commit message).
+  squashed commit message); a red run's log → `get_job_logs` with `run_id`,
+  `failed_only: true`, `return_content: true`, `tail_lines: 80` (the default
+  is 500 lines) — widen only when the cause isn't in the tail.
 - After opening a PR, don't arm `send_later`: green `check` auto-merges in
   minutes and the subscription wakes the session on anything red. After the
   merge look at the deploy run once — its smoke step is the real gate.
+- Model and effort are the owner's pick when a session starts. Two skills pin
+  theirs for the turn in frontmatter: `new-post` (Sonnet, `high`) and `audit`
+  (`high`). An effort change keeps the prompt cache; a model switch re-reads
+  the whole conversation once without it — cheapest as a session's first
+  prompt.
 - Commit messages: subject + a few lines. PR bodies: short bullets, what and
   why. Replies to the owner (writes Russian): outcome first, then only what
   needs their decision; no recap of the diff.
@@ -142,10 +151,13 @@ answered; keep output and replies short.
   with Cloudflare's public test Turnstile key and the fixtures fake its
   script; locally build with
   `NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA` or the widget
-  tests skip (never in CI). Blog tests take their post from the build's
-  feeds (`e2e/posts.ts`), never by name. A UI change that breaks a selector
-  updates the test in the same PR. `@playwright/test` and `playwright-core`
-  stay pinned to one version.
+  tests skip (never in CI). A Claude Code session gets a dot per test and a
+  stop after 5 failures; its cloud sandbox also runs on the sandbox's
+  Chromium and leaves the iPhone project to CI (no WebKit there —
+  `browser-check` says how to add it). Blog tests take their post from the
+  build's feeds (`e2e/posts.ts`), never by name. A UI change that breaks a
+  selector updates the test in the same PR. `@playwright/test` and
+  `playwright-core` stay pinned to one version.
 - Deploy: PR → `check` (`ci.yml`) → squash auto-merge → `deploy.yml`:
   secret-free checks + build, then the `production` job syncs secrets, runs
   `npx wrangler deploy` and `scripts/smoke.sh`, and `wrangler rollback`s
@@ -160,12 +172,13 @@ answered; keep output and replies short.
   `https://rozsoshnykh.no/...` works for diagnosis (the gate is still smoke).
   Probe TLS with `curl --tls-max`, not `openssl s_client` (that bypasses the
   proxy).
-- Webhuset (the registrar) MCP server, `.mcp.json`: read-only (domains, its
-  leftover zone via `check_dns`, registry/DNS diagnostics, WHOIS). Cloud
-  sessions get the key from the environment's network secret for
-  `mcp.webhuset.no` (the proxy injects it); locally `claude mcp add
-  --transport http webhuset https://mcp.webhuset.no/mcp/v1 --header
-  "Authorization: Bearer <key>"` (local scope overrides this entry).
+- Webhuset (the registrar): `node scripts/webhuset.mjs list [filter]` names
+  its read-only tools (domains, its leftover zone via `check_dns`,
+  registry/DNS diagnostics, WHOIS) and `node scripts/webhuset.mjs <tool>
+  '<json>'` calls one. On demand, not an attached MCP server: that put ~1.5k
+  tokens into every session. Cloud sessions authenticate through the
+  environment's network secret for `mcp.webhuset.no` (the proxy injects
+  it); locally `WEBHUSET_API_KEY`.
 - Session branches: one `claude/*` branch per session, reset onto
   `origin/main` before new work (else the next PR conflicts with its own
   squashed history).
@@ -178,40 +191,12 @@ answered; keep output and replies short.
   404, `error.tsx`, the `HalIdle` screensaver, loader copy, console greeting,
   `HISTORY_LIMIT = 149` (1:4:9). `%USERNAME%` is a literal joke, not a
   template var. Details: `components/CLAUDE.md`.
-- Blog posts: Norwegian `content/blog/<slug>.md`, English
-  `content/blog/en/<slug>.md` with `translationOf: <norwegian slug>`; one
-  language only is fine. Frontmatter `title`, `description`, `date` (ISO),
-  `tags`, optional `updated`, `draft: true`. Reading a post checks it
-  (`lib/post-frontmatter.ts`: no unknown field, `draft` a real boolean, real
-  days, tags from `STANDARD_TAGS`, description 50–160 chars), so a slip stops
-  dev, tests and the build instead of going live; `tests/blog-content.test.ts`
-  adds the text: headings from `##`, one level at a time, links to other
-  posts only to published ones. Twins share date, `updated`, tags and draft
-  (`tests/blog-pairs.test.ts`); `/new-post` writes both drafts and publishes
-  them (date = the publish day). `lib/blog.ts` takes `lang` everywhere,
-  URLs come from `lib/blog-paths.ts`, one view counter per post (`viewKey`:
-  the Norwegian slug). Tags are canonical across languages (`lib/tags.ts`;
-  canon + aliases in `data/tags.ts`; `TAG_LABELS_EN` gives English labels
-  and URLs; tag URLs fold æ/ø/å like post slugs). Code
-  blocks: highlighted at build by `rehype-highlight` with lowlight's common
-  languages plus PowerShell (`HIGHLIGHT_OPTIONS` in `lib/markdown.ts`, shared
-  by the page and RSS; a language left out renders plain), palette in
-  `app/globals.css` (e2e checks both themes). Inline code: a chip that
-  breaks only between words (`lib/inline-code.ts`, `.post-body` in
-  `app/globals.css`), so `curl -v` never splits at its hyphen. Images:
-  `![alt](/images/<slug>/file.webp)`, file in `public/images/<slug>/`;
-  `rehypePostImages` (`lib/post-images.ts`) stamps size + lazy loading and
-  fails the build on an external image (the CSP's `img-src 'self' data:`
-  would block it), a missing file, no alt text or an unreadable format.
-  `<slug>` is the Norwegian one for both twins. Diagrams: SVG, the source
-  with live `<text>` in `content/diagrams/<slug>/`, the copy in
-  `public/images/<slug>/` built by `npm run diagrams`
-  (`scripts/build-diagrams.mjs`: text outlined in Intel One Mono, which an
-  SVG in `<img>` can't load; `tests/diagrams.test.ts` fails on a stale copy;
-  the copies are skipped by Grep and binary to `git diff`). Draw for the
-  light theme on a white card: the dark theme inverts post SVGs
-  (`app/globals.css`). `draft: true` keeps a post off every public surface in
-  production builds; `npm run dev` shows drafts with an «Utkast» badge.
+- Blog: posts, frontmatter, tags, code blocks, images, diagrams and drafts
+  are ruled by `content/CLAUDE.md`. It loads with any file under `content/`;
+  read it before changing the blog code too (`lib/blog.ts`,
+  `lib/markdown.ts`, `lib/post-images.ts`, `lib/tags.ts`, `data/tags.ts`,
+  `scripts/build-diagrams.mjs`). One view counter per post, keyed by the
+  Norwegian slug.
 - SEO: canonicals with trailing slashes, OG images via `next/og` (Intel One
   Mono from Fontsource WOFF, `lib/og-fonts.ts` — next/og can't read WOFF2),
   JSON-LD (Person + WebSite sitewide from `personJsonLd()` in
