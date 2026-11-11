@@ -43,7 +43,7 @@ A log that stays on the machine it describes is only a diary. Anyone with full r
 
 For a record to count as evidence, it must leave the host the moment it is written, crossing a one-way boundary. The source machine may add new lines, but it must have no way to read back, alter, or delete what has already crossed. Even if the machine is completely taken over five seconds later, everything delivered before that moment is out of reach. Keep the window between writing and delivering as short as you can.
 
-At the destination, seal what arrives with a signature or a hash chain, so that a later change to a stored record is detectable, and keep the store in a separate environment from the systems it records.
+At the destination, seal what arrives with a signature or a hash chain, so that a later change to a stored record is detectable, and keep the store in a separate environment from the systems it records. Keep the record rich enough and long enough to answer questions you did not see coming: alerts cover the ones you did, and intrusions are often found late.
 
 A record is also only as honest as whatever writes it. If an attacker tampers with the code before it is deployed, the logs will faithfully record the actions of a malicious program. So trust has to reach back to the build: sign what you deploy, record how it was built, and verify the signature at deployment and, where you can, while it runs. A list of ingredients (an SBOM) is an inventory, not proof. And a signature shows where an artifact came from, not that it is harmless, so the builder and its signing keys are guards too, and fall under Layer 4.
 
@@ -113,6 +113,7 @@ None of this is new, and it works at the scale of the whole web. Certificate aut
 The four layers raise the cost of an attack and shorten its life. They do not make it impossible, and each layer has its own way to fail.
 
 - **Approvals get stamped.** A second person is only a guard while they read what they approve. Tired approvers rubber-stamp, and an attacker can wait for a real administrator's request and take over the session after it is approved. Keep the volume low, show the approver what, where and why, bind the elevated session to the device and the task, and watch the approvals themselves: a reviewer who approves everything in two seconds is a finding.
+- **Expiry can lag.** A credential that should have expired still works if the revocation path is broken or nobody watches it, and machine credentials are the usual suspects. Test revocation on a schedule, and alert on any credential that outlives its declared expiry.
 - **Baselines can be taught.** An identity that drifts in small steps becomes normal, and a detector tuned too tight drowns people in false alarms until they stop reading. Keep a short list of things that are never normal for an identity, whatever its history, and keep alerts few enough that a person still reads each one.
 - **Complexity is a risk.** Every layer is another part that can fail and another thing someone must run. Prefer few, simple parts, test each one, and remove a layer you cannot test.
 

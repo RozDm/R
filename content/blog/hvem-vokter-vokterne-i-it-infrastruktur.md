@@ -42,7 +42,7 @@ En logg som blir liggende på maskinen den beskriver, er bare en dagbok. Alle me
 
 For at et spor skal telle som bevis, må det forlate verten i det øyeblikket det skrives, over en grense som bare virker én vei. Kildemaskinen kan legge til nye linjer, men den må ikke kunne lese tilbake, endre eller slette det som allerede har krysset grensen. Selv om maskinen blir helt overtatt fem sekunder senere, er alt som var levert før det øyeblikket utenfor rekkevidde. Hold vinduet mellom skriving og levering så kort du kan.
 
-Hos mottakeren forsegles det som kommer inn, med en signatur eller en hash-kjede, slik at en senere endring av et lagret spor kan oppdages, og lageret ligger i et eget miljø, adskilt fra systemene det registrerer.
+Hos mottakeren forsegles det som kommer inn, med en signatur eller en hash-kjede, slik at en senere endring av et lagret spor kan oppdages, og lageret ligger i et eget miljø, adskilt fra systemene det registrerer. Hold sporet rikt nok og langt nok til å svare på spørsmål du ikke så komme: alarmene dekker dem du så komme, og innbrudd oppdages ofte sent.
 
 Et spor er også bare så ærlig som det som skriver det. Hvis en angriper tukler med koden før den rulles ut, vil loggene trofast registrere hva et ondsinnet program gjør. Tilliten må derfor rekke tilbake til byggingen: signer det du ruller ut, registrer hvordan det ble bygget, og kontroller signaturen ved utrulling og, der du kan, mens det kjører. En liste over ingredienser (en SBOM) er en oversikt, ikke et bevis. Og en signatur viser hvor en artefakt kommer fra, ikke at den er harmløs, så byggesystemet og signeringsnøklene er også voktere, og hører inn under lag 4.
 
@@ -112,6 +112,7 @@ Ingenting av dette er nytt, og det virker i hele nettets målestokk. Sertifikatu
 De fire lagene gjør et angrep dyrere og kortere. De gjør det ikke umulig, og hvert lag har sin egen måte å svikte på.
 
 - **Godkjenninger blir stemplet.** En andre person er bare en vokter så lenge vedkommende leser det de godkjenner. Slitne godkjennere stempler, og en angriper kan vente på en ekte administrators forespørsel og ta over økten etter at den er godkjent. Hold volumet lavt, vis godkjenneren hva, hvor og hvorfor, bind den hevede økten til enheten og oppgaven, og følg med på selve godkjenningene: en godkjenner som sier ja til alt på to sekunder, er et funn.
+- **Utløp kan henge etter.** En legitimasjon som burde ha utløpt, virker fortsatt hvis tilbaketrekkingen er ødelagt eller ingen følger med, og maskinlegitimasjon er den vanlige synderen. Test tilbaketrekking på fast tid, og varsle når en legitimasjon overlever sin erklærte utløpsdato.
 - **Normalbilder kan læres opp.** En identitet som glir av sted i små steg, blir normal, og en detektor som er stilt for stramt, drukner folk i falske alarmer til de slutter å lese. Hold en kort liste over ting som aldri er normale for en identitet, uansett historikk, og hold alarmene så få at et menneske fortsatt leser hver av dem.
 - **Kompleksitet er en risiko.** Hvert lag er en ny del som kan svikte, og en ny ting noen må drifte. Foretrekk få, enkle deler, test hver av dem, og fjern et lag du ikke kan teste.
 
