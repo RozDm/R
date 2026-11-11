@@ -29,6 +29,9 @@ const nb = {
   },
   // The switch shows the OTHER language: its label is written in that language.
   langSwitch: { label: 'EN', title: 'English version' },
+  // Like the switch above: written in the language it offers, for a reader
+  // who doesn't read this one (components/layout/LangHint.tsx).
+  langHint: { text: 'Read this site in English', close: 'Close' },
   theme: { toDark: 'Bytt til mørkt tema', toLight: 'Bytt til lyst tema' },
   hero: {
     intro:
@@ -149,6 +152,8 @@ const nb = {
     title: 'Artikler',
     description: 'Artikler om systemadministrasjon, DevOps, infrastruktur, automatisering og sikkerhet.',
     feedTitle: 'Blogg',
+    feedLead: 'Nye artikler rett i leseren din:',
+    feedLink: 'RSS-feed',
     empty: 'Ingen artikler ennå.',
     topics: 'Emner',
     topic: 'Emne',
@@ -195,6 +200,7 @@ const en: Dict = {
     closeMenu: 'Close menu',
   },
   langSwitch: { label: 'NO', title: 'Norsk versjon' },
+  langHint: { text: 'Les nettstedet på norsk', close: 'Lukk' },
   theme: { toDark: 'Switch to dark theme', toLight: 'Switch to light theme' },
   hero: {
     intro:
@@ -309,6 +315,8 @@ const en: Dict = {
     title: 'Articles',
     description: 'Articles on systems administration, DevOps, infrastructure, automation and security.',
     feedTitle: 'Blog',
+    feedLead: 'New articles straight to your reader:',
+    feedLink: 'RSS feed',
     empty: 'No articles yet.',
     topics: 'Topics',
     topic: 'Topic',

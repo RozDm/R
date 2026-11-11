@@ -2,6 +2,7 @@ import HashLink from './HashLink'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
 import LangSwitch from './LangSwitch'
+import LangHint from './LangHint'
 import { DICT } from '@/data/i18n'
 import { localePath, type Lang } from '@/lib/i18n'
 
@@ -64,6 +65,7 @@ export default function Header({ lang = 'nb', alternate }: { lang?: Lang; altern
             <MobileMenu links={links} />
           </div>
         </div>
+        <LangHint href={alternate} />
       </header>
     </>
   )
