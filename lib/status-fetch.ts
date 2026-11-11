@@ -6,6 +6,7 @@
 // apart at the least) always ask afresh. A failed request is forgotten so the
 // next caller retries. Same idea as fetchGeoCountries (lib/geo.ts).
 import type { HistoryEntry, PublicMonitorResult } from '@/src/status'
+import { noteServerDate } from './server-clock'
 
 // What /api/status answers: the cron's snapshot, or `{results:[],history:[]}`
 // (no updatedAt) when KV has none.
@@ -21,9 +22,11 @@ let shared: { at: number; promise: Promise<StatusSnapshot> } | null = null
 export function fetchStatus(): Promise<StatusSnapshot> {
   const now = Date.now()
   if (shared && now - shared.at < SHARE_MS) return shared.promise
-  const promise = fetch('/api/status', { cache: 'no-store' }).then((r) =>
-    r.ok ? (r.json() as Promise<StatusSnapshot>) : Promise.reject(new Error('http ' + r.status)),
-  )
+  const promise = fetch('/api/status', { cache: 'no-store' }).then((r) => {
+    // Staleness is judged by the server's clock (lib/server-clock.ts).
+    noteServerDate(r)
+    return r.ok ? (r.json() as Promise<StatusSnapshot>) : Promise.reject(new Error('http ' + r.status))
+  })
   promise.catch(() => {
     if (shared?.promise === promise) shared = null
   })
