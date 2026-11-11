@@ -4,7 +4,6 @@ description: "Anything that can protect a system can also blind it: admins, agen
 date: "2026-11-11"
 tags: ["Sikkerhet", "SOC"]
 translationOf: "hvem-vokter-vokterne-i-it-infrastruktur"
-draft: true
 ---
 
 "We added monitoring" is a comfort, not a guarantee. Every tool, administrator or autonomous agent with the power to protect a system also has the power to blind it, break it, or hide what happened. Security is less about finding an infallible guard than about building a chain where no single guard has to be trusted alone.

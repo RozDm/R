@@ -3,7 +3,6 @@ title: "Hvem vokter vokterne? Tilsyn i IT-infrastruktur"
 description: "Alt som kan beskytte et system, kan også blinde det: administratorer, agenter, overvåkingsverktøy. Fire lag med tilsyn, fra enveislogger til ekstern puls."
 date: "2026-11-11"
 tags: ["Sikkerhet", "SOC"]
-draft: true
 ---
 
 «Vi har satt opp overvåking» er en trøst, ikke en garanti. Hvert verktøy, hver administrator og hver autonom agent som har makt til å beskytte et system, har også makt til å blinde det, ødelegge det eller skjule hva som skjedde. Sikkerhet handler mindre om å finne en ufeilbarlig vokter enn om å bygge en kjede der ingen enkelt vokter må stoles på alene.
