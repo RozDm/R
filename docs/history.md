@@ -219,6 +219,15 @@ re-measure before undoing one.
   `<html data-scroll-behavior="smooth">` Next's scroll reset on a route
   change animated, its follow-up `scrollIntoView` calls cancelled it, and
   the new page opened mid-scroll.
+- **Primary nav, post cards and prev/next keep the default prefetch.**
+  Measured 2026-11-11 on a first view of `/`: 7 prefetch requests on desktop
+  (5 on a phone, whose menu is closed), 15.2 KB brotli of RSC payload plus
+  one 2.7 KB route chunk (`/kontakt`). 8.6 KB of it (3 requests) is the
+  front page prefetching itself through its own `/#…` links; Blogg and
+  Kontakt together are ~9.3 KB — the price of an instant first click, on
+  static assets that cost no Worker request. Prefetch on hover for the
+  header links would save under 10 KB, so they stay as they are; the
+  self-prefetch is the only waste, and too small to touch `HashLink` for.
 - **The Trends SVG's `viewBox` is its rendered width.** A fixed 800-unit
   viewBox scaled everything by the card's width: at 390 px the 11px axis
   labels rendered at ~4px and the dots at ~1.5px (2026-10-23).

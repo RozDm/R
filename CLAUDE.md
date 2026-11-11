@@ -75,9 +75,12 @@ answered; keep output and replies short.
   «Systemfeil» boundaries.
 - Languages: ALL UI copy lives in `data/i18n.ts` (`nb` defines the shape,
   `en` is typed against it, `tests/i18n.test.ts` checks parity) — never in a
-  component. Exception: `app/error.tsx` reads `ERROR_COPY`
+  component. Exceptions: `app/error.tsx` reads `ERROR_COPY`
   (`data/i18n-error.ts`, spread into both): importing `DICT` there put a
-  second dictionary copy on every page. Both languages share the page
+  second dictionary copy on every page; and the privacy notices' text stays
+  in their pages (`app/personvern/page.tsx`, `app/en/privacy/page.tsx`) — a
+  document, not UI copy, and the dictionary ships with every page (only the
+  labels they share with the site come from `DICT`). Both languages share the page
   components (`HomePage`, `ContactPage`, the blog pages); server components
   take `lang` from their page, client components call `useLang()`. Page links go through
   `localePath()` (`lib/i18n.ts`); blog posts/tags pair dynamically and pass
@@ -237,7 +240,11 @@ answered; keep output and replies short.
   its single chunk. After a Next upgrade, re-measure with prefetch on and
   drop the setting if the default stops duplicating. `agentRules: false`
   there keeps `next dev` from writing an AGENTS.md into the repo root.
-- ESLint stays on 9 (the React plugin isn't ESLint-10-ready). TypeScript
+- ESLint stays on 9 (the React plugin isn't ESLint-10-ready). Two rules run
+  with types (`eslint.config.mjs`, both tsconfigs): `no-floating-promises`
+  and `no-misused-promises` — a forgotten `await` in the Worker is a write
+  that may never land. Mark a deliberate fire-and-forget `void`; don't
+  disable the rule. Lint went from 4.4 s to 8.4 s for it (2026-11-11). TypeScript
   stays on 6: 7.0.2 (tried 2026-10-29) builds, but has no JS API, so
   typescript-eslint refuses it (tracked for 7.1+, typescript-eslint#10940),
   for ~3 s saved — not worth the npm-alias setup. Revisit when it supports 7.

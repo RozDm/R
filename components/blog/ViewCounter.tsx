@@ -38,7 +38,7 @@ export default function ViewCounter({ slug }: { slug: string }) {
 
     // Already counted this session, or a browser under automation: just read.
     if (counted() || navigator.webdriver) {
-      load('GET')
+      void load('GET')
       return () => controller.abort()
     }
     // Otherwise the count arrives with the POST's answer; it stays hidden
@@ -50,7 +50,7 @@ export default function ViewCounter({ slug }: { slug: string }) {
       try {
         sessionStorage.setItem(flag, '1')
       } catch {}
-      load('POST')
+      void load('POST')
     })
     return () => {
       stop()
