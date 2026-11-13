@@ -31,7 +31,11 @@ const SCRIPT_TAIL = TURNSTILE_HOST
 // markdown post (HSTS + mixed-content auto-upgrade cover most of it).
 const COMMON_DIRECTIVES = [
   "default-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
+  // The export has no <style> element; React and Turnstile's api.js set
+  // styles through the CSSOM, which CSP doesn't govern. Only server-rendered
+  // style="…" attributes need style-src-attr.
+  "style-src 'self'",
+  "style-src-attr 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
   `connect-src 'self' ${TURNSTILE_HOST}`,

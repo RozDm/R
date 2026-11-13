@@ -69,19 +69,17 @@ async function runHealthChecks(env: Env): Promise<void> {
       let ok = false
       let status = 0
       try {
-        const res = monitor.internal
-          ? await env.ASSETS.fetch(new Request(monitor.url))
-          : await fetch(monitor.url, {
-              method: 'GET',
-              // Follow redirects (NetBox sends / to /login/) and require a
-              // clean 200 on the final response — 3xx/4xx/5xx count as down.
-              redirect: 'follow',
-              // Bound the probe so a hung host is recorded as down, not waited on.
-              signal: AbortSignal.timeout(MONITOR_TIMEOUT_MS),
-              headers: {
-                'User-Agent': 'StatusMonitor/1.0 (+https://rozsoshnykh.no/status)',
-              },
-            })
+        const res = await fetch(monitor.url, {
+          method: 'GET',
+          // Follow redirects (NetBox sends / to /login/) and require a
+          // clean 200 on the final response — 3xx/4xx/5xx count as down.
+          redirect: 'follow',
+          // Bound the probe so a hung host is recorded as down, not waited on.
+          signal: AbortSignal.timeout(MONITOR_TIMEOUT_MS),
+          headers: {
+            'User-Agent': 'StatusMonitor/1.0 (+https://rozsoshnykh.no/status)',
+          },
+        })
         status = res.status
         ok = res.status === 200
       } catch {

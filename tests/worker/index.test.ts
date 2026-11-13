@@ -231,11 +231,12 @@ describe('/api/timeseries', () => {
     expect((await get(makeEnv(), 'metric=nope')).status).toBe(400)
   })
 
-  it('without the AE secrets: an empty, degraded, uncached series', async () => {
+  it('without the AE secrets: an empty, degraded, briefly cached series', async () => {
     stubCache()
     const res = await get(makeEnv(), 'metric=geo&range=24h')
     expect(await res.json()).toEqual({ metric: 'geo', range: '24h', points: [], degraded: true })
-    expect(puts).toEqual([])
+    expect(res.headers.get('cache-control')).toBe('public, max-age=20, s-maxage=20')
+    expect(puts).toEqual([`${ORIGIN}/api/timeseries?metric=geo&range=24h`])
   })
 
   it('caches a real AE answer under the canonical key, junk params dropped', async () => {
@@ -250,14 +251,14 @@ describe('/api/timeseries', () => {
     expect(String(init.body)).toContain("blob1 = 'geo'")
   })
 
-  it('serves an AE failure degraded and never caches it', async () => {
+  it('serves an AE failure degraded and caches it only 20 s', async () => {
     stubCache()
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{"errors":["forbidden"]}', { status: 403 })))
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const res = await get(makeEnv(SECRETS), 'metric=geo&range=7d')
     expect(await res.json()).toEqual({ metric: 'geo', range: '7d', points: [], degraded: true })
-    expect(res.headers.get('cache-control')).toBe('no-store')
-    expect(puts).toEqual([])
+    expect(res.headers.get('cache-control')).toBe('public, max-age=20, s-maxage=20')
+    expect(puts).toEqual([`${ORIGIN}/api/timeseries?metric=geo&range=7d`])
     expect(error).toHaveBeenCalledWith('timeseries: AE returned', 403, expect.any(String))
   })
 })

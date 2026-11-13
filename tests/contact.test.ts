@@ -71,6 +71,35 @@ describe('encodeMimeHeader', () => {
     expect(encoded).toMatch(/^=\?utf-8\?B\?[A-Za-z0-9+/]+=*\?=$/)
     expect(Buffer.from(encoded.slice(10, -2), 'base64').toString('utf8')).toBe('Ny melding fra Bjørn')
   })
+
+  const decode = (header: string) =>
+    header
+      .split('\r\n ')
+      .map((w) => Buffer.from(w.slice(10, -2), 'base64'))
+      .reduce((all, b) => Buffer.concat([all, b]), Buffer.alloc(0))
+      .toString('utf8')
+
+  it('splits a long subject into folded words of at most 75 chars', () => {
+    const text = 'Ny melding fra Дмитро Розсошних, Bjørn Ærøskøbing og Åse Øvergård (rozsoshnykh.no)'
+    const encoded = encodeMimeHeader(text)
+    const words = encoded.split('\r\n ')
+    expect(words.length).toBeGreaterThan(1)
+    for (const w of words) {
+      expect(w).toMatch(/^=\?utf-8\?B\?[A-Za-z0-9+/]+=*\?=$/)
+      expect(w.length).toBeLessThanOrEqual(75)
+      expect(`Subject: ${w}`.length).toBeLessThanOrEqual(76)
+    }
+    expect(decode(encoded)).toBe(text)
+  })
+
+  it('never splits a code point across words', () => {
+    const text = '😀'.repeat(30)
+    const words = encodeMimeHeader(text).split('\r\n ')
+    for (const w of words) {
+      expect(Buffer.from(w.slice(10, -2), 'base64').toString('utf8')).toMatch(/^(😀)+$/u)
+    }
+    expect(decode(encodeMimeHeader(text))).toBe(text)
+  })
 })
 
 describe('buildContactMime', () => {

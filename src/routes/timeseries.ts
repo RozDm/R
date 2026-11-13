@@ -7,6 +7,10 @@
 // (non-2xx, parse, fetch) log to Worker observability via console.error so an
 // unexpectedly empty chart is diagnosable from the dashboard.
 import { apiJson, cachedApiJson, putCachedApiJson } from '../http'
+
+// Must stay below the 30 s between the watchdog's three tries
+// (status-watchdog.yml), so each try asks AE again.
+const DEGRADED_TTL_S = 20
 import {
   buildSeriesSql,
   parseMetric,
@@ -80,9 +84,15 @@ export async function handleTimeseries(
   if (aeAnswered) {
     return putCachedApiJson(ctx, cache.key, JSON.stringify({ metric, range: rangeKey, points }), range.ttlSeconds)
   }
-  // Degraded answer (missing secrets or AE failure): serve it, don't pin it.
-  // The chart reads it as empty; `degraded` is for the watchdog
+  // Degraded answer (missing secrets or AE failure): cached for only
+  // DEGRADED_TTL_S — bounds AE API calls while AE/the token is down without
+  // pinning an empty chart. The chart reads it as empty; `degraded` is for the watchdog
   // (status-watchdog.yml) — an expired or revoked AE token otherwise looks
   // exactly like a quiet week.
-  return apiJson(JSON.stringify({ metric, range: rangeKey, points, degraded: true }))
+  return putCachedApiJson(
+    ctx,
+    cache.key,
+    JSON.stringify({ metric, range: rangeKey, points, degraded: true }),
+    DEGRADED_TTL_S,
+  )
 }
