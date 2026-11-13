@@ -81,4 +81,6 @@ jobs:
             "SELECT blob2 AS directive, blob3 AS blocked, blob4 AS page, SUM(_sample_interval) AS reports FROM rozsoshnykh_metrics WHERE blob1 = 'csp' AND $W GROUP BY directive, blocked, page ORDER BY reports DESC LIMIT 40"
           q "Mails the Worker failed to send (contact form / status alert)" \
             "SELECT blob2 AS source, SUM(_sample_interval) AS failures FROM rozsoshnykh_metrics WHERE blob1 = 'mailfail' AND $W GROUP BY source ORDER BY failures DESC LIMIT 10"
+          q "Contact messages dropped by the honeypot (a real one here means autofill filled it)" \
+            "SELECT SUM(_sample_interval) AS drops FROM rozsoshnykh_metrics WHERE blob1 = 'honeypot' AND $W"
           echo "Report written to the run summary."

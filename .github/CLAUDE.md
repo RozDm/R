@@ -64,7 +64,7 @@ incident background: `docs/history.md`; the zone: `docs/cloudflare-security.md`.
   60 days without repo activity: re-enable from the Actions tab.
 - `analytics-report.yml` — manual, `days` 1–90, read-only: AE breakdowns
   (Besøk by ASN/operator and country, browser CSP violations, mails the
-  Worker failed to send) in the run summary, also teed to the job log for `get_job_logs`.
+  Worker failed to send, honeypot drops) in the run summary, also teed to the job log for `get_job_logs`.
 - `reset-metrics.yml` — manual, type `RESET`: wipes the D1 `views` + `geo`
   counters (before/after counts). AE is append-only: bump `METRICS_EPOCH`
   in `src/timeseries.ts` after every run (6-hour UTC boundary, rounded

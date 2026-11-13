@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import Turnstile, { type TurnstileHandle } from './Turnstile'
 import { DICT } from '@/data/i18n'
 import { useLang } from '@/lib/use-lang'
-import { CONTACT_ADDRESS, CONTACT_LIMITS, EMAIL_PATTERN } from '@/src/contact'
+import { CONTACT_ADDRESS, CONTACT_LIMITS, EMAIL_PATTERN, HONEYPOT_FIELD } from '@/src/contact'
 
 type FormState =
   | 'idle'
@@ -179,11 +179,14 @@ export default function ContactForm() {
           increasingly skip display:none. Hidden from assistive tech via
           aria-hidden and tabIndex={-1}. Classes, not an inline style: a
           browser without style-src-attr (Safari < 15.4) falls back to
-          style-src 'self' and would show an inline-styled honeypot. */}
+          style-src 'self' and would show an inline-styled honeypot. Named
+          and labelled "topic", not website/url/company: autofill and
+          password managers fill those, and a filled honeypot drops a real
+          message as "sent" (HONEYPOT_FIELD, shared with the Worker). */}
       <div aria-hidden className="absolute -left-[9999px] top-auto w-px h-px overflow-hidden">
         <label>
-          Website
-          <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+          Topic
+          <input type="text" name={HONEYPOT_FIELD} tabIndex={-1} autoComplete="off" />
         </label>
       </div>
 

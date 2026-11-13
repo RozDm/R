@@ -9,6 +9,7 @@ import { clientKey } from '../ip'
 import {
   CONTACT_ADDRESS,
   CONTACT_WINDOWS_MS,
+  HONEYPOT_FIELD,
   OWNER_INBOX,
   buildContactMime,
   isoCutoff,
@@ -49,8 +50,19 @@ export async function handleContact(url: URL, request: Request, env: Env): Promi
     return apiJson('{"error":"bad request"}', 400)
   }
 
-  // Honeypot: bots fill every field; pretend success and drop it.
-  if ((raw as { website?: unknown })?.website) {
+  // Honeypot: bots fill every field; pretend success and drop it. One AE
+  // point per drop (no visitor data), so a false positive — autofill filling
+  // the field — shows in the analytics report instead of vanishing. Behind the
+  // limiter: this runs before the contact burst cap, and a POST loop must not
+  // spend AE's shared daily points.
+  if ((raw as Record<string, unknown> | null)?.[HONEYPOT_FIELD]) {
+    if (await allowWrite(env, request, 'honeypot')) {
+      try {
+        env.METRICS_AE.writeDataPoint({ indexes: ['honeypot'], blobs: ['honeypot'], doubles: [1] })
+      } catch {
+        // Best effort: the ack below doesn't depend on the trace.
+      }
+    }
     return apiJson('{"ok":true}')
   }
 
