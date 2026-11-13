@@ -36,6 +36,12 @@ export const CONTACT_WINDOWS_MS = {
 // the two equal (else 03:00 runs a health check and nothing is ever pruned).
 export const CONTACT_PRUNE_CRON = '0 3 * * *'
 
+// The contact form's honeypot field, shared by the form and the Worker so the
+// two can't drift. Not `website`/`url`/`company`/`phone`-like: autofill and
+// password managers fill those, and a filled honeypot silently drops a real
+// visitor's message.
+export const HONEYPOT_FIELD = 'topic'
+
 export function isoCutoff(nowMs: number, windowMs: number): string {
   return new Date(nowMs - windowMs).toISOString()
 }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { handleContact } from '../../src/routes/contact'
-import { OWNER_INBOX } from '../../src/contact'
+import { HONEYPOT_FIELD, OWNER_INBOX } from '../../src/contact'
 import { BROWSER_HEADERS, makeEnv } from './fakes'
 import wranglerConfig from '../../wrangler.jsonc?raw'
 
@@ -87,11 +87,29 @@ describe('POST /api/contact', () => {
     expect(fake.sent).toHaveLength(0)
   })
 
-  it('acks a filled honeypot without storing or mailing', async () => {
+  it('acks a filled honeypot without storing or mailing, and leaves an AE trace', async () => {
     const fake = makeEnv()
-    expect(await send(fake, { ...FORM, website: 'http://spam.example' })).toEqual({ status: 200, body: { ok: true } })
+    expect(await send(fake, { ...FORM, [HONEYPOT_FIELD]: 'spam' })).toEqual({ status: 200, body: { ok: true } })
     expect(rows(fake)).toBe(0)
     expect(fake.sent).toHaveLength(0)
+    expect(fake.aePoints).toEqual([{ indexes: ['honeypot'], blobs: ['honeypot'], doubles: [1] }])
+  })
+
+  it('over the limiter budget, still acks a filled honeypot but writes no AE point', async () => {
+    const fake = makeEnv()
+    fake.setRateLimit(0)
+    expect(await send(fake, { ...FORM, [HONEYPOT_FIELD]: 'spam' })).toEqual({ status: 200, body: { ok: true } })
+    expect(fake.aePoints).toHaveLength(0)
+    expect(rows(fake)).toBe(0)
+    expect(fake.sent).toHaveLength(0)
+  })
+
+  it('ignores the legacy `website` key (autofill fills it): the message goes through', async () => {
+    const fake = makeEnv()
+    expect(await send(fake, { ...FORM, website: 'https://kari.example' })).toEqual({ status: 200, body: { ok: true } })
+    expect(rows(fake)).toBe(1)
+    expect(fake.sent).toHaveLength(1)
+    expect(fake.aePoints).toHaveLength(0)
   })
 
   it('rejects invalid input with 422', async () => {

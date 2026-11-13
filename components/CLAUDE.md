@@ -137,7 +137,9 @@ incident background: `docs/history.md`.
   again. The widget takes the site's theme (not the OS's) and is redrawn
   when the toggle flips it. Limits, the e-mail `pattern` and the address
   come from `src/contact.ts` (`CONTACT_LIMITS`, `EMAIL_PATTERN`,
-  `CONTACT_ADDRESS`), so the browser refuses what the Worker would. The form
+  `CONTACT_ADDRESS`), so the browser refuses what the Worker would. The
+  honeypot's name is `HONEYPOT_FIELD` (`topic`: autofill fills
+  website/url/company-like fields, and a filled one drops a real message). The form
   and its confirmation replace each other, so focus is moved by hand: to the
   confirmation's heading after a send, back to the name field on «Send en
   til» — the element that had it is unmounted, and focus fell to `<body>`.

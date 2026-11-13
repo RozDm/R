@@ -51,7 +51,9 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   bot diagnostic, no IP), `view` (`/api/views` POSTs, not graphed), `csp`
   (one point per report POST), `mailfail` (one point per mail the Worker
   failed to send; `blob2` `contact` or `status`, nothing of the visitor's —
-  the watchdog reads it, since a dead mail path can't mail). Reads need `CF_ACCOUNT_ID` + `AE_API_TOKEN`
+  the watchdog reads it, since a dead mail path can't mail), `honeypot` (one
+  point per contact POST the honeypot dropped, behind `allowWrite(…,
+  'honeypot')`, nothing of the visitor's — a false positive must show). Reads need `CF_ACCOUNT_ID` + `AE_API_TOKEN`
   (`Account Analytics:Read`); missing either, or AE slower than 8 s → empty
   series. Quote AE SQL `INTERVAL` literals (`INTERVAL '6' HOUR`; bare 422s).
 - `METRICS_EPOCH` hides pre-relaunch AE points (AE is append-only). It must
@@ -92,7 +94,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   read → 200, empty `points`, `degraded: true`, edge-cached 20 s (under the watchdog's 30 s retry gap); the watchdog
   fails on `degraded`.
 - `/api/contact` — POST: a 32 KB body cap (413, by Content-Length and while
-  reading), `isWriteAllowed` (403 `forbidden`), honeypot, the burst cap,
+  reading), `isWriteAllowed` (403 `forbidden`), honeypot (`HONEYPOT_FIELD`, a
+  fake `ok:true` + a `honeypot` AE point), the burst cap,
   Turnstile when `TURNSTILE_SECRET` is set (siteverify bounded at 5 s; its
   `hostname` must be the request's), an e-mail pattern without
   `<>,;"()[]\:` (it lands in `Reply-To`), D1 limits per sender (`contact.ip`
