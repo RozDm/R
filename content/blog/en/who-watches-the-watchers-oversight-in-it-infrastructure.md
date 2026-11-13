@@ -62,14 +62,14 @@ Someone has to administer the collector, the alerting and the access rules, and 
 Three limits keep the highest rights in check:
 
 - Borrowed time. Nobody holds permanent full access. High rights are borrowed for a declared task, with a limited scope and an expiry, and the loan is written to the record before the session starts. Service accounts and agents borrow in the same way, and each of them has a named human owner.
-- Two pairs of eyes. Whoever proposes a change to critical infrastructure, to the way it is deployed or to the alert rules cannot be the one who approves it. A change to the approval rules themselves triggers an alert at layer 2.
+- Two pairs of eyes. Whoever proposes a change to critical infrastructure, to the way it is deployed or to the alert rules cannot be the one who approves it. A change to the approval rules themselves triggers an alert at layer 2. The rule is reserved for what changes the guards themselves or cannot be undone. Everything else an agent does at its own pace within the scope it has borrowed; otherwise the approvals become so many that nobody reads them.
 - A noisy spare key (a break-glass account). The emergency account for when the normal login systems are down cannot depend on them. It is therefore the one standing exception, and it raises an alarm over an independent channel the moment it is used.
 
 The keys are the fourth layer. It does not watch the layer before it, as the previous two do; it decides who may change the other three.
 
 With the four layers in place, the same stolen laptop meets a boundary at every step. It holds no permanent keys, and a request for high rights at an odd hour reaches a second person as a question. If the intruder kills the log sender, everything sent up to that point is already stored on the other side, and the collector alerts on the silence. If they silence the observer, the pulse stops and the outside receiver pages the team. A single muted alert needs a second person and leaves a line in the sealed record. The emergency account raises its alarm at sign-in, before the first command is run.
 
-The breach still happens. The difference is that it is visible, costly and short.
+The breach still happens, but now it is visible and costly. How short it is depends on what happens after the alarm. Oversight does not stop an attack. It decides how long the attack can go on unnoticed.
 
 ## When do you stop asking?
 
@@ -79,7 +79,7 @@ So at the end of the chain sits something you choose to trust: an outside pulse 
 
 The same question has been asked at the scale of the whole web. Certificate authorities vouch that a website is who it says it is, and after a breach at one of them in 2011 the question was put to them. The answer was Certificate Transparency: in practice, every publicly trusted certificate is published in open logs that can only be added to, anyone can run a monitor that looks for certificates they did not expect, and browsers refuse a certificate that does not carry the logs' signed promise to include it. The logs are not watched by yet another guard. The browsers ask for promises from several logs run by different operators, which is a duplicated anchor. An authority can still issue a bad certificate, but the certificate can no longer hide.
 
-In a small environment, where one person runs both the servers and the security, you cannot split the roles between people. You can split them across boundaries: send the logs where your everyday account cannot delete them, send the pulse to a receiver outside your own infrastructure, and agree a fixed time when another person, an outsider if need be, reads the summary. The first two work even when nobody is looking. The agreement is a mitigation, because with a weekly review the detection window is a week.
+In a small environment, where one person runs both the servers and the security, you cannot split the roles between people. You can split them across boundaries: send the logs where your everyday account cannot delete them, send the pulse to a receiver outside your own infrastructure, and agree a fixed time when another person, an outsider if need be, reads a summary of what concerns the guards themselves: changed rules, muted alerts, borrowed rights and gaps in the record. The first two work even when nobody is looking. The agreement is a mitigation. The reader will not recognise a quiet attack, but the guards can no longer be changed without someone seeing it, and with a weekly review the detection window is a week.
 
 ## The chain on one page
 
@@ -112,9 +112,9 @@ Complexity is a risk in itself. Every control is one more part that can fail and
 The question tells you what has to exist. A few details decide whether it holds in practice:
 
 - Accept records only over an authenticated channel, so that one host cannot write in another's name, and stamp each record with the collector's own clock. A compromised host can lie about the time.
-- Seal what arrives with a signature or a hash chain, and keep the key where the store's own administrators cannot reach it.
-- Give every source a quota, so that a compromised host cannot flood the store and push the evidence out. A source that hits its quota is an alarm.
-- Sign what you deploy, record how it was built, and verify the signature at deployment. A list of what the build contains is an inventory, not proof, and the build system and its signing keys fall under layer 4.
+- Seal what arrives with a signature or a hash chain, keep the signing key out of reach of the store's own administrators, and regularly put a copy of the latest hash where the collector cannot change it either. A collector that has been taken over can then add lies, but it cannot rewrite what is already sealed.
+- Give every source a quota, so that a compromised host cannot flood the store and push out older evidence or evidence from other sources. A source that hits its quota is treated like one that has gone quiet: you cannot see what it does next, so the alarm is just as serious.
+- Sign what you deploy, record how it was built, and verify the signature at deployment. A signature shows where something came from, and a list of its contents shows what it is made of. Neither shows that it is harmless: malicious code that got in before the build is built and signed like everything else. So the build system, its signing keys and the way code gets in all fall under layer 4.
 - A machine cannot answer a second factor. Let it prove its identity by what it is and where it runs, and give it short-lived credentials.
 - Store the emergency key so that taking it out leaves a trace, and test it on a schedule. The alarm it raises must never block the login, or people will learn to switch it off.
 - Keep the record long enough to answer questions you did not see coming, because intrusions are often found late. Logs about people are also personal data: decide what you collect, why, who may read it and for how long, and tell the people it concerns.
