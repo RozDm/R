@@ -9,13 +9,13 @@ tags: ["Nettverk", "TCP/IP"]
 
 ## Å bevise, ikke å gjette
 
-God feilsøking er en serie små eksperimenter. Hvert steg tester en påstand — «kabelen virker», «navnet slås opp», «porten svarer» — og svaret er enten et bevis eller en eliminering. Et steg der du allerede vet svaret, er bortkastet; et godt steg deler det som gjenstår, i to.
+God feilsøking er en serie små eksperimenter. Hvert steg tester en påstand – «kabelen virker», «navnet slås opp», «porten svarer» – og svaret er enten et bevis eller en eliminering. Et steg der du allerede vet svaret, er bortkastet; et godt steg deler det som gjenstår, i to.
 
 Den farligste fellen er den overbevisende første gjetningen. «Det er sikkert DNS» kan godt stemme, men hypotesen du liker best, er den du må teste hardest. Ellers leter du bare etter det som bekrefter den.
 
 Før første test lønner det seg å stille tre spørsmål:
 
-- Hva feiler, og hva virker? Én nettside, alt mot internett, eller bare skriveren?
+- Hva feiler, og hva virker? Én nettside, alt mot internett eller bare skriveren?
 - For hvem? Én bruker, ett kontor eller alle?
 - Siden når, og hva ble endret? En endring i helgen er ofte hele forklaringen.
 
@@ -43,7 +43,7 @@ Og et bevis gjelder bare det du testet med. Et lite ping beviser ikke at store p
 
 Den første veien begynner ved kabelen og beviser lag for lag oppover: signal, kontakt med naboen, en vei til målet, en åpen port, en tjeneste som svarer.
 
-Den passer når symptomet er bredt — mange brukere eller alle tjenester er nede — når noe fysisk er endret, ved nye installasjoner, og når én maskin ikke har nett i det hele tatt. Den passer også når du vet lite: metoden krever ingen teori om feilen, bare grundighet.
+Den passer når symptomet er bredt – mange brukere eller alle tjenester er nede – når noe fysisk er endret, ved nye installasjoner, og når én maskin ikke har nett i det hele tatt. Den passer også når du vet lite: metoden krever ingen teori om feilen, bare grundighet.
 
 Styrken er at ingenting hoppes over. Hvert bevist lag er sikker grunn, og du jager aldri et spøkelse høyt oppe som egentlig skyldes en feil lenger nede. Svakheten er tiden: er feilen et utløpt sertifikat, har du bevist fire lag forgjeves. Og den krever tilgang til de nederste lagene, til kabler, svitsjer og ruting, som du ikke alltid har.
 
@@ -60,7 +60,7 @@ Den passer når én tjeneste feiler mens resten virker: e-posten går, men intra
 | Tilkoblingen avvises | Noe sa nei: ingenting lytter, eller en brannmur avviser | Tjenesten eller brannmuren, lag 4 |
 | Tidsavbrudd ved tilkobling | Ingen svar: pakkene forsvinner på vei dit eller tilbake | Brannmur eller ruting, lag 4 og nedover |
 | Ikke noe svar etter tilkobling | Forbindelsen står, men tjenesten bak svarer ikke | Applikasjonen, lag 5 |
-| Sertifikatfeil | Tilliten svikter, eller du havnet hos feil vert | TLS, lag 5; ved feil vert DNS eller en proxy |
+| Sertifikatfeil | Tilliten svikter, eller du havnet hos feil vert | TLS, lag 5; ved feil vert: DNS eller en proxy |
 
 Svakheten er at symptomer kan lyve. En feil langt nede kan forkle seg som en feil høyt oppe: gjennom en VPN-tunnel med for liten MTU slås navnet opp, ping svarer og porten åpner seg, men forbindelsen henger når serveren sender sertifikatkjeden. Det ser ut som en TLS-feil, men årsaken ligger på lag 3. Forsvaret er å gi slipp raskt: holder ikke en hypotese høyt oppe, går du ned.
 

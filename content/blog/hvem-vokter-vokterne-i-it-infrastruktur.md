@@ -35,13 +35,13 @@ I stedet for å stable voktere i det uendelige deler du tilsynet i fire oppgaver
 | 3 Alarmen: er vokteren fortsatt våken? | Overvåkeren eller varslingsveien krasjer, mister lagring eller blir avskåret | Kontinuerlig puls til en ekstern mottaker |
 | 4 Nøklene: hvem kan endre lag 1–3? | Permanente nøkler uten eier, eller én kompromittert superbruker som slår av hele kjeden | Midlertidig omfang, navngitte eiere, tomannsgodkjenning og en bråkete reservenøkkel |
 
-Det som får lagene til å holde, er skilte skjebner, eller med ingeniørord uavhengige feildomener. Hvis systemet som samler loggene deler passord, maskinvare eller nettverksveier med serverne det overvåker, tar én feil ned begge samtidig.
+Det som får lagene til å holde, er skilte skjebner, eller med ingeniørord uavhengige feildomener. Hvis systemet som samler loggene, deler passord, maskinvare eller nettverksveier med serverne det overvåker, tar én feil ned begge samtidig.
 
 ### Lag 1: sporet
 
 En logg som blir liggende på maskinen den beskriver, er bare en dagbok. Alle med full tilgang på maskinen kan skrive den om eller slette den i etterkant. Og «maskinen» er enhver kilde til spor: en server, kontrollplanet i en skykonto, en identitetsleverandør, et kodelager. Den som administrerer kilden, kan få den til å tie.
 
-For at et spor skal telle som bevis, må det forlate verten i det øyeblikket det skrives, over en grense som bare virker én vei. Kildemaskinen kan legge til nye linjer, men den må ikke kunne lese tilbake, endre eller slette det som allerede har krysset grensen. Selv om maskinen blir helt overtatt fem sekunder senere, er alt som var levert før det øyeblikket utenfor rekkevidde. Hold vinduet mellom skriving og levering så kort du kan.
+For at et spor skal telle som bevis, må det forlate verten i det øyeblikket det skrives, over en grense som bare virker én vei. Kildemaskinen kan legge til nye linjer, men den må ikke kunne lese tilbake, endre eller slette det som allerede har krysset grensen. Selv om maskinen blir helt overtatt fem sekunder senere, er alt som var levert før det øyeblikket, utenfor rekkevidde. Hold vinduet mellom skriving og levering så kort du kan.
 
 Ta bare imot spor over en autentisert kanal, slik at én vert ikke kan skrive i en annens navn, og stemple hvert spor med samlerens egen klokke, for en kompromittert vert kan lyve om tiden. Forsegl det som kommer inn, med en signatur eller en hash-kjede, og hold signeringsnøkkelen, eller en kopi av den siste hashen, der lagerets egne administratorer ikke når den: en kjede de kan bygge på nytt, beviser ingenting. Hold lageret i et eget miljø, adskilt fra systemene det registrerer. Gi hver kilde en kvote, slik at en kompromittert vert ikke kan oversvømme lageret og presse beviset ut, og behandle en kilde som når kvoten, som en alarm, ikke som støy. Gjør sporet rikt nok, og behold det lenge nok, til å svare på spørsmål du ikke så komme: alarmene dekker dem du så komme, og innbrudd oppdages ofte sent. Logger om mennesker er personopplysninger, så bestem hva du samler, hvorfor, hvem som kan lese det og hvor lenge det lagres, og si fra til dem det gjelder.
 
@@ -51,7 +51,7 @@ En agent gir saken enda en vri: den kan skrive sin egen historie. For en agent e
 
 ### Lag 2: observatøren
 
-Å flytte loggene bort fra maskinen beskytter fortiden, men ikke de neste ti minuttene. En inntrenger med full tilgang trenger ikke slette gamle spor hvis vedkommende bare kan stoppe at nye blir laget.
+Å flytte loggene bort fra maskinen beskytter fortiden, men ikke de neste ti minuttene. En inntrenger med full tilgang trenger ikke slette gamle spor hvis vedkommende bare kan hindre at nye blir laget.
 
 Å tømme en logg etterlater et tydelig spor, så en forsiktig angriper endrer heller revisjonsreglene slik at visse handlinger overses, eller dreper prosessen som sender loggene bort. Det første etterlater én linje om endringen som er lett å overse, det andre ingen melding i det hele tatt, bare et hull. Den stilleste inntrengeren endrer ingenting i det hele tatt: vedkommende bruker en gyldig legitimasjon, og det eneste sporet er atferd utenfor mønsteret. Det samme gjelder en tjeneste eller en agent som handler utenfor sitt erklærte formål.
 
@@ -70,7 +70,7 @@ En alarm må også havne hos noen andre enn den alarmen gjelder. En administrato
 | En gyldig identitet handler utenfor mønsteret | En stjålet legitimasjon, eller en tjeneste eller agent som handler utenfor sitt erklærte område | Identitetens normalbilde, dens eier og eventuell godkjent endring |
 | Loggstrømmen stopper | Verten er nede, avskåret, eller avsenderen ble drept | Et vitne verten ikke styrer (nettverk, hypervisor) først, så loggprosessen |
 | To vitner er uenige | Verten skjuler noe, eller ett vitne er ødelagt | Vitnet verten ikke kan røre: nettverket, kontrollplanet, identitetsleverandøren |
-| Godkjenningsregler omgått | En privilegert bruker endret rekkverket for seg selv | Kontrollplanet og innstillingene i repoet, lag 4 |
+| Godkjenningsregler omgått | En privilegert bruker endret rekkverket for seg selv | Kontrollplanet og innstillingene i kodelageret, lag 4 |
 
 ### Lag 3: hvem overvåker overvåkeren?
 
@@ -86,7 +86,7 @@ Ingen av dem beviser at reglene er intakte. En inntrenger som når overvåkeren,
 
 ### Lag 4: de som har nøklene
 
-Selv med logger som går én vei og en ekstern puls må noen administrere samleren, overvåkeren og tilgangsreglene, og i dag er det ofte ikke et menneske. Tjenestekontoer, automatisering og agenter er mange ganger flere enn menneskene, og for mange av dem har permanent legitimasjon med for vid tilgang som ingen eier. Hvis én konto kan endre alle lagene på en gang, eller en foreldreløs tjenestekonto går løs, faller de fire lagene sammen til ett enkelt feilpunkt.
+Selv med logger som går én vei og en ekstern puls må noen administrere samleren, overvåkeren og tilgangsreglene, og i dag er det ofte ikke et menneske. Tjenestekontoer, automatisering og agenter er mange ganger flere enn menneskene, og for mange av dem har permanent legitimasjon med for vid tilgang som ingen eier. Hvis én konto kan endre alle lagene på én gang, eller en foreldreløs tjenestekonto går løs, faller de fire lagene sammen til ett enkelt feilpunkt.
 
 Prinsippene er de samme for mennesker og maskiner, mekanismene er ikke det. En maskin kan ikke svare på en andre faktor, så den må bevise identiteten sin med hva den er og hvor den kjører, med kortlevd legitimasjon. Tre grenser holder rettigheter på toppnivå i sjakk:
 
@@ -102,8 +102,8 @@ I et flatt oppsett har administratoren permanente nøkler både til serverne og 
 
 Med de fire lagene på plass treffer den samme stjålne laptopen en grense i hvert trinn:
 
-- Det finnes ingen permanente nøkler på maskinen. Å heve rettighetene krever en ny forespørsel som logges utenfor verten før tilgangen gis, og for de høyeste rettighetene må en annen person godkjenne den. En forespørsel til en uvanlig tid når den personen som et spørsmål, ikke som en formalitet.
-- Selv om inntrengeren kommer seg inn på en server og dreper loggavsenderen, er alt som var levert fram til det sekundet allerede lagret på den andre siden av en enveisgrense, og samleren slår alarm på den plutselige stillheten.
+- Det finnes ingen permanente nøkler på maskinen. Å heve rettighetene krever en ny forespørsel som logges utenfor verten før tilgangen gis, og for de høyeste rettighetene må en annen person godkjenne den. En forespørsel på et uvanlig tidspunkt kommer til den personen som et spørsmål, ikke som en formalitet.
+- Selv om inntrengeren kommer seg inn på en server og dreper loggavsenderen, er alt som var levert fram til det sekundet, allerede lagret på den andre siden av en enveisgrense, og samleren slår alarm på den plutselige stillheten.
 - Hvis vedkommende prøver å få selve overvåkeren til å tie, stopper den eksterne pulsen, og mottakeren utenfor tilkaller teamet; demper vedkommende i stedet én enkelt alarm, krever endringen en andre person og etterlater en linje i det forseglede sporet.
 - Hvis vedkommende går løs på sikkerhetskopiene, ligger de bak den samme typen enveisgrense: uforanderlige, i et eget miljø som den stjålne laptopen ikke når.
 - Hvis vedkommende strekker seg etter nødkontoen, utløses reservenøkkelalarmen ved innloggingen, før den første kommandoen er kjørt.
@@ -114,7 +114,7 @@ Bruddet skjer fortsatt, men det kan ikke skjule sporene sine. Det er det ærlige
 
 De fire lagene gjør et angrep dyrere og kortere. De gjør det ikke umulig, og kontrollene svikter på hver sin måte.
 
-- **Godkjenninger blir stemplet.** En andre person er bare en vokter så lenge vedkommende leser det de godkjenner. Slitne godkjennere stempler, og en angriper kan vente på en ekte administrators forespørsel og ta over økten etter at den er godkjent. Hold volumet lavt, vis godkjenneren hva, hvor og hvorfor, bind økten med utvidede rettigheter til enheten og oppgaven, og følg med på selve godkjenningene: en godkjenner som sier ja til alt på to sekunder, er et funn. Og to personer kan fortsatt bli enige om å se en annen vei; regelen gjør misbruk til en sammensvergelse, som er vanskeligere, ikke umulig.
+- **Godkjenninger blir stemplet.** En andre person er bare en vokter så lenge vedkommende leser det som skal godkjennes. Slitne godkjennere stempler, og en angriper kan vente på en ekte administrators forespørsel og ta over økten etter at den er godkjent. Hold volumet lavt, vis godkjenneren hva, hvor og hvorfor, bind økten med utvidede rettigheter til enheten og oppgaven, og følg med på selve godkjenningene: en godkjenner som sier ja til alt på to sekunder, er et funn. Og to personer kan fortsatt bli enige om å se en annen vei; regelen gjør misbruk til en sammensvergelse, som er vanskeligere, ikke umulig.
 - **Utløp kan henge etter.** En legitimasjon som burde ha utløpt, virker fortsatt hvis tilbaketrekkingen er ødelagt eller ingen følger med, og maskinlegitimasjon er den vanlige synderen. Test tilbaketrekking på fast tid, og varsle når en legitimasjon overlever sin erklærte utløpsdato.
 - **Normalbilder kan læres opp.** En identitet som glir av sted i små steg, blir normal, og en detektor som er stilt for stramt, drukner folk i falske alarmer til de slutter å lese. Hold en kort liste over ting som aldri er normale for en identitet, uansett historikk, og hold alarmene så få at et menneske fortsatt leser hver av dem.
 - **Kompleksitet er en risiko.** Hver kontroll er en ny del som kan svikte, og en ny ting noen må drifte. Foretrekk få, enkle deler, test hver av dem, og fjern en kontroll du ikke kan teste.
