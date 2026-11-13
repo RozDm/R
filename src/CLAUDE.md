@@ -89,7 +89,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
 - `/api/timeseries?metric=view|geo|mailfail&range=24h|7d|30d|all` — GET,
   edge-cached per metric+range (`all` ≈ 90 days at 6 h; `mailfail` is the
   watchdog's, never charted). No AE secrets or a failed AE
-  read → 200, empty `points`, `degraded: true`, never cached; the watchdog
+  read → 200, empty `points`, `degraded: true`, edge-cached 20 s (under the watchdog's 30 s retry gap); the watchdog
   fails on `degraded`.
 - `/api/contact` — POST: a 32 KB body cap (413, by Content-Length and while
   reading), `isWriteAllowed` (403 `forbidden`), honeypot, the burst cap,
@@ -125,7 +125,7 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `timeseries.ts` and `ip.ts` are also checked under the app tsconfig (tests
   and the app import them): DOM-compatible APIs only there.
 - A Worker can't fetch its own public URL: the site goes through ASSETS (the
-  `/api/views` slug check, `internal: true` monitors). Don't monitor the site
+  `/api/views` slug check). Don't monitor the site
   itself — it serves the dashboard.
 - `isWriteAllowed` is bot hygiene, NOT security (spoofable headers):
   anything with consequences has its own defence (contact: Turnstile + rate
@@ -143,7 +143,8 @@ ops workflows: `.github/CLAUDE.md`; incident background: `docs/history.md`.
   `frame-ancestors`/`object-src`/`base-uri`/`form-action` only — both
   policies apply, so a fetch directive there would block the hashed inline
   scripts. The Worker's JSON and redirects get `ENFORCED_CSP` (no
-  `unsafe-inline`).
+  `unsafe-inline` script). Styles: `style-src 'self'` (no `<style>` element
+  in the export) + `style-src-attr 'unsafe-inline'` for `style="…"`.
 - Turn nothing on that makes the EDGE inject a script (JavaScript
   Detections, Rocket Loader, Zaraz, Web Analytics' automatic setup): the
   CSP refuses it and each refusal is a report, i.e. a Worker request.

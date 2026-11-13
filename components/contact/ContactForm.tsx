@@ -177,11 +177,10 @@ export default function ContactForm() {
 
       {/* Honeypot: off-screen rather than display:none, since modern bots
           increasingly skip display:none. Hidden from assistive tech via
-          aria-hidden and tabIndex={-1}. */}
-      <div
-        aria-hidden
-        style={{ position: 'absolute', left: '-9999px', top: 'auto', width: 1, height: 1, overflow: 'hidden' }}
-      >
+          aria-hidden and tabIndex={-1}. Classes, not an inline style: a
+          browser without style-src-attr (Safari < 15.4) falls back to
+          style-src 'self' and would show an inline-styled honeypot. */}
+      <div aria-hidden className="absolute -left-[9999px] top-auto w-px h-px overflow-hidden">
         <label>
           Website
           <input type="text" name="website" tabIndex={-1} autoComplete="off" />

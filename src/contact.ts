@@ -128,9 +128,29 @@ function messageIdHeaders(from: string, at: string): string[] {
 }
 
 // RFC 2047 encoded-word so non-ASCII subjects survive SMTP.
+// RFC 2047: an encoded-word is at most 75 chars and a header line at most 76.
+// 39 UTF-8 bytes → 52 base64 chars → a 64-char word, so `Subject: ` + one
+// word fits a line. Chunks never split a code point; words are folded.
+const MIME_WORD_BYTES = 39
+
 export function encodeMimeHeader(text: string): string {
   if (/^[\x20-\x7e]*$/.test(text)) return text
-  return `=?utf-8?B?${base64Utf8(text)}?=`
+  const encoder = new TextEncoder()
+  const chunks: string[] = []
+  let chunk = ''
+  let size = 0
+  for (const char of text) {
+    const n = encoder.encode(char).length
+    if (size + n > MIME_WORD_BYTES && chunk) {
+      chunks.push(chunk)
+      chunk = ''
+      size = 0
+    }
+    chunk += char
+    size += n
+  }
+  if (chunk) chunks.push(chunk)
+  return chunks.map((c) => `=?utf-8?B?${base64Utf8(c)}?=`).join('\r\n ')
 }
 
 // Minimal raw MIME message: plain text, base64-encoded body so UTF-8 is safe.

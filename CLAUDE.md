@@ -239,6 +239,10 @@ answered; keep output and replies short.
   stays on 6: 7.0.2 (tried 2026-10-29) builds, but has no JS API, so
   typescript-eslint refuses it (tracked for 7.1+, typescript-eslint#10940),
   for ~3 s saved — not worth the npm-alias setup. Revisit when it supports 7.
+- `package.json` `overrides` (postcss-selector-parser under
+  `@tailwindcss/typography`, minimatch under typescript-estree) exist only
+  for audit advisories in pinned transitive deps; drop each once typography /
+  typescript-eslint ship fixed pins.
 - `package.json` is NOT `"type": "module"` (breaks the Next/turbopack config
   load); standalone Node scripts are `.mjs`.
 - No R2 (needs a card) and no off-platform backup: D1 Time Travel (7 days on

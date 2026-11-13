@@ -3,12 +3,11 @@
 export interface Monitor {
   name: string
   url: string
-  internal?: boolean
 }
 
 // Endpoints the uptime cron checks. Add your own services here.
-// `internal: true` checks via the ASSETS binding (a Worker can't fetch its own
-// public URL — Cloudflare blocks the loop). External services use plain fetch.
+// Checked with plain fetch; never the site itself (a Worker can't fetch its
+// own public URL — Cloudflare blocks the loop).
 // NetBox's address — an admin login on a random subdomain — comes from the
 // NETBOX_URL secret, not this public repo (the git history still has it: MFA
 // is what guards it). Grafana's is derivable from the name, so it stays here.

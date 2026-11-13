@@ -75,8 +75,9 @@ jobs:
       # The Trends chart reads Analytics Engine with the AE_API_TOKEN secret.
       # When AE fails (an expired or revoked token, an AE outage) the endpoint
       # still answers 200 with an empty series, flagged `degraded` — the chart
-      # then just looks quiet. Degraded answers are never edge-cached, so a
-      # retry asks AE again; three in a row is not a blip.
+      # then just looks quiet. Degraded answers are edge-cached only 20 s
+      # (under the 30 s between tries), so a retry asks AE again; three in a
+      # row is not a blip.
       - name: Time series (Analytics Engine) answers
         run: |
           for try in 1 2 3; do

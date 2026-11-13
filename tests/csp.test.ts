@@ -76,6 +76,14 @@ describe('metaCsp', () => {
     expect(scriptSrc).not.toContain('unsafe-inline')
   })
 
+  it('allows inline style attributes only, never <style> elements', () => {
+    for (const csp of [metaCsp([]), ENFORCED_CSP]) {
+      const directives = csp.split('; ')
+      expect(directives).toContain("style-src 'self'")
+      expect(directives).toContain("style-src-attr 'unsafe-inline'")
+    }
+  })
+
   it('keeps object-src none and upgrades insecure subresource requests', () => {
     const csp = metaCsp([])
     expect(csp).toContain("object-src 'none'")
