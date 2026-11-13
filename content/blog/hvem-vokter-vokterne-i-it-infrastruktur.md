@@ -61,14 +61,14 @@ Noen må administrere samleren, varslingen og tilgangsreglene, og ofte er det en
 Tre grenser holder de høyeste rettighetene i sjakk:
 
 - Lånt tid. Ingen har permanent full tilgang. Høye rettigheter lånes til en erklært oppgave, med avgrenset omfang og utløpstid, og lånet skrives til sporet før økten starter. Tjenestekontoer og agenter låner på samme måte, og hver av dem har en navngitt menneskelig eier.
-- To par øyne. Den som foreslår en endring i kritisk infrastruktur, i utrullingen av den eller i alarmreglene, kan ikke være den som godkjenner den. En endring i selve godkjenningsreglene utløser et varsel i lag 2.
+- To par øyne. Den som foreslår en endring i kritisk infrastruktur, i utrullingen av den eller i alarmreglene, kan ikke være den som godkjenner den. En endring i selve godkjenningsreglene utløser et varsel i lag 2. Regelen er forbeholdt det som endrer vokterne selv eller ikke kan gjøres om. Alt annet gjør en agent i sitt eget tempo innenfor omfanget den har lånt, ellers blir godkjenningene så mange at ingen leser dem.
 - En bråkete reservenøkkel (en break-glass-konto). Nødkontoen til bruk når de vanlige innloggingssystemene er nede, kan ikke avhenge av dem. Den er derfor det ene stående unntaket, og den slår alarm over en uavhengig kanal idet den brukes.
 
 Nøklene er det fjerde laget. Det passer ikke på laget før seg, slik de to forrige gjør, men avgjør hvem som får endre de tre andre.
 
 Med de fire lagene på plass treffer den samme stjålne laptopen en grense i hvert steg. Det ligger ingen permanente nøkler på den, og en forespørsel om høye rettigheter på et uvanlig tidspunkt kommer til en annen person som et spørsmål. Dreper inntrengeren loggavsenderen, er alt som var sendt fram til da, allerede lagret på den andre siden, og samleren varsler om stillheten. Får vedkommende observatøren til å tie, stopper pulsen, og mottakeren utenfor tilkaller teamet. Én dempet alarm krever en andre person og etterlater en linje i det forseglede sporet. Nødkontoen slår alarm ved innlogging, før den første kommandoen er kjørt.
 
-Bruddet skjer fortsatt. Forskjellen er at det blir synlig, dyrt og kort.
+Bruddet skjer fortsatt, men nå er det synlig og dyrt. Hvor kort det blir, avgjøres av det som skjer etter alarmen. Tilsyn stopper ikke et angrep. Det bestemmer hvor lenge angrepet får vare uoppdaget.
 
 ## Når slutter du å spørre?
 
@@ -78,7 +78,7 @@ Ved enden av kjeden står derfor noe du velger å stole på: en ekstern pulsmott
 
 Det samme spørsmålet er stilt i hele nettets målestokk. Sertifikatutstedere (CA-er) går god for at et nettsted er det det gir seg ut for å være, og etter et innbrudd hos en av dem i 2011 ble spørsmålet stilt om dem. Svaret ble Certificate Transparency: i praksis blir hvert offentlig betrodd sertifikat publisert i åpne logger som bare kan utvides, hvem som helst kan drive en overvåker som leter etter sertifikater de ikke ventet, og nettleserne avviser et sertifikat som ikke bærer loggenes signerte løfte om å ta det med. Loggene blir ikke voktet av enda en vokter. Nettleserne krever løfter fra flere logger som drives av ulike operatører, altså et duplisert anker. En utsteder kan fortsatt utstede et dårlig sertifikat, men sertifikatet kan ikke lenger skjule seg.
 
-I et lite miljø, der én person driver både serverne og sikkerheten, kan du ikke fordele rollene mellom mennesker. Du kan fordele dem over grenser: send loggene dit den daglige kontoen din ikke kan slette dem, send pulsen til en mottaker utenfor din egen infrastruktur, og avtal en fast tid der en annen person, gjerne en utenforstående, leser sammendraget. De to første virker også når ingen ser på. Avtalen er et avbøtende tiltak, for med en ukentlig gjennomgang er oppdagelsesvinduet en uke.
+I et lite miljø, der én person driver både serverne og sikkerheten, kan du ikke fordele rollene mellom mennesker. Du kan fordele dem over grenser: send loggene dit den daglige kontoen din ikke kan slette dem, send pulsen til en mottaker utenfor din egen infrastruktur, og avtal en fast tid der en annen person, gjerne en utenforstående, leser et sammendrag av det som angår vokterne selv: endrede regler, dempede alarmer, lånte rettigheter og hull i sporet. De to første virker også når ingen ser på. Avtalen er et avbøtende tiltak. Leseren vil ikke kjenne igjen et stille angrep, men vokterne kan ikke lenger endres uten at noen ser det, og med en ukentlig gjennomgang er oppdagelsesvinduet en uke.
 
 ## Kjeden på ett ark
 
@@ -111,9 +111,9 @@ Kompleksitet er en risiko i seg selv. Hver kontroll er en ny del som kan svikte,
 Spørsmålet sier hva som må finnes. Noen detaljer avgjør om det holder i praksis:
 
 - Ta bare imot spor over en autentisert kanal, slik at én vert ikke kan skrive i en annens navn, og stemple hvert spor med samlerens egen klokke. En kompromittert vert kan lyve om tiden.
-- Forsegl det som kommer inn, med en signatur eller en hash-kjede, og hold nøkkelen der lagerets egne administratorer ikke når den.
-- Gi hver kilde en kvote, slik at en kompromittert vert ikke kan oversvømme lageret og presse beviset ut. En kilde som når kvoten, er en alarm.
-- Signer det du ruller ut, registrer hvordan det ble bygget, og kontroller signaturen ved utrulling. En liste over hva bygget inneholder, er en oversikt, ikke et bevis, og byggesystemet og signeringsnøklene hører inn under lag 4.
+- Forsegl det som kommer inn, med en signatur eller en hash-kjede, hold signeringsnøkkelen utenfor rekkevidde for lagerets egne administratorer, og legg jevnlig en kopi av den siste hashen der heller ikke samleren kan endre den. En overtatt samler kan da legge til løgner, men ikke skrive om det som allerede er forseglet.
+- Gi hver kilde en kvote, slik at en kompromittert vert ikke kan oversvømme lageret og presse ut eldre bevis eller bevis fra andre kilder. En kilde som når kvoten, behandles som en kilde som er blitt stille: det den gjør etterpå, ser du ikke, så alarmen er like alvorlig.
+- Signer det du ruller ut, registrer hvordan det ble bygget, og kontroller signaturen ved utrulling. En signatur viser hvor noe kommer fra, og en liste over innholdet viser hva det består av. Ingen av dem viser at det er harmløst: ondsinnet kode som kom inn før byggingen, blir bygget og signert som alt annet. Byggesystemet, signeringsnøklene og veien koden kommer inn, hører derfor under lag 4.
 - En maskin kan ikke svare på en andre faktor. La den bevise identiteten sin med hva den er og hvor den kjører, og gi den kortlevd legitimasjon.
 - Oppbevar nødnøkkelen slik at det setter spor når den tas ut, og test den på fast tid. Alarmen den utløser, må aldri blokkere innloggingen, ellers lærer folk seg å slå den av.
 - Behold sporet lenge nok til å svare på spørsmål du ikke så komme, for innbrudd oppdages ofte sent. Logger om mennesker er samtidig personopplysninger: bestem hva du samler, hvorfor, hvem som kan lese det, og hvor lenge det lagres, og si fra til dem det gjelder.
