@@ -58,7 +58,7 @@ It fits when one service fails while the rest work: email goes through, but the 
 | --- | --- | --- |
 | The name doesn't exist | DNS answered but doesn't know the name | The DNS record, layer 5 |
 | DNS doesn't answer | No reply: lost on the way there or back, or the DNS service is down | The way to the DNS server, layers 1–4, or the service itself |
-| The connection is refused | Something said no: nothing listens, or a firewall rejects | The service or the firewall, layer 4 |
+| The connection is refused | Something said no: nothing is listening, or a firewall rejects it | The service or the firewall, layer 4 |
 | The connection times out | No answer: packets vanish on the way there or back | Firewall or routing, layer 4 and down |
 | No reply once connected | The connection stands, but the service behind it doesn't answer | The application, layer 5 |
 | Certificate error | The trust fails, or you reached the wrong host | TLS, layer 5; for a wrong host, DNS or a proxy |
